@@ -7,6 +7,7 @@ export function validateField(name, values, rule = {}) {
   if (v && rule.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Digite um e-mail válido, como nome@email.com.';
   if (v && rule.url && !/^https?:\/\/\S+\.\S+/.test(v)) return 'Cole o link completo, começando com https://';
   if (v && rule.minLength && v.length < rule.minLength) return `Use pelo menos ${rule.minLength} caracteres.`;
+  if (v && rule.min && Number(v) < rule.min) return `Use um número a partir de ${rule.min}.`;
   if (rule.match && String(values[name] ?? '') !== String(values[rule.match] ?? '')) return 'As senhas não são iguais.';
   return '';
 }

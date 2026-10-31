@@ -17,6 +17,12 @@ describe('validateField', () => {
     expect(validateField('senha', { senha: '' }, { minLength: 8 })).toBe('');
   });
 
+  test('min rejects numbers below the minimum', () => {
+    expect(validateField('qtd', { qtd: '0' }, { min: 1 })).toBe('Use um número a partir de 1.');
+    expect(validateField('qtd', { qtd: '-3' }, { min: 1 })).toBe('Use um número a partir de 1.');
+    expect(validateField('qtd', { qtd: '2' }, { min: 1 })).toBe('');
+  });
+
   test('requiredIf asks for the field only when the other one is filled', () => {
     expect(validateField('atual', { atual: '', nova: 'Senha123' }, { requiredIf: 'nova' })).toMatch(/senha atual/);
     expect(validateField('atual', { atual: '', nova: '' }, { requiredIf: 'nova' })).toBe('');

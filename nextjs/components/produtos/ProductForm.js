@@ -23,7 +23,7 @@ export default function ProductForm({ listId, product, rooms, defaultRoom = '' }
 
   const f = useDemoForm({
     initial: { nome: product?.name || '', amb: product?.room || defaultRoom, qtd: String(product?.qty || 1), preco: fmtPrice(product?.price), obs: product?.notes || '' },
-    rules: { nome: { required: true }, amb: { required: 'Escolha o ambiente do produto.' } },
+    rules: { nome: { required: true }, amb: { required: 'Escolha o ambiente do produto.' }, qtd: { required: true, min: 1 } },
     onSuccess: (v, { go }) => {
       const bad = links.find((l) => l.u && !/^https?:\/\/\S+\.\S+/.test(l.u));
       if (bad) { toast('Cole o link completo, começando com https://', 'err'); return; }
@@ -64,10 +64,11 @@ export default function ProductForm({ listId, product, rooms, defaultRoom = '' }
       </Field>
 
       <div className="row2">
-        <Field id="qtd" label="Quantidade">
+        <Field id="qtd" label="Quantidade" error={f.errors.qtd}>
           <div className="stepper">
             <button type="button" onClick={() => setQty(qty - 1)} aria-label="Diminuir">−</button>
-            <input id="qtd" type="number" min="1" inputMode="numeric" value={f.values.qtd} onChange={(e) => f.setValue('qtd', e.target.value)} onBlur={() => setQty(qty)} />
+            <input id="qtd" type="number" min="1" inputMode="numeric" value={f.values.qtd}
+              aria-invalid={f.errors.qtd ? 'true' : 'false'} aria-describedby={f.errors.qtd ? 'qtd-err' : undefined} onChange={(e) => f.setValue('qtd', e.target.value)} onBlur={() => setQty(qty)} />
             <button type="button" onClick={() => setQty(qty + 1)} aria-label="Aumentar">+</button>
           </div>
         </Field>
