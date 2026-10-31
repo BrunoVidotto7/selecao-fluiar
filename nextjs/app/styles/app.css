@@ -188,7 +188,7 @@ h3{font-family:var(--display);font-weight:600;font-size:15px;margin:0;color:var(
 /* ---------- Estrutura com menu ---------- */
 .shell{min-height:100vh}
 .topbar{display:none}
-.side{position:sticky;top:0;height:100vh;height:100dvh;background:var(--paper);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:26px 18px 18px;gap:28px}
+.side{position:sticky;top:0;height:100vh;height:100dvh;background:var(--paper);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:26px 18px 18px;gap:28px;overflow-y:auto;overscroll-behavior:contain}
 .side .logo{padding-inline:10px}
 .nav{display:grid;gap:2px}
 .nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:var(--r-sm);font-family:var(--display);font-size:13px;font-weight:500;color:var(--ink);text-decoration:none;transition:background .15s,color .15s}
