@@ -3,6 +3,10 @@
 //   match: 'outroCampo', requiredIf: 'outroCampo',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
+export const PRODUCT_IMAGE_TYPES = ['image/jpeg', 'image/png'];
+const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
+const INVALID_IMAGE_MESSAGE = 'Escolha um arquivo de imagem (JPG ou PNG).';
+const IMAGE_TOO_LARGE_MESSAGE = 'A imagem deve ter até 5 MB.';
 
 const REQUIRED_MESSAGE = 'Preencha este campo.';
 const INVALID_REQUEST_MESSAGE = 'Revise os dados enviados.';
@@ -32,6 +36,11 @@ function validateMoney(value) {
   const integerDigits = unsigned.split(',')[0].replace(/\./g, '').length;
   if (integerDigits > MONEY_INTEGER_DIGITS) return MONEY_PRECISION_MESSAGE;
   return negative ? MONEY_NEGATIVE_MESSAGE : '';
+}
+
+export function validateProductImage(file) {
+  if (!(file instanceof File) || !file.size || !PRODUCT_IMAGE_TYPES.includes(file.type)) return INVALID_IMAGE_MESSAGE;
+  return file.size > MAX_PRODUCT_IMAGE_BYTES ? IMAGE_TOO_LARGE_MESSAGE : '';
 }
 
 export function validateField(name, values, rule = {}) {

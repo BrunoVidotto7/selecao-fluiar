@@ -9,8 +9,9 @@ This file covers `ui/` only. For files under `ui/`, it wins over the repo root `
   tested, and it already differs from `nextjs/`. Edit it only when the task asks for it.
 
 Authentication, the private layout, office administration, clients, dashboard, shopping-list pages
-and separate room management use the REST API in `../api/`. Product writes still use prototype
-workflows. Private inline product controls remain local until their persistence migration.
+and separate room management use the REST API in `../api/`. Product forms save JSON before image
+upload/removal and retain the saved UUID for retries. Private inline product controls remain local
+until their persistence migration.
 
 ## Commands
 
@@ -176,3 +177,5 @@ List preselection uses the API client's actual UUID value, matching case-insensi
 Scope recent-client link queries to their section: recent-list links also include the client's name.
 
 Room order arrays must reject sparse entries before writing; array iteration can silently skip them.
+
+Product image retries must retain the saved UUID and pending file/removal; mobile link errors wrap the inputs without changing their two-row layout.

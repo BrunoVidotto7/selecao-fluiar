@@ -12,6 +12,7 @@ import ListPage from './(app)/listas/[id]/page';
 import { generateMetadata as listMetadata } from './(app)/listas/[id]/page';
 import ListsPage from './(app)/listas/page';
 import EditProductPage from './(app)/listas/[id]/produtos/[produtoId]/editar/page';
+import NewProductPage from './(app)/listas/[id]/produtos/novo/page';
 import PrivateLayout from './(app)/layout';
 import RootLayout from './layout';
 import LoginPage from './(auth)/login/page';
@@ -19,7 +20,7 @@ import SignupPage from './(auth)/cadastro/page';
 import InvitationPage from './(auth)/convite/page';
 import RootError from './error';
 import PrivateError from './(app)/error';
-import { CLIENT, LIST, ME, OFFICE } from '@/test-support/fixtures';
+import { CLIENT, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
@@ -33,6 +34,9 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/components/auth/actions', () => ({ login: vi.fn(), signup: vi.fn(), logout: vi.fn() }));
 vi.mock('@/components/convite/actions', () => ({ acceptInvitation: vi.fn() }));
+vi.mock('@/components/produtos/actions', () => ({
+  saveProduct: vi.fn(), deleteProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(),
+}));
 
 const props = (params) => ({ params: Promise.resolve(params), searchParams: Promise.resolve({}) });
 
@@ -63,6 +67,41 @@ test.each([
   ['product', EditProductPage, { id: 'lista-da-casa', produtoId: 'inexistente' }],
 ])('an unknown %s id shows the not-found page', async (_, Page, params) => {
   await expect(Page(props(params))).rejects.toThrow('NEXT_NOT_FOUND');
+});
+
+test('a mismatched nested product URL is not found even when its UUID exists elsewhere', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify(LIST)));
+  await expect(EditProductPage(props({ id: LIST.id, produtoId: SECOND_PRODUCT.id }))).rejects.toThrow('NEXT_NOT_FOUND');
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/lists/' + LIST.id]);
+});
+
+test('new and edit product routes read actual list rooms and client identity, never prototype data', async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(LIST)));
+  const view = render(await NewProductPage({ ...props({ id: LIST.id }), searchParams: Promise.resolve({ ambiente: ROOM.id }) }));
+  expect(screen.getByLabelText('Ambiente').value).toBe(ROOM.id);
+  expect(screen.getAllByRole('option').map((option) => option.value)).toEqual(['', ROOM.id]);
+  expect(screen.getByText('Casa nova · Mariana Souza')).toBeTruthy();
+  view.rerender(await EditProductPage(props({ id: LIST.id, produtoId: PRODUCT.id })));
+  expect(screen.getByLabelText('Nome do produto').value).toBe(PRODUCT.name);
+  expect(screen.getByLabelText('Ambiente').value).toBe(ROOM.id);
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    'http://localhost:8080/api/lists/' + LIST.id, 'http://localhost:8080/api/lists/' + LIST.id,
+  ]);
+});
+
+test.each([NewProductPage, EditProductPage])('a product route preserves a cross-office list 404', async (Page) => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: 'Não encontramos o que você procurava.' }), { status: 404 }));
+  await expect(Page(props({ id: LIST.id, produtoId: PRODUCT.id }))).rejects.toThrow('NEXT_NOT_FOUND');
+});
+
+test('edit product forms reset when navigating to another product UUID', async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...LIST, rooms: [{ ...ROOM, products: [
+    PRODUCT, { ...SECOND_PRODUCT, roomId: ROOM.id },
+  ] }] })));
+  const view = render(await EditProductPage(props({ id: LIST.id, produtoId: PRODUCT.id })));
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Rascunho' } });
+  view.rerender(await EditProductPage(props({ id: LIST.id, produtoId: SECOND_PRODUCT.id })));
+  expect(screen.getByLabelText('Nome do produto').value).toBe('Sofá');
 });
 
 test('the private layout loads the current user with the cookie and passes the real identity to its shell', async () => {
@@ -191,6 +230,8 @@ test('the list page starts list and office reads in parallel and displays only A
   render(await loading);
   expect(screen.getByRole('heading', { name: LIST.name })).toBeTruthy();
   expect(screen.getByRole('checkbox', { name: 'Comprado: Batedeira' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'novo item em Cozinha' }).getAttribute('href'))
+    .toBe(`/listas/${LIST.id}/produtos/novo?ambiente=${ROOM.id}`);
   expect(screen.getAllByRole('link', { name: CLIENT.name }).map((link) => link.getAttribute('href')))
     .toEqual(['/clientes/' + CLIENT.id, '/clientes/' + CLIENT.id]);
   expect(screen.getByText('Ateliê Horizonte')).toBeTruthy();

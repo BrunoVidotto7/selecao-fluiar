@@ -21,7 +21,7 @@ export default function RoomTable({ room, products, showAdd, listBase, onToggle,
             {products.map((it) => <ItemRow key={it.id} item={it} listBase={listBase} onToggle={onToggle} onQty={onQty} onRemove={onRemove} />)}
             {showAdd && (
               <tr className="new"><td className="ck" /><td colSpan={3}>
-                <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${encodeURIComponent(room.name)}`}><Icon name="plus" />novo item em {room.name}</Link>
+                <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${room.id}`}><Icon name="plus" />novo item em {room.name}</Link>
               </td></tr>
             )}
           </tbody>
