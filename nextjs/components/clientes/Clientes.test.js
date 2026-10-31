@@ -26,6 +26,30 @@ test('deleting the last list card updates the count, the empty state and the cli
 const page = (Page, query) => Page({ searchParams: Promise.resolve(query) });
 const EMPTY = 'Nenhum cliente por aqui ainda';
 
+test('client search ignores accents and shows a no-results row', async () => {
+  render(await page(ClientsPage, {}));
+  const search = screen.getByLabelText('Pesquisar clientes');
+
+  fireEvent.change(search, { target: { value: 'sergio' } });
+  expect(screen.getByRole('link', { name: 'Sérgio Hooper' })).toBeTruthy();
+  expect(screen.queryByRole('link', { name: 'Marina Duarte' })).toBeNull();
+
+  fireEvent.change(search, { target: { value: 'zzz' } });
+  expect(screen.getByText(/Nenhum cliente encontrado/)).toBeTruthy();
+});
+
+test('deleting a client row needs confirmation; cancelling keeps it', async () => {
+  render(<FeedbackProvider>{await page(ClientsPage, {})}</FeedbackProvider>);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir Marina Duarte' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(screen.getByRole('link', { name: 'Marina Duarte' })).toBeTruthy();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir Marina Duarte' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir cliente' }));
+  expect(screen.queryByRole('link', { name: 'Marina Duarte' })).toBeNull();
+});
+
 test('the clients page follows the empty-state query when only the query changes', async () => {
   const view = render(await page(ClientsPage, {}));
   expect(screen.getByRole('link', { name: 'Sérgio Hooper' })).toBeTruthy();
