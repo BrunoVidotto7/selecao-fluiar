@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Icon from '../ui/Icon';
+import { keepFocusInside } from '@/lib/focus';
 
 const ToastCtx = createContext(() => {});
 const ConfirmCtx = createContext(() => {});
@@ -18,6 +19,7 @@ export function FeedbackProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const [dialog, setDialog] = useState(null);
   const okRef = useRef(null);
+  const boxRef = useRef(null);
   const lastFocus = useRef(null);
   const pathname = usePathname();
 
@@ -41,7 +43,7 @@ export function FeedbackProvider({ children }) {
   useEffect(() => {
     if (!dialog) return;
     okRef.current?.previousSibling?.focus();
-    const onKey = (e) => e.key === 'Escape' && close();
+    const onKey = (e) => { if (e.key === 'Escape') close(); keepFocusInside(e, boxRef.current); };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [dialog]);
@@ -60,7 +62,7 @@ export function FeedbackProvider({ children }) {
         {dialog && (
           <div className="modal">
             <div className="scrimm" onClick={close} />
-            <div className="box" role="alertdialog" aria-modal="true" aria-labelledby="m-t" aria-describedby="m-d">
+            <div ref={boxRef} className="box" role="alertdialog" aria-modal="true" aria-labelledby="m-t" aria-describedby="m-d">
               <span className="art"><Icon name="trash" /></span>
               <h2 id="m-t">{dialog.title}</h2>
               <p id="m-d">{dialog.text || 'Essa ação não pode ser desfeita.'}</p>
