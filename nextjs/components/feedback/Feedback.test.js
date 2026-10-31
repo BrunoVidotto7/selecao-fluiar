@@ -1,11 +1,8 @@
-import { beforeEach, expect, test, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { expect, test, vi } from 'vitest';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { FeedbackProvider, useConfirm } from './Feedback';
 
-const nav = vi.hoisted(() => ({ pathname: '/clientes' }));
-vi.mock('next/navigation', () => ({ usePathname: () => nav.pathname }));
-
-beforeEach(() => { nav.pathname = '/clientes'; });
+vi.mock('next/navigation', () => ({ usePathname: () => '/clientes' }));
 
 function Page({ onConfirm }) {
   const confirm = useConfirm();
@@ -17,8 +14,8 @@ function Page({ onConfirm }) {
   );
 }
 
-function openDialog(onConfirm = vi.fn()) {
-  const view = render(<FeedbackProvider><Page onConfirm={onConfirm} /></FeedbackProvider>);
+function openDialog(onConfirm = vi.fn(), key = 'cheio') {
+  const view = render(<FeedbackProvider><Page key={key} onConfirm={onConfirm} /></FeedbackProvider>);
   const opener = screen.getByRole('button', { name: 'Excluir' });
   opener.focus();
   fireEvent.click(opener);
@@ -53,22 +50,24 @@ test('the confirm button closes the dialog and runs the action', () => {
   expect(onConfirm).toHaveBeenCalledTimes(1);
 });
 
-test('navigating to another page discards an open confirmation and its action', () => {
-  const onConfirm = vi.fn();
-  const { view } = openDialog(onConfirm);
-
-  nav.pathname = '/listas';
-  view.rerender(<FeedbackProvider><Page onConfirm={onConfirm} /></FeedbackProvider>);
-
+test('leaving the page that opened a confirmation discards it and its action', () => {
+  const { onConfirm, view } = openDialog();
+  view.rerender(<FeedbackProvider><p>Outra página</p></FeedbackProvider>);
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(onConfirm).not.toHaveBeenCalled();
 });
 
-test('browser history navigation (Back/Forward, even query-only) discards an open confirmation', () => {
-  const { onConfirm } = openDialog();
-  act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
+test('a query-only navigation that remounts the page (link or Back/Forward) discards its confirmation', () => {
+  const { onConfirm, view } = openDialog(vi.fn(), 'cheio');
+  view.rerender(<FeedbackProvider><Page key="vazio" onConfirm={onConfirm} /></FeedbackProvider>);
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(onConfirm).not.toHaveBeenCalled();
+});
+
+test('re-rendering the same page keeps its confirmation open', () => {
+  const { onConfirm, view } = openDialog(vi.fn(), 'cheio');
+  view.rerender(<FeedbackProvider><Page key="cheio" onConfirm={onConfirm} /></FeedbackProvider>);
+  expect(screen.getByRole('alertdialog')).toBeTruthy();
 });
 
 test('Tab and Shift+Tab keep the focus inside the confirmation', () => {

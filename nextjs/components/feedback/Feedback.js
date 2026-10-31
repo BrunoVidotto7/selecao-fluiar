@@ -1,14 +1,21 @@
 'use client';
 // Avisos (toast) e modal de confirmação de exclusão, disponíveis em todas as telas.
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import Icon from '../ui/Icon';
 import { keepFocusInside } from '@/lib/focus';
 
 const ToastCtx = createContext(() => {});
-const ConfirmCtx = createContext(() => {});
+const ConfirmCtx = createContext({ open: () => {}, cancel: () => {} });
 export const useToast = () => useContext(ToastCtx);
-export const useConfirm = () => useContext(ConfirmCtx);
+
+// A confirmação pertence ao componente que a abriu: se ele sai da tela (qualquer navegação), ela é descartada.
+export function useConfirm() {
+  const { open, cancel } = useContext(ConfirmCtx);
+  const [owner] = useState({});
+  useEffect(() => () => cancel(owner), [cancel, owner]);
+  return useCallback((opts) => open({ ...opts, owner }), [open, owner]);
+}
 
 // Guarda um aviso para mostrar na próxima tela (ex.: "Cliente salvo." depois de redirecionar)
 export function flash(message, type) {
@@ -30,13 +37,6 @@ export function FeedbackProvider({ children }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2950);
   }, []);
 
-  useEffect(() => { setDialog(null); }, [pathname]);
-  // Voltar/avançar do navegador também troca a tela, mesmo quando só a query muda.
-  useEffect(() => {
-    const close = () => setDialog(null);
-    window.addEventListener('popstate', close);
-    return () => window.removeEventListener('popstate', close);
-  }, []);
   useEffect(() => {
     try {
       const f = sessionStorage.getItem('flash');
@@ -44,7 +44,9 @@ export function FeedbackProvider({ children }) {
     } catch {}
   }, [pathname, toast]);
 
-  const confirm = useCallback((opts) => { lastFocus.current = document.activeElement; setDialog(opts); }, []);
+  const open = useCallback((opts) => { lastFocus.current = document.activeElement; setDialog(opts); }, []);
+  const cancel = useCallback((owner) => setDialog((d) => (d?.owner === owner ? null : d)), []);
+  const confirm = useMemo(() => ({ open, cancel }), [open, cancel]);
   const close = () => { setDialog(null); lastFocus.current?.focus?.(); };
 
   useEffect(() => {
