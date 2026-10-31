@@ -10,8 +10,8 @@ This file covers `ui/` only. For files under `ui/`, it wins over the repo root `
 
 Authentication, the private layout, office administration, clients, dashboard, shopping-list pages
 and separate room management use the REST API in `../api/`. Product forms save JSON before image
-upload/removal and retain the saved UUID for retries. Private inline product controls remain local
-until their persistence migration.
+upload/removal and retain the saved UUID for retries. Inline product controls await API writes;
+refreshed list props own products and totals.
 
 ## Commands
 
@@ -179,3 +179,5 @@ Scope recent-client link queries to their section: recent-list links also includ
 Room order arrays must reject sparse entries before writing; array iteration can silently skip them.
 
 Product image retries must retain the saved UUID and pending file/removal; mobile link errors wrap the inputs without changing their two-row layout.
+
+Inline row guards must survive filtering and be registered before dispatch; key list owners by UUID (not updatedAt) so refresh preserves filters.

@@ -421,7 +421,7 @@ Action tests must assert JSON save precedes multipart upload, multipart field is
 - Produces: `patchProduct(listId,productId,patch:{bought?:boolean,quantity?:number}) -> Promise<ActionResult<ProductResponse>>` in product actions.
 - Produces: async `RoomTable` callbacks `onToggle(id,bought)`, `onQty(id,quantity)`, `onRemove(id)` returning the corresponding `ActionResult`; `pendingIds:Set<string>` disables all controls for an in-flight row.
 
-- [ ] **Step 1: Write failing persistence and race/failure tests.**
+- [x] **Step 1: Write failing persistence and race/failure tests.**
 
 ```js
 test('a failed purchase update does not change the saved checkbox or totals', async () => {
@@ -446,10 +446,10 @@ test('two taps remove only after the API confirms deletion', async () => {
 ```
 
 Also assert 0, fractions and 1000 are rejected rather than clamped; a failed quantity PATCH restores the server value; Enter/blur sends one PATCH; a second click while pending sends no second write; success refreshes and uses server `list.stats`, `bought` and `quantity`. Preserve filter counts, original 2500ms removal-arm timeout and read-only mode. Null unit price displays "Sem preço". Room-add URLs contain room UUIDs, never room names. Product action tests exercise no session, invalid IDs, cross-list product and upstream other-office 404.
-- [ ] **Step 2: Run RED.** `npx vitest run components/produtos/actions.test.js components/lista/ShoppingList.test.js components/lista/RoomTable.test.js`.
-- [ ] **Step 3: Implement PATCH and await all three row mutations.** Use pessimistic updates: incoming list props own rooms/products/stats; local state owns only mode, filter, quantity drafts, confirmation arm and pending IDs. Do not maintain a second room/product collection. Revalidate only after API success and call `router.refresh()`; successful toasts must follow confirmed writes. Keep controls disabled per row until completion. Reset a quantity draft after failed persistence or confirmed server quantity changes without resetting list filters.
-- [ ] **Step 4: Run GREEN.** Repeat Step 2; all pass.
-- [ ] **Step 5: Review and commit.** `git commit -m "Persist inline shopping list changes."`
+- [x] **Step 2: Run RED.** `npx vitest run components/produtos/actions.test.js components/lista/ShoppingList.test.js components/lista/RoomTable.test.js`.
+- [x] **Step 3: Implement PATCH and await all three row mutations.** Use pessimistic updates: incoming list props own rooms/products/stats; local state owns only mode, filter, quantity drafts, confirmation arm and pending IDs. Do not maintain a second room/product collection. Revalidate only after API success and call `router.refresh()`; successful toasts must follow confirmed writes. Keep controls disabled per row until completion. Reset a quantity draft after failed persistence or confirmed server quantity changes without resetting list filters.
+- [x] **Step 4: Run GREEN.** Repeat Step 2; all pass.
+- [x] **Step 5: Review and commit.** `git commit -m "Persist inline shopping list changes."`
 
 ### Task 9: Password Recovery And Real Reset Links
 

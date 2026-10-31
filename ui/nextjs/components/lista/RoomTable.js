@@ -1,15 +1,25 @@
 'use client';
 // Tabela de um ambiente no modo edição (colunas da página original: ✓ | Qtd. | Item | Links e observações)
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { unstable_rethrow } from 'next/navigation';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
 import { brl, imageSource } from '@/lib/format';
 import ItemLinks from './ItemLinks';
+import { validateField } from '@/lib/validation';
 
 const REMOVE_CONFIRMATION_MS = 2500;
+const MIN_QUANTITY = 1;
+const MAX_QUANTITY = 999;
+const QUANTITY_RULE = { required: true, integer: true, min: MIN_QUANTITY, max: MAX_QUANTITY };
 const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity > 1 ? `${it.quantity} × ${brl(it.unitPrice)}` : brl(it.unitPrice));
 
-export default function RoomTable({ room, products, showAdd, listBase, onToggle, onQty, onRemove }) {
+/** @param {{ room: import('../listas/queries.server').RoomResponse, products: import('../listas/queries.server').ProductResponse[],
+ * showAdd: boolean, listBase: string, pendingIds: Set<string>,
+ * onToggle: (id: string, bought: boolean) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
+ * onQty: (id: string, quantity: number) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
+ * onRemove: (id: string) => Promise<import('@/lib/api.server').ActionResult<undefined>> }} props */
+export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove }) {
   const done = room.products.filter((i) => i.bought).length;
   return (
     <>
@@ -18,7 +28,8 @@ export default function RoomTable({ room, products, showAdd, listBase, onToggle,
         <table>
           <thead><tr><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
           <tbody>
-            {products.map((it) => <ItemRow key={it.id} item={it} listBase={listBase} onToggle={onToggle} onQty={onQty} onRemove={onRemove} />)}
+            {products.map((it) => <ItemRow key={`${listBase}:${it.id}`} item={it} listBase={listBase}
+              pending={pendingIds.has(it.id)} onToggle={onToggle} onQty={onQty} onRemove={onRemove} />)}
             {showAdd && (
               <tr className="new"><td className="ck" /><td colSpan={3}>
                 <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${room.id}`}><Icon name="plus" />novo item em {room.name}</Link>
@@ -31,19 +42,106 @@ export default function RoomTable({ room, products, showAdd, listBase, onToggle,
   );
 }
 
-function ItemRow({ item, listBase, onToggle, onQty, onRemove }) {
-  const [qty, setQty] = useState(String(item.quantity));
+function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove }) {
+  const [quantityDraft, setQuantityDraft] = useState({ value: null, error: '' });
+  const currentDraft = useRef(null);
+  const inFlight = useRef(false);
+  const mounted = useRef(true);
+  const armedRef = useRef(false);
   const [armed, setArmed] = useState(false); // remoção em dois toques, como na página original
-  useEffect(() => { if (!armed) return; const t = setTimeout(() => setArmed(false), REMOVE_CONFIRMATION_MS); return () => clearTimeout(t); }, [armed]);
+  const armRemoval = (value) => { armedRef.current = value; setArmed(value); };
+  const updateDraft = (value, error = '') => {
+    currentDraft.current = value;
+    setQuantityDraft({ value, error });
+  };
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  useEffect(() => {
+    currentDraft.current = null;
+    setQuantityDraft({ value: null, error: '' });
+  }, [item.quantity]);
+  useEffect(() => {
+    if (!armed) return;
+    const timer = setTimeout(() => {
+      armedRef.current = false;
+      setArmed(false);
+    }, REMOVE_CONFIRMATION_MS);
+    return () => clearTimeout(timer);
+  }, [armed]);
+
   const editHref = `${listBase}/produtos/${item.id}/editar`;
-  const commitQty = () => { const v = +qty >= 1 ? +qty : 1; setQty(String(v)); if (v !== item.quantity) onQty(item.id, v); };
+  const errorId = `quantity-${item.id}-err`;
+  const { error } = quantityDraft;
+  const qty = quantityDraft.value ?? String(item.quantity);
+
+  const mutate = async (write, onResult) => {
+    if (pending || inFlight.current) return;
+    inFlight.current = true;
+    try {
+      const result = await write();
+      if (mounted.current) onResult?.(result);
+      return result;
+    } catch (failure) {
+      if (!mounted.current) return;
+      unstable_rethrow(failure);
+      onResult?.(null);
+    } finally {
+      inFlight.current = false;
+    }
+  };
+
+  const validateQuantityDraft = () => {
+    const value = currentDraft.current ?? String(item.quantity);
+    const message = validateField('quantity', { quantity: value }, QUANTITY_RULE);
+    setQuantityDraft((previous) => ({ ...previous, error: message }));
+    return message ? null : Number(value);
+  };
+
+  const commitQty = () => {
+    if (pending || inFlight.current) return;
+    const quantity = validateQuantityDraft();
+    if (quantity === null || quantity === item.quantity) return;
+
+    return mutate(() => onQty(item.id, quantity), (result) => {
+      updateDraft(null, result && !result.ok ? result.errors.quantity || '' : '');
+    });
+  };
+
+  const toggle = (bought) => {
+    if (pending || inFlight.current) return;
+    if (bought) {
+      const quantity = validateQuantityDraft();
+      if (quantity === null) return;
+      if (quantity !== item.quantity) return commitQty();
+    }
+    return mutate(() => onToggle(item.id, bought));
+  };
+
+  const remove = () => {
+    if (pending || inFlight.current) return;
+    if (!armedRef.current) { armRemoval(true); return; }
+    armRemoval(false);
+    return mutate(() => onRemove(item.id));
+  };
 
   return (
     <tr className={item.bought ? 'done' : ''}>
-      <td className="ck"><input type="checkbox" className="check" checked={item.bought} onChange={(e) => onToggle(item.id, e.target.checked)} aria-label={`Comprado: ${item.name}`} /></td>
+      <td className="ck"><input type="checkbox" className="check" disabled={pending} checked={item.bought}
+        onChange={(e) => toggle(e.target.checked)} aria-label={`Comprado: ${item.name}`} /></td>
       <td className="qt">
-        <input type="number" min="1" inputMode="numeric" className="qty" value={qty} placeholder="1" aria-label="Quantidade"
-          onChange={(e) => setQty(e.target.value)} onBlur={commitQty} onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.blur()} />
+        <input type="number" min={MIN_QUANTITY} max={MAX_QUANTITY} step="1" inputMode="numeric" className="qty"
+          disabled={pending} value={qty} placeholder="1" aria-label="Quantidade"
+          aria-invalid={error ? 'true' : 'false'} aria-describedby={error ? errorId : undefined}
+          onChange={(e) => {
+            if (pending || inFlight.current) return;
+            updateDraft(e.target.value);
+          }} onBlur={commitQty} onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commitQty(); e.currentTarget.blur(); }
+          }} />
+        {error && <p className="errmsg" id={errorId}>{error}</p>}
       </td>
       <td className="it">
         <div className="itm">
@@ -52,8 +150,9 @@ function ItemRow({ item, listBase, onToggle, onQty, onRemove }) {
             <div className="nmw">
               <Link className="nm-link" href={editHref}>{item.name}</Link>
               <Link className="ed" href={editHref} aria-label={`Editar ${item.name}`}><Icon name="edit" /></Link>
-              <button type="button" className={'del' + (armed ? ' armed' : '')} aria-label={armed ? `Confirmar remoção de ${item.name}` : `Remover ${item.name}`}
-                onClick={() => (armed ? onRemove(item.id) : setArmed(true))}>{armed ? 'remover?' : '×'}</button>
+              <button type="button" className={'del' + (armed ? ' armed' : '')} disabled={pending}
+                aria-label={armed ? `Confirmar remoção de ${item.name}` : `Remover ${item.name}`}
+                onClick={remove}>{armed ? 'remover?' : '×'}</button>
             </div>
             <span className="price">{priceText(item)}</span>
           </div>

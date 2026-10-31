@@ -35,7 +35,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/components/auth/actions', () => ({ login: vi.fn(), signup: vi.fn(), logout: vi.fn() }));
 vi.mock('@/components/convite/actions', () => ({ acceptInvitation: vi.fn() }));
 vi.mock('@/components/produtos/actions', () => ({
-  saveProduct: vi.fn(), deleteProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(),
+  saveProduct: vi.fn(), patchProduct: vi.fn(), deleteProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(),
 }));
 
 const props = (params) => ({ params: Promise.resolve(params), searchParams: Promise.resolve({}) });
@@ -245,6 +245,24 @@ test('a cross-office list 404 becomes notFound rather than a synthetic list', as
     ? new Response(JSON.stringify(OFFICE))
     : new Response(JSON.stringify({ detail: 'Não encontramos o que você procurava.' }), { status: 404 }));
   await expect(ListPage(props({ id: LIST.id }))).rejects.toThrow('NEXT_NOT_FOUND');
+});
+
+test('a refreshed list page preserves its filter but another list starts with all products', async () => {
+  let current = { ...LIST, rooms: [{ ...ROOM, products: [PRODUCT,
+    { ...SECOND_PRODUCT, roomId: ROOM.id, bought: true }] }],
+    stats: { ...LIST.stats, totalProducts: 2, boughtProducts: 1, pendingProducts: 1 },
+  };
+  fetchMock.mockImplementation(async (url) => new Response(JSON.stringify(url.endsWith('/api/office') ? OFFICE : current)));
+  const view = render(await ListPage(props({ id: LIST.id })));
+  fireEvent.click(screen.getByRole('button', { name: /^Comprados/ }));
+  expect(screen.queryByRole('link', { name: 'Batedeira' })).toBeNull();
+  current = { ...current, updatedAt: '2026-10-31T16:00:00Z' };
+  view.rerender(await ListPage(props({ id: LIST.id })));
+  expect(screen.queryByRole('link', { name: 'Batedeira' })).toBeNull();
+  expect(screen.getByRole('link', { name: 'Sofá' })).toBeTruthy();
+  current = { ...current, id: '22222222-2222-4222-8222-222222225555' };
+  view.rerender(await ListPage(props({ id: current.id })));
+  expect(screen.getByRole('link', { name: 'Batedeira' })).toBeTruthy();
 });
 
 test('a lists read outage is not swallowed as a successful empty page', async () => {

@@ -1,7 +1,8 @@
 'use client';
 // Página da lista de compras — mesma estrutura e visual da página original "Seleção Fluiar",
 // com os controles de integração ao sistema (filtro, resumo, editar lista, adicionar produto).
-import { useMemo, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { unstable_rethrow, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Button from '../ui/Button';
 import { Crumbs, EmptyState } from '../ui/Display';
@@ -11,32 +12,64 @@ import { brl, splitTitle } from '@/lib/format';
 import RoomTable from './RoomTable';
 import ClientView from './ClientView';
 import { ListNote, ListSignature } from './ListFooter';
+import { patchProduct, deleteProduct } from '../produtos/actions';
+
+const WRITE_FAILED_DETAIL = 'Não conseguimos salvar agora. Tente novamente.';
 
 /** @param {{ list: import('../listas/queries.server').ListDetailResponse, signature: { officeName: string, architectNames: string[] } }} props */
 export default function ShoppingList({ list, signature }) {
-  // Local product edits remain temporary until inline persistence is connected.
-  const [localRooms, setLocalRooms] = useState(null);
-  const rooms = localRooms ?? list.rooms;
+  return <ShoppingListContent key={list.id} list={list} signature={signature} />;
+}
+
+function ShoppingListContent({ list, signature }) {
+  const { rooms, stats } = list;
   const [mode, setMode] = useState('edit'); // 'edit' | 'view' (visão do cliente)
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
   const toast = useToast();
+  const router = useRouter();
+  const mounted = useRef(true);
+  const pending = useRef(new Map());
+  const [pendingIds, setPendingIds] = useState(new Set());
   const [t1, t2] = splitTitle(list.name);
   const base = `/listas/${list.id}`;
   const productHref = rooms.length ? `${base}/produtos/novo` : `${base}/ambientes`;
 
-  const stats = useMemo(() => {
-    if (!localRooms) return list.stats;
-    const products = localRooms.flatMap((r) => r.products);
-    const done = products.filter((i) => i.bought).length;
-    let total = 0, rest = 0;
-    products.forEach((i) => { const v = (i.unitPrice ?? 0) * i.quantity; total += v; if (!i.bought) rest += v; });
-    return { totalProducts: products.length, boughtProducts: done, pendingProducts: products.length - done, estimatedTotal: total, remainingTotal: rest };
-  }, [localRooms, list.stats]);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
 
-  const updateItem = (roomIdx, id, patch) => setLocalRooms((rs) => (rs ?? list.rooms).map((r, i) => (i !== roomIdx ? r : { ...r, products: r.products.map((it) => (it.id === id ? { ...it, ...patch } : it)) })));
-  const removeItem = (roomIdx, id) => { setLocalRooms((rs) => (rs ?? list.rooms).map((r, i) => (i !== roomIdx ? r : { ...r, products: r.products.filter((it) => it.id !== id) }))); toast('Item removido'); };
+  const mutateProduct = (id, write, message) => {
+    if (pending.current.has(id)) return pending.current.get(id);
 
-  const visibleRooms = rooms.map((r, idx) => ({ ...r, idx, shown: r.products.filter((it) => filter === 'all' || (filter === 'done') === it.bought) }))
+    const operation = (async () => {
+      try {
+        const result = await Promise.resolve().then(write);
+        if (!mounted.current) return result;
+        if (result.ok) {
+          toast(message);
+          router.refresh();
+        } else {
+          toast(result.detail, 'err');
+        }
+        return result;
+      } catch (error) {
+        if (mounted.current) {
+          unstable_rethrow(error);
+          toast(WRITE_FAILED_DETAIL, 'err');
+        }
+        throw error;
+      } finally {
+        pending.current.delete(id);
+        if (mounted.current) setPendingIds(new Set(pending.current.keys()));
+      }
+    })();
+    pending.current.set(id, operation);
+    setPendingIds(new Set(pending.current.keys()));
+    return operation;
+  };
+
+  const visibleRooms = rooms.map((r) => ({ ...r, shown: r.products.filter((it) => filter === 'all' || (filter === 'done') === it.bought) }))
     .filter((r) => filter === 'all' || r.shown.length);
 
   return (
@@ -83,9 +116,11 @@ export default function ShoppingList({ list, signature }) {
       ) : visibleRooms.length ? (
         visibleRooms.map((r) => (
           <RoomTable key={r.id} room={r} products={r.shown} showAdd={filter === 'all'} listBase={base}
-            onToggle={(id, v) => { updateItem(r.idx, id, { bought: v }); toast(v ? 'Marcado como comprado' : 'Voltou para pendentes'); }}
-            onQty={(id, q) => { updateItem(r.idx, id, { quantity: q }); toast('Salvo'); }}
-            onRemove={(id) => removeItem(r.idx, id)} />
+            pendingIds={pendingIds}
+            onToggle={(id, bought) => mutateProduct(id, () => patchProduct(list.id, id, { bought }),
+              bought ? 'Marcado como comprado' : 'Voltou para pendentes')}
+            onQty={(id, quantity) => mutateProduct(id, () => patchProduct(list.id, id, { quantity }), 'Salvo')}
+            onRemove={(id) => mutateProduct(id, () => deleteProduct(list.id, id), 'Item removido')} />
         ))
       ) : (
         <p className="filtered-empty">{filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>

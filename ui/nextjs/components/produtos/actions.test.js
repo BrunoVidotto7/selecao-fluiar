@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage } from './actions';
-import { LIST, ROOM, PRODUCT, ME, SECOND_PRODUCT } from '@/test-support/fixtures';
+import { saveProduct, patchProduct, deleteProduct, uploadProductImage, deleteProductImage } from './actions';
+import { LIST, ROOM, PRODUCT, ME, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
 const { cookies, fetchMock, redirect, revalidatePath } = vi.hoisted(() => ({
   cookies: vi.fn(), fetchMock: vi.fn(), revalidatePath: vi.fn(),
@@ -24,6 +24,7 @@ const imageData = (file = new File(['png'], 'foto.png', { type: 'image/png' })) 
   return data;
 };
 const commands = [
+  ['patch', (list, product) => patchProduct(list, product, { bought: true }), 'PATCH', `/api/products/${PRODUCT.id}`, PRODUCT],
   ['update', (list, product) => saveProduct(list, product, BODY), 'PUT', `/api/products/${PRODUCT.id}`, PRODUCT],
   ['delete', deleteProduct, 'DELETE', `/api/products/${PRODUCT.id}`, undefined],
   ['upload', (list, product) => uploadProductImage(list, product, imageData()), 'PUT',
@@ -159,4 +160,50 @@ test.each(commands)('%s keeps API ProblemDetail failures and revoked-session nav
 test('unexpected errors are not disguised as expected action failures', async () => {
   vi.stubEnv('NEXT_PUBLIC_API_URL', 'invalid');
   await expect(saveProduct(LIST.id, null, BODY)).rejects.toThrow('Configure NEXT_PUBLIC_API_URL');
+});
+
+test.each([
+  [{ bought: true }, { bought: true }],
+  [{ quantity: 3 }, { quantity: 3 }],
+  [{ bought: false, quantity: 999, roomId: SECOND_ROOM.id, name: 'injected', officeId: ME.officeId },
+    { bought: false, quantity: 999 }],
+  [{ bought: null, quantity: null }, { bought: null, quantity: null }],
+  [{}, {}],
+])('PATCH whitelists ProductStatusRequest fields and returns the confirmed product', async (patch, body) => {
+  const saved = { ...PRODUCT, bought: true, quantity: 3 };
+  fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST) : json(saved));
+  expect(await patchProduct(LIST.id, PRODUCT.id, patch)).toEqual({ ok: true, data: saved });
+  expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+    [`${ORIGIN}/api/lists/${LIST.id}`, 'GET'], [`${ORIGIN}/api/products/${PRODUCT.id}`, 'PATCH'],
+  ]);
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual(body);
+});
+
+test.each([undefined, null, [], '', { bought: 1 }, { bought: 'false' },
+  { quantity: '' }, { quantity: '2' }, { quantity: 1.5 }, { quantity: NaN }, { quantity: Infinity },
+].map((patch) => [patch]))('PATCH rejects malformed status input %j before reading or writing', async (patch) => {
+  expect(await patchProduct(LIST.id, PRODUCT.id, patch)).toEqual(INVALID);
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(cookies).not.toHaveBeenCalled();
+});
+
+test('PATCH without a session navigates to login without a read or write', async () => {
+  cookies.mockResolvedValue({ get: () => undefined });
+  await expect(patchProduct(LIST.id, PRODUCT.id, { quantity: 3 })).rejects.toThrow('NEXT_REDIRECT');
+  expect(redirect).toHaveBeenCalledWith('/login');
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(revalidatePath).not.toHaveBeenCalled();
+});
+
+test('PATCH preserves the product write other-office 404 and quantity field validation without revalidation', async () => {
+  fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST)
+    : json({ detail: NOT_FOUND.detail }, 404));
+  expect(await patchProduct(LIST.id, PRODUCT.id, { bought: true })).toEqual(NOT_FOUND);
+  expect(revalidatePath).not.toHaveBeenCalled();
+  fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST)
+    : json({ detail: 'Revise os campos destacados.', errors: { quantity: 'Use um valor até 999.' } }, 400));
+  expect(await patchProduct(LIST.id, PRODUCT.id, { quantity: 1000 })).toEqual({
+    ok: false, status: 400, detail: 'Revise os campos destacados.', errors: { quantity: 'Use um valor até 999.' },
+  });
+  expect(revalidatePath).not.toHaveBeenCalled();
 });

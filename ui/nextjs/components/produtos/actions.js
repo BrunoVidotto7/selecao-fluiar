@@ -13,6 +13,15 @@ function requireId(id) {
   if (!isUuid(id)) throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
 }
 
+function statusBody(patch) {
+  if (!patch || typeof patch !== 'object' || Array.isArray(patch)
+      || (patch.bought != null && typeof patch.bought !== 'boolean')
+      || (patch.quantity != null && !Number.isInteger(patch.quantity))) {
+    throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
+  }
+  return { bought: patch.bought, quantity: patch.quantity };
+}
+
 function productBody(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)
       || typeof input.name !== 'string' || !isUuid(input.roomId)
@@ -56,6 +65,20 @@ export async function saveProduct(listId, productId, input) {
     const product = await apiRequest(productId === null ? `/api/lists/${listId}/products` : `/api/products/${productId}`, {
       method: productId === null ? 'POST' : 'PUT', body,
     });
+    revalidateWorkspaceData();
+    return product;
+  });
+}
+
+/** @param {string} listId @param {string} productId @param {{ bought?: boolean | null, quantity?: number | null }} patch
+ * @returns {Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>} */
+export async function patchProduct(listId, productId, patch) {
+  return actionResult(async () => {
+    requireId(listId);
+    requireId(productId);
+    const body = statusBody(patch);
+    await requireProductInList(listId, productId);
+    const product = await apiRequest(`/api/products/${productId}`, { method: 'PATCH', body });
     revalidateWorkspaceData();
     return product;
   });

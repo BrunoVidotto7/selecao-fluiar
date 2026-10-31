@@ -14,7 +14,7 @@ export default async function Page({ params }) {
   const signature = { officeName: office.name, architectNames: office.members.map((member) => member.name) };
   return (
     <div className="wrap doc">
-      <ShoppingList key={`${list.id}:${list.updatedAt}`} list={list} signature={signature} />
+      <ShoppingList key={list.id} list={list} signature={signature} />
     </div>
   );
 }
