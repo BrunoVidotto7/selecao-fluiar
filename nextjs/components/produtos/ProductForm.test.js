@@ -1,9 +1,11 @@
 import { afterEach, expect, test, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import NewProductPage from '@/app/(app)/listas/[id]/produtos/novo/page';
+import EditProductPage from '@/app/(app)/listas/[id]/produtos/[produtoId]/editar/page';
+import { FeedbackProvider } from '../feedback/Feedback';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), notFound: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => '/listas', notFound: vi.fn() }));
 
 const SERVER_DELAY_MS = 650;
 const CHOOSE_ROOM = 'Escolha o ambiente do produto.';
@@ -67,6 +69,32 @@ test('the product form requires a name and saves a valid product', async () => {
 
   fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira' } });
   save();
+  expect(push).toHaveBeenCalledWith('/listas/lista-da-casa');
+});
+
+const editProductPage = () => EditProductPage({ params: Promise.resolve({ id: 'lista-da-casa', produtoId: 'p4' }) });
+
+test('editing an existing product shows its values and saves back to the list', async () => {
+  vi.useFakeTimers();
+  render(await editProductPage());
+  expect(screen.getByLabelText('Nome do produto').value).toBe('Batedeira');
+  expect(screen.getByLabelText('Ambiente').value).toBe('Cozinha');
+  expect(screen.getByLabelText(/Observações/).value).toBe('Para massas pesadas, escolher a opção 3.');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar produto' }));
+  act(() => vi.advanceTimersByTime(SERVER_DELAY_MS));
+  expect(push).toHaveBeenCalledWith('/listas/lista-da-casa');
+});
+
+test('deleting a product needs confirmation; cancelling stays on the form', async () => {
+  render(<FeedbackProvider>{await editProductPage()}</FeedbackProvider>);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir produto' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Cancelar' }));
+  expect(push).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir produto' }));
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Excluir produto' }));
   expect(push).toHaveBeenCalledWith('/listas/lista-da-casa');
 });
 
