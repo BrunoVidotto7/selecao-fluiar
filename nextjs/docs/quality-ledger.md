@@ -88,23 +88,23 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 | SHR-CQ-010 | Minor | CONTRACTS | SHR | `components/ui/Fields.js:8-11` | Label inside `.lbl-row` loses the shared label style (selector `.field>label`). | OPEN (Minor, not fixed) | | |
 | SHR-CQ-011 | Minor | CONTRACTS | SHR | `components/layout/ProtoNav.js:23-35` | ProtoNav panel is before its trigger in DOM order; Tab skips the opened links. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-012 | Minor | STATE | SHR | `components/layout/AppShell.js:49-51` | Drawer stays open on same-path or query-only navigation. | OPEN (Minor, not fixed) | | |
-| ACCT-CQ-001 | Important | STATE | ACCT | `components/auth/AuthForms.js:10-11,56-57` | `useState(showError)` / `useState(initialSent)` ignore later prop changes; query-only navigation (`/login` to `/login?estado=erro`) does not change the screen. | FIXED (awaiting re-review) | d38f9b1 | 1 |
-| ACCT-CQ-002 | Important | STATE | ACCT | `components/auth/AuthForms.js:58-65` | Recovery confirmation shows the current input draft, not the submitted (validated) email. | FIXED (awaiting re-review) | 0037254 | 1 |
-| ACCT-CQ-003 | Important | TESTS | ACCT | `components/auth/AuthForms.js` (area) | No tests for login/signup/recovery/reset/settings workflows. | FIXED (awaiting re-review) | 4014fa9 (+ tests in d38f9b1, 0037254) | 1 |
+| ACCT-CQ-001 | Important | STATE | ACCT | `components/auth/AuthForms.js:10-11,56-57` | `useState(showError)` / `useState(initialSent)` ignore later prop changes; query-only navigation (`/login` to `/login?estado=erro`) does not change the screen. | RESOLVED | d38f9b1 | 1 |
+| ACCT-CQ-002 | Important | STATE | ACCT | `components/auth/AuthForms.js:58-65` | Recovery confirmation shows the current input draft, not the submitted (validated) email. | RESOLVED | 0037254 | 1 |
+| ACCT-CQ-003 | Important | TESTS | ACCT | `components/auth/AuthForms.js` (area) | No tests for login/signup/recovery/reset/settings workflows. | RESOLVED | 4014fa9 (+ tests in d38f9b1, 0037254) | 1 |
 | ACCT-CQ-004 | Minor | DUPLICATION | ACCT | `components/auth/AuthForms.js:38-47` | Minimum password length 8 repeated in three forms and placeholders. | OPEN (Minor, not fixed) | | |
-| CLST-CQ-001 | Important | STATE | CLST | `app/(app)/clientes/page.js:9-14`, `listas/page.js:14`, `listas/nova/page.js:12` | Tables and new-list form copy query-derived props into state without a reset `key`; query-only navigation keeps stale rows/draft. | FIXED (awaiting re-review) | 67acf9a | 1 |
-| CLST-CQ-002 | Important | STATE | CLST | `components/listas/Listas.js:85-97`, `clientes/[id]/page.js:31-38` | Client detail: `ListCards` deletes locally but heading count, delete-client warning and empty state use the original server list. | FIXED (awaiting re-review) | 2481e34 | 1 |
-| CLST-CQ-003 | Important | CONTRACTS | CLST | `app/(app)/listas/nova/page.js:7-12` | `?cliente=` forwarded unvalidated; unknown or repeated value passes the required-client rule. | FIXED (awaiting re-review) | 2d8039e | 1 |
-| CLST-CQ-004 | Important | TESTS | CLST | `components/listas/Listas.js` (area) | No tests for search/filters, deletions, empty states, form validation, client preselection, query navigation. | FIXED (awaiting re-review) | 999d86d (+ tests in 2d8039e, 67acf9a, 2481e34) | 1 |
+| CLST-CQ-001 | Important | STATE | CLST | `app/(app)/clientes/page.js:9-14`, `listas/page.js:14`, `listas/nova/page.js:12` | Tables and new-list form copy query-derived props into state without a reset `key`; query-only navigation keeps stale rows/draft. | RESOLVED | 67acf9a | 1 |
+| CLST-CQ-002 | Important | STATE | CLST | `components/listas/Listas.js:85-97`, `clientes/[id]/page.js:31-38` | Client detail: `ListCards` deletes locally but heading count, delete-client warning and empty state use the original server list. | RESOLVED | 2481e34 | 1 |
+| CLST-CQ-003 | Important | CONTRACTS | CLST | `app/(app)/listas/nova/page.js:7-12` | `?cliente=` forwarded unvalidated; unknown or repeated value passes the required-client rule. | RESOLVED | 2d8039e | 1 |
+| CLST-CQ-004 | Important | TESTS | CLST | `components/listas/Listas.js` (area) | No tests for search/filters, deletions, empty states, form validation, client preselection, query navigation. | FIXED (awaiting re-review) | 999d86d, 5532d86 (+ tests in 2d8039e, 67acf9a, 2481e34) | 2 |
 | CLST-CQ-005 | Minor | CONTRACTS | CLST | `app/(app)/listas/[id]/editar/page.js:15`, `listas/nova/page.js:12` | Full `CLIENTS` records sent to `ListForm`, which only needs id and name. | OPEN (Minor, not fixed) | | |
-| SHOP-CQ-001 | Important | STATE | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `ProductForm` keeps the old draft/room on query-only navigation (no reset `key`). | FIXED (awaiting re-review) | 8568b2d | 1 |
-| SHOP-CQ-002 | Important | CONTRACTS | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `?ambiente=` forwarded unvalidated; unknown or repeated value passes the required-room rule. | FIXED (awaiting re-review) | 24b9b75 | 1 |
-| SHOP-CQ-003 | Important | STATE | SHOP | `components/lista/ShoppingList.js:69-79` | Emptiness checked by room count; removing every product shows empty tables / blank client view instead of the empty state. | FIXED (awaiting re-review) | 17f8111 | 1 |
-| SHOP-CQ-004 | Important | CONTRACTS | SHOP | `components/lista/ClientView.js:15-17`, `RoomTable.js:61` | Product-level `notes` are not rendered in either list mode. | CHALLENGED (design reference has no product notes in the list) | | 0 |
-| SHOP-CQ-005 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:67-75` | Quantity normalised only on blur; Enter submits 0 or negative quantity as success. | FIXED (awaiting re-review) | c468260 | 1 |
-| SHOP-CQ-006 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:37-39` | Upload promises "JPG ou PNG, até 5 MB" but accepts any `image/*` of any size. | FIXED (awaiting re-review) | 01233f5 | 1 |
-| SHOP-CQ-007 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:54-55` | Armed two-step remove keeps `aria-label="Remover item"`; screen readers get no confirmation cue. | FIXED (awaiting re-review) | 3496274 | 1 |
-| SHOP-CQ-008 | Important | TESTS | SHOP | `components/lista/ShoppingList.js` (area) | No tests for list counts/filters/toggles/removal/empty states or product form validation. | FIXED (awaiting re-review) | 60d26c3 (+ tests in 24b9b75, 8568b2d, 17f8111, c468260, 01233f5, 3496274) | 1 |
+| SHOP-CQ-001 | Important | STATE | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `ProductForm` keeps the old draft/room on query-only navigation (no reset `key`). | RESOLVED | 8568b2d | 1 |
+| SHOP-CQ-002 | Important | CONTRACTS | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `?ambiente=` forwarded unvalidated; unknown or repeated value passes the required-room rule. | RESOLVED | 24b9b75 | 1 |
+| SHOP-CQ-003 | Important | STATE | SHOP | `components/lista/ShoppingList.js:69-79` | Emptiness checked by room count; removing every product shows empty tables / blank client view instead of the empty state. | RESOLVED | 17f8111 | 1 |
+| SHOP-CQ-004 | Important | CONTRACTS | SHOP | `components/lista/ClientView.js:15-17`, `RoomTable.js:61` | Product-level `notes` are not rendered in either list mode. | DISPROVED (reviewer: design shows only per-link notes) | | 0 |
+| SHOP-CQ-005 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:67-75` | Quantity normalised only on blur; Enter submits 0 or negative quantity as success. | RESOLVED | c468260 | 1 |
+| SHOP-CQ-006 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:37-39` | Upload promises "JPG ou PNG, até 5 MB" but accepts any `image/*` of any size. | RESOLVED | 01233f5 | 1 |
+| SHOP-CQ-007 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:54-55` | Armed two-step remove keeps `aria-label="Remover item"`; screen readers get no confirmation cue. | RESOLVED | 3496274 | 1 |
+| SHOP-CQ-008 | Important | TESTS | SHOP | `components/lista/ShoppingList.js` (area) | No tests for list counts/filters/toggles/removal/empty states or product form validation. | FIXED (awaiting re-review) | 60d26c3, e1eccc7 (+ tests in 24b9b75, 8568b2d, 17f8111, c468260, 01233f5, 3496274) | 2 |
 | SHOP-CQ-009 | Minor | CONTRACTS | SHOP | `components/lista/ShoppingList.js:69-73` | Empty client preview still shows the "Adicionar primeiro produto" edit action. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-010 | Minor | CONTRACTS | SHOP | `app/(app)/listas/[id]/page.js:15` | Full list and client records sent to `ShoppingList`, which needs only id and name. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-011 | Minor | DUPLICATION | SHOP | `components/produtos/ProductForm.js:28-29` | Purchase-link URL regex and message duplicate `lib/validation.js:8`. | OPEN (Minor, not fixed) | | |
@@ -242,6 +242,19 @@ Round 1 re-reviews (fresh reviewer per area, HEAD 2bac449):
     confirmation open"). GREEN 69/69, lint 0 errors, build 250/250 at 4cd6e54.
 - SHR re-review of attempt 3 (HEAD 4cd6e54): APPROVED. SHR-CQ-003 RESOLVED. No new findings. All
   criteria PASS. Residual: navigation modelled by unmount/keyed remount in jsdom (no E2E).
+- ACCT (HEAD 5c1f75e): APPROVED. ACCT-CQ-001, 002, 003 RESOLVED. No new findings. All criteria PASS.
+- CLST (HEAD 5c1f75e): CHANGES_REQUIRED. CLST-CQ-001, 002, 003 RESOLVED. CLST-CQ-004 OPEN: ClientForm
+  validation and successful client/list create/edit saves are untested. TESTS FAIL, others PASS.
+  - CLST-CQ-004 attempt 2 (5532d86): ClientForm required/e-mail validation, new/edit client
+    destinations, new/edit list destinations. GREEN 73/73, lint clean. Next: SHOP re-review, then
+    one re-review for CLST-CQ-004, full checks, round 2.
+- SHOP (HEAD 5532d86): CHANGES_REQUIRED. RESOLVED: SHOP-CQ-001, 002, 003, 005, 006, 007. SHOP-CQ-004
+  DISPROVED (design reference renders only per-link notes). SHOP-CQ-008 OPEN: existing-product edit
+  (prefilled values, save) and product deletion confirm/cancel untested. TESTS FAIL, others PASS.
+  - SHOP-CQ-008 attempt 2 (e1eccc7): edit page prefilled values + save, product delete cancel/confirm.
+    GREEN 75/75, lint clean.
+- Next: one re-review for CLST-CQ-004 (attempt 2) and SHOP-CQ-008 (attempt 2), full checks, then
+  round 2 full review of all 5 areas, then the complete-review agents in parallel.
 
 User request (later): after this reviewer loop reaches Done, run complete-review-architecture,
 -cleancode, -critical, -security, -performance in parallel, in rounds, until no Critical or High
