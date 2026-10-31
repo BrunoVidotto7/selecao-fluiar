@@ -8,12 +8,13 @@ import { ListCards, ListForm, ListsTable } from './Listas';
 import { FeedbackProvider } from '../feedback/Feedback';
 import { CLIENT, DASHBOARD, LIST, ME } from '@/test-support/fixtures';
 
-const { push, refresh, saveList, deleteList, fetchMock, cookies, revalidatePath, unstable_rethrow } = vi.hoisted(() => ({
+const { push, refresh, saveList, deleteList, fetchMock, cookies, revalidatePath, unstable_rethrow, pathname } = vi.hoisted(() => ({
   push: vi.fn(), refresh: vi.fn(), saveList: vi.fn(), deleteList: vi.fn(), fetchMock: vi.fn(), cookies: vi.fn(),
   revalidatePath: vi.fn(), unstable_rethrow: vi.fn(),
+  pathname: { value: '/listas' },
 }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, refresh }), usePathname: () => '/listas', unstable_rethrow,
+  useRouter: () => ({ push, refresh }), usePathname: () => pathname.value, unstable_rethrow,
   notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }),
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
 }));
@@ -38,6 +39,7 @@ const json = (body) => new Response(JSON.stringify(body));
 beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
+  pathname.value = '/listas';
   saveList.mockResolvedValue({ ok: true, data: LIST });
   deleteList.mockResolvedValue({ ok: true, data: undefined });
   cookies.mockResolvedValue({ get: () => ({ value: 'jwt' }) });
@@ -49,7 +51,7 @@ beforeEach(() => {
   vi.stubGlobal('fetch', fetchMock);
   vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:8080');
 });
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 test('the lists page displays server summaries and ignores prototype empty-state queries', async () => {
   render(await page(ListsPage, { estado: 'vazio' }));
@@ -241,6 +243,8 @@ test.each([['cards', ListCards], ['table', ListsTable]])(
     await act(async () => release({ ok: true, data: undefined }));
     expect(screen.getByRole('status').textContent).toContain('Lista excluída.');
     expect(refresh).toHaveBeenCalledOnce();
+    expect(push).not.toHaveBeenCalled();
+    expect(sessionStorage.getItem('flash')).toBeNull();
     if (Component === ListCards) expect(onDeleted).toHaveBeenCalledExactlyOnceWith(LIST.id);
     expect(screen.getByRole('link', { name: 'Casa nova' })).toBeTruthy();
     view.rerender(feedback(<Component lists={[]} />));
@@ -266,6 +270,34 @@ test('failed deletion in an edit form retains the draft and does not navigate', 
   expect(screen.getByLabelText('Nome da lista').value).toBe('Rascunho');
   expect(push).not.toHaveBeenCalled();
   expect(refresh).not.toHaveBeenCalled();
+  expect(screen.queryByText('Lista excluída.')).toBeNull();
+  expect(sessionStorage.getItem('flash')).toBeNull();
+});
+
+test('edit-form deletion flashes only once on the client destination after persistence', async () => {
+  vi.useFakeTimers();
+  pathname.value = `/listas/${LIST.id}/editar`;
+  let release;
+  deleteList.mockReturnValueOnce(new Promise((resolve) => { release = resolve; }));
+  const view = render(feedback(<ListForm list={LIST} clients={DASHBOARD.recentClients} />));
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir lista' }));
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Excluir lista' }));
+  expect(deleteList).toHaveBeenCalledExactlyOnceWith(LIST.id);
+  expect(push).not.toHaveBeenCalled();
+  expect(refresh).not.toHaveBeenCalled();
+  expect(screen.getByRole('status').textContent).toBe('');
+  expect(sessionStorage.getItem('flash')).toBeNull();
+  await act(async () => { release({ ok: true, data: undefined }); });
+  expect(push).toHaveBeenCalledExactlyOnceWith(`/clientes/${CLIENT.id}`);
+  expect(refresh).toHaveBeenCalledOnce();
+  expect(JSON.parse(sessionStorage.getItem('flash')).m).toBe('Lista excluída.');
+  const immediateFeedback = screen.getByRole('status').textContent;
+  pathname.value = `/clientes/${CLIENT.id}`;
+  view.rerender(feedback(<ListCards lists={[]} />));
+  await act(async () => { vi.advanceTimersByTime(200); });
+  expect(screen.getAllByText('Lista excluída.')).toHaveLength(1);
+  expect(immediateFeedback).toBe('');
+  expect(sessionStorage.getItem('flash')).toBeNull();
 });
 
 test.each([

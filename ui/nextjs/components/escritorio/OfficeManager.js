@@ -1,5 +1,5 @@
 'use client';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Button from '../ui/Button';
 import { TextInput } from '../ui/Fields';
@@ -13,16 +13,42 @@ const INVITATION_EMAIL_MAX_LENGTH = 254;
 
 function RenameOfficeForm({ office }) {
   const router = useRouter();
+  const confirmedName = useRef(office.name);
+  const unacknowledgedName = useRef(null);
   const f = useApiForm({
     initial: { nomeEscritorio: office.name },
     rules: { nomeEscritorio: { required: true, maxLength: OFFICE_NAME_MAX_LENGTH } },
     fieldMap: { name: 'nomeEscritorio' },
     action: ({ nomeEscritorio }) => renameOffice({ name: nomeEscritorio }),
-    onSuccess: (data, values, { toast }) => {
+    onSuccess: (data, submitted, { toast }) => {
+      const supersededNames = new Set(unacknowledgedName.current?.supersededNames);
+      supersededNames.add(confirmedName.current);
+      unacknowledgedName.current = { name: data.name, supersededNames };
+      confirmedName.current = data.name;
+      f.setValues((current) => current.nomeEscritorio === submitted.nomeEscritorio
+        ? { ...current, nomeEscritorio: data.name }
+        : current);
       toast('Escritório salvo.');
       router.refresh();
     },
   });
+  const { busy, setValues } = f;
+  useEffect(() => {
+    if (busy) return;
+    // Props de nomes já substituídos não podem desfazer o último salvamento.
+    const unacknowledged = unacknowledgedName.current;
+    if (unacknowledged) {
+      if (office.name !== unacknowledged.name && unacknowledged.supersededNames.has(office.name)) return;
+      unacknowledgedName.current = null;
+    }
+    const previousName = confirmedName.current;
+    if (office.name === previousName) return;
+    confirmedName.current = office.name;
+    setValues((current) => current.nomeEscritorio === previousName
+      ? { ...current, nomeEscritorio: office.name }
+      : current);
+  }, [busy, office.name, setValues]);
+
   return (
     <form className="form" onSubmit={f.submit} noValidate>
       <TextInput label="Nome do escritório" autoComplete="organization" {...f.field('nomeEscritorio')} />
@@ -90,7 +116,7 @@ export default function OfficeManager({ office, invitations, now }) {
           <h2 className="sec" id="escritorio-title">Dados do escritório</h2>
           <p>O nome do escritório aparece na assinatura das listas enviadas aos clientes.</p>
         </div>
-        <RenameOfficeForm key={office.name} office={office} />
+        <RenameOfficeForm key={office.id} office={office} />
       </section>
       <section className="card setsec" aria-labelledby="membros-title">
         <div className="about"><h2 className="sec" id="membros-title">Membros</h2><p>Pessoas que compartilham os clientes e as listas deste escritório.</p></div>

@@ -71,7 +71,7 @@ docs/quality-ledger.md         record of a finished code review; history, not in
   ```js
   const f = useApiForm({
     initial: { nome: client?.name || '', email: client?.email || '', tel: client?.phone || '' },
-    rules: { nome: { required: true }, email: { required: true, email: true }, tel: { required: true, phone: true } },
+    rules: { nome: { required: true }, email: { required: true, email: true }, tel: { phone: true } },
     fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
     action: (values) => saveClient(client?.id ?? null, { name: values.nome, email: values.email, phone: values.tel }),
     onSuccess: (saved, values, { go }) => go('/clientes', 'Cliente cadastrado.'),
@@ -208,3 +208,5 @@ Inline row guards must survive filtering and be registered before dispatch; key 
 Browser email inputs strip surrounding whitespace; test normalized comparisons without assuming the submitted value retains it.
 
 Share controls retain a returned token until refreshed props acknowledge it; pending refreshes must not announce rotation early.
+
+Office rename drafts belong to the office UUID; reconcile props after saves settle, ignoring superseded-name acknowledgments and preserving newer edits.

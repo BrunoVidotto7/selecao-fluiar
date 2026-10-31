@@ -14,6 +14,7 @@ import { saveClient, deleteClient } from './actions';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
+const DELETE_SUCCESS_DETAIL = 'Cliente excluído.';
 const CLIENT_NAME_MAX_LENGTH = 120;
 const CLIENT_EMAIL_MAX_LENGTH = 254;
 
@@ -23,7 +24,7 @@ function deleteText(name, n) {
   return 'Essa ação não pode ser desfeita.';
 }
 
-export function useDeleteClient() {
+export function useDeleteClient({ destination } = {}) {
   const confirm = useConfirm();
   const toast = useToast();
   const router = useRouter();
@@ -53,7 +54,12 @@ export function useDeleteClient() {
           }
           await onDone?.();
           if (!mounted.current) return;
-          toast('Cliente excluído.');
+          if (destination) {
+            flash(DELETE_SUCCESS_DETAIL);
+            router.push(destination);
+          } else {
+            toast(DELETE_SUCCESS_DETAIL);
+          }
           router.refresh();
         } catch (error) {
           unstable_rethrow(error);
@@ -114,14 +120,13 @@ export function EmptyClients() {
 
 /** @param {{ client?: import('./queries.server').ClientDetailResponse }} props */
 export function ClientForm({ client }) {
-  const router = useRouter();
-  const del = useDeleteClient();
+  const del = useDeleteClient({ destination: '/clientes' });
   const f = useApiForm({
     initial: { nome: client?.name || '', email: client?.email || '', tel: maskPhone(client?.phone || '') },
     rules: {
       nome: { required: true, maxLength: CLIENT_NAME_MAX_LENGTH },
       email: { required: true, email: true, maxLength: CLIENT_EMAIL_MAX_LENGTH },
-      tel: { required: true, phone: true },
+      tel: { phone: true },
     },
     action: (v) => saveClient(client?.id ?? null, { name: v.nome, email: v.email, phone: v.tel.replace(/\D/g, '') }),
     fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
@@ -138,7 +143,7 @@ export function ClientForm({ client }) {
       <div className="formfoot">
         {client && (
           <Button variant="text-danger" icon="trash" className="left"
-            onClick={() => del(client, client.lists.length, () => { flash('Cliente excluído.'); router.push('/clientes'); })}>Excluir cliente</Button>
+            onClick={() => del(client, client.lists.length)}>Excluir cliente</Button>
         )}
         <Button variant="ghost" href={client ? `/clientes/${client.id}` : '/clientes'}>Cancelar</Button>
         <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar cliente'}</Button>
@@ -172,9 +177,8 @@ export function ClientDetail({ client, children }) {
 }
 
 export function DeleteClientButton({ client, listCount }) {
-  const router = useRouter();
-  const del = useDeleteClient();
+  const del = useDeleteClient({ destination: '/clientes' });
   return (
-    <Button variant="text-danger" icon="trash" onClick={() => del(client, listCount, () => { flash('Cliente excluído.'); router.push('/clientes'); })}>Excluir</Button>
+    <Button variant="text-danger" icon="trash" onClick={() => del(client, listCount)}>Excluir</Button>
   );
 }

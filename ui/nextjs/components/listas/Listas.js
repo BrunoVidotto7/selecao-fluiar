@@ -12,8 +12,9 @@ import { saveList, deleteList } from './actions';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
+const DELETE_SUCCESS_DETAIL = 'Lista excluída.';
 
-export function useDeleteList() {
+export function useDeleteList({ destination } = {}) {
   const confirm = useConfirm();
   const toast = useToast();
   const router = useRouter();
@@ -43,7 +44,12 @@ export function useDeleteList() {
           }
           await onDone?.();
           if (!mounted.current) return;
-          toast('Lista excluída.');
+          if (destination) {
+            flash(DELETE_SUCCESS_DETAIL);
+            router.push(destination);
+          } else {
+            toast(DELETE_SUCCESS_DETAIL);
+          }
           router.refresh();
         } catch (error) {
           unstable_rethrow(error);
@@ -145,8 +151,7 @@ export function ListCards({ lists, onDeleted }) {
 }
 
 export function ListForm({ list, clients, defaultClientId = '' }) {
-  const router = useRouter();
-  const del = useDeleteList();
+  const del = useDeleteList({ destination: list ? `/clientes/${list.clientId}` : undefined });
   const f = useApiForm({
     initial: { nome: list?.name || '', desc: list?.description || '', cli: list?.clientId || defaultClientId },
     rules: { nome: { required: true }, cli: { required: 'Escolha o cliente desta lista.' } },
@@ -166,7 +171,7 @@ export function ListForm({ list, clients, defaultClientId = '' }) {
       <Select label="Cliente" placeholder="Selecione um cliente" options={clients.map((c) => ({ value: c.id, label: c.name }))}
         hint={clients.length ? <>Cliente novo? <Link href="/clientes/novo">Cadastre aqui</Link>.</> : <Link href="/clientes/novo">Cadastre um cliente</Link>} {...f.field('cli')} />
       <div className="formfoot">
-        {list && <Button variant="text-danger" icon="trash" className="left" onClick={() => del(list, () => { flash('Lista excluída.'); router.push(`/clientes/${list.clientId}`); })}>Excluir lista</Button>}
+        {list && <Button variant="text-danger" icon="trash" className="left" onClick={() => del(list)}>Excluir lista</Button>}
         <Button variant="ghost" href={list ? `/listas/${list.id}` : '/listas'}>Cancelar</Button>
         <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar lista'}</Button>
       </div>

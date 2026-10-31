@@ -4,11 +4,12 @@ import { FeedbackProvider } from '../feedback/Feedback';
 import { ClientDetail, ClientForm, ClientsTable, useDeleteClient } from './Clientes';
 import { CLIENT, DASHBOARD, ME } from '@/test-support/fixtures';
 
-const { push, refresh, saveClient, deleteClient, deleteList } = vi.hoisted(() => ({
+const { push, refresh, saveClient, deleteClient, deleteList, pathname } = vi.hoisted(() => ({
   push: vi.fn(), refresh: vi.fn(), saveClient: vi.fn(), deleteClient: vi.fn(), deleteList: vi.fn(),
+  pathname: { value: '/clientes' },
 }));
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push, refresh }), usePathname: () => '/clientes',
+  useRouter: () => ({ push, refresh }), usePathname: () => pathname.value,
   unstable_rethrow: (error) => { if (error.message === 'NEXT_REDIRECT') throw error; },
 }));
 vi.mock('./actions', () => ({ saveClient, deleteClient }));
@@ -36,17 +37,21 @@ const confirmDelete = (label) => {
 beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
+  pathname.value = '/clientes';
   saveClient.mockReset().mockResolvedValue({ ok: true, data: CLIENT });
   deleteClient.mockReset().mockResolvedValue(SUCCESS);
   deleteList.mockReset().mockResolvedValue(SUCCESS);
 });
 afterEach(() => { vi.useRealTimers(); sessionStorage.clear(); });
 
-test('the client form validates required name, e-mail and DDD before persistence', () => {
+test('blank name and phone show their distinct API messages while an invalid email stays local', () => {
   render(wrapper(<ClientForm />));
   fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ana@' } });
   submit();
-  expect(screen.getAllByText('Preencha este campo.')).toHaveLength(2);
+  expect(screen.getAllByText('Preencha este campo.')).toHaveLength(1);
+  const phone = screen.getByLabelText('Telefone');
+  expect(phone.getAttribute('aria-invalid')).toBe('true');
+  expect(document.getElementById(phone.getAttribute('aria-describedby')).textContent).toBe('Digite o telefone com DDD, como (31) 99999-9999.');
   expect(screen.getByText('Digite um e-mail válido, como nome@email.com.')).toBeTruthy();
   expect(saveClient).not.toHaveBeenCalled();
 
@@ -56,6 +61,19 @@ test('the client form validates required name, e-mail and DDD before persistence
   expect(screen.getByText('Digite o telefone com DDD, como (31) 99999-9999.')).toBeTruthy();
   expect(saveClient).not.toHaveBeenCalled();
   expect(push).not.toHaveBeenCalled();
+});
+
+test('a blank email remains required and a corrected phone does not suppress it', () => {
+  render(wrapper(<ClientForm />));
+  fill();
+  fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: '' } });
+  submit();
+  const email = screen.getByLabelText('E-mail');
+  expect(email.getAttribute('aria-invalid')).toBe('true');
+  expect(document.getElementById(email.getAttribute('aria-describedby')).textContent).toBe('Preencha este campo.');
+  expect(document.activeElement).toBe(email);
+  expect(screen.getByLabelText('Telefone').getAttribute('aria-invalid')).toBe('false');
+  expect(saveClient).not.toHaveBeenCalled();
 });
 
 test('a masked phone is sent as digits and the created UUID selects the route', async () => {
@@ -154,6 +172,8 @@ test('successful row deletion waits for the API and only server props remove the
   expect(screen.getByRole('link', { name: CLIENT.name })).toBeTruthy();
   expect(screen.getByRole('status').textContent).toContain('Cliente excluído.');
   expect(refresh).toHaveBeenCalledOnce();
+  expect(push).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('flash')).toBeNull();
   view.rerender(wrapper(<ClientsTable clients={[]} />));
   expect(screen.getByText('Nenhum cliente por aqui ainda')).toBeTruthy();
 });
@@ -181,10 +201,12 @@ test('last-list deletion derives count, empty state and cascade warning from ref
 test.each([
   ['detail', () => <ClientDetail client={CLIENT} />, 'Excluir'],
   ['edit form', () => <ClientForm client={CLIENT} />, 'Excluir cliente'],
-])('%s deletion waits for success before leaving the client route', async (_, element, label) => {
+])('%s deletion flashes only once at the destination after the API succeeds', async (_, element, label) => {
+  vi.useFakeTimers();
+  pathname.value = '/clientes/' + CLIENT.id;
   const pending = deferred();
   deleteClient.mockReturnValue(pending.promise);
-  render(wrapper(element()));
+  const view = render(wrapper(element()));
   confirmDelete(label);
   expect(deleteClient).toHaveBeenCalledWith(CLIENT.id);
   expect(push).not.toHaveBeenCalled();
@@ -193,6 +215,29 @@ test.each([
   expect(push).toHaveBeenCalledWith('/clientes');
   expect(refresh).toHaveBeenCalledOnce();
   expect(JSON.parse(sessionStorage.getItem('flash')).m).toBe('Cliente excluído.');
+  const immediateFeedback = screen.getByRole('status').textContent;
+  pathname.value = '/clientes';
+  view.rerender(wrapper(<ClientsTable clients={[]} />));
+  await act(async () => { vi.advanceTimersByTime(200); });
+  expect(screen.getAllByText('Cliente excluído.')).toHaveLength(1);
+  expect(immediateFeedback).toBe('');
+  expect(sessionStorage.getItem('flash')).toBeNull();
+});
+
+test.each([
+  ['detail', () => <ClientDetail client={CLIENT} />, 'Excluir'],
+  ['edit form', () => <ClientForm client={CLIENT} />, 'Excluir cliente'],
+])('%s deletion failure stays on the source without destination feedback', async (_, element, label) => {
+  deleteClient.mockResolvedValueOnce(FAILURE);
+  render(wrapper(element()));
+  if (label === 'Excluir cliente') fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Meu rascunho' } });
+  confirmDelete(label);
+  await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Tente novamente.'));
+  if (label === 'Excluir cliente') expect(screen.getByLabelText('Nome completo').value).toBe('Meu rascunho');
+  expect(screen.queryByText('Cliente excluído.')).toBeNull();
+  expect(push).not.toHaveBeenCalled();
+  expect(refresh).not.toHaveBeenCalled();
+  expect(sessionStorage.getItem('flash')).toBeNull();
 });
 
 test.each([
