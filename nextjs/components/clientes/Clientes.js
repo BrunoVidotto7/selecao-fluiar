@@ -9,6 +9,7 @@ import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useDemoForm from '../forms/useDemoForm';
 import { useRouter } from 'next/navigation';
 import { maskPhone, plural } from '@/lib/format';
+import { EmptyLists, ListCards } from '../listas/Listas';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
@@ -98,6 +99,31 @@ export function ClientForm({ client, listCount = 0 }) {
         <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar cliente'}</Button>
       </div>
     </form>
+  );
+}
+
+// Detalhe do cliente: as listas exibidas são a única fonte da contagem, do aviso de exclusão e do estado vazio.
+// children: dados do perfil renderizados no servidor.
+export function ClientDetail({ client, lists: initialLists, children }) {
+  const [lists, setLists] = useState(initialLists);
+  const newHref = `/listas/nova?cliente=${client.id}`;
+  return (
+    <>
+      <section className="card profile">
+        {children}
+        <div className="quick">
+          <Button href={`/clientes/${client.id}/editar`} variant="ghost" icon="edit">Editar</Button>
+          <DeleteClientButton client={client} listCount={lists.length} />
+        </div>
+      </section>
+      <div className="toolbar">
+        <h2 className="sec">Listas de compras {lists.length > 0 && <span className="muted">· {lists.length}</span>}</h2>
+        <Button href={newHref} icon="plus">Nova lista</Button>
+      </div>
+      {lists.length
+        ? <ListCards lists={lists} onDeleted={(id) => setLists((ls) => ls.filter((l) => l.id !== id))} />
+        : <EmptyLists clientName={client.name} newHref={newHref} />}
+    </>
   );
 }
 

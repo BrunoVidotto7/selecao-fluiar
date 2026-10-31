@@ -82,19 +82,18 @@ export function EmptyLists({ clientName, newHref = '/listas/nova' }) {
 
 const updatedText = (u) => (/^\d/.test(u) ? `em ${u}` : u.toLowerCase());
 
-export function ListCards({ lists }) {
-  const [rows, setRows] = useState(lists);
+export function ListCards({ lists, onDeleted }) {
   const toast = useToast();
   const del = useDeleteList();
   return (
     <div className="lists">
-      {rows.map((l) => (
+      {lists.map((l) => (
         <article key={l.id} className="card lcard">
           <div className="top">
             <h3><Link href={`/listas/${l.id}`}>{l.name}</Link></h3>
             <div className="actions">
               <IconButton href={`/listas/${l.id}/editar`} icon="edit" label={`Editar ${l.name}`} />
-              <IconButton danger icon="trash" label={`Excluir ${l.name}`} onClick={() => del(l, () => { setRows((r) => r.filter((x) => x.id !== l.id)); toast('Lista excluída.'); })} />
+              <IconButton danger icon="trash" label={`Excluir ${l.name}`} onClick={() => del(l, () => { onDeleted(l.id); toast('Lista excluída.'); })} />
             </div>
           </div>
           <p>{l.description}</p>
