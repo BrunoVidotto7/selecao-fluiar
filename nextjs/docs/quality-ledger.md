@@ -69,19 +69,19 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 
 | ID | Severity | Criterion | Area | File | Summary | Status | Commit | Attempts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CFG-CQ-001 | Important | CONTRACTS | CFG | `package.json`, `README.md:37` | README promises Node 18.18+, but the test toolchain needs Node `^22.22.2 \|\| ^24.15.0 \|\| >=26` (jsdom 30, vitest 5, vite 8). | FIXED (awaiting re-review) | f3ccb2b | 1 |
-| CFG-CQ-002 | Important | TESTS | CFG | `package.json:10` | No permanent tests; `npm test` fails ("No test files found"); root redirect and not-found fallback unprotected. | FIXED (awaiting re-review) | 3f4f6c8 (+ all area test commits) | 1 |
-| CFG-CQ-003 | Important | CONTRACTS | CFG | `app/styles/app.css:191,212` | Mobile drawer `.side` is fixed full-height with no vertical scrolling; on short viewports (568x320) the account footer and "Sair" are unreachable. | FIXED (awaiting re-review) | 55d9b81 | 1 |
+| CFG-CQ-001 | Important | CONTRACTS | CFG | `package.json`, `README.md:37` | README promises Node 18.18+, but the test toolchain needs Node `^22.22.2 \|\| ^24.15.0 \|\| >=26` (jsdom 30, vitest 5, vite 8). | RESOLVED | f3ccb2b | 1 |
+| CFG-CQ-002 | Important | TESTS | CFG | `package.json:10` | No permanent tests; `npm test` fails ("No test files found"); root redirect and not-found fallback unprotected. | RESOLVED | 3f4f6c8 (+ all area test commits) | 1 |
+| CFG-CQ-003 | Important | CONTRACTS | CFG | `app/styles/app.css:191,212` | Mobile drawer `.side` is fixed full-height with no vertical scrolling; on short viewports (568x320) the account footer and "Sair" are unreachable. | RESOLVED | 55d9b81 | 1 |
 | CFG-CQ-004 | Minor | SIMPLICITY | CFG | `app/layout.js:13-16` | Fonts loaded from external Google stylesheet with lint suppression instead of `next/font`. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-005 | Minor | CONTRACTS | CFG | `next.config.mjs:2` | Workspace root inferred from a lockfile outside the repo; set `outputFileTracingRoot`. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-006 | Minor | CONTRACTS | CFG | `app/styles/app.css:77-89` | `--muted` #888 small labels/hints ~3.5:1 contrast on white, below 4.5:1. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-007 | Minor | CONTRACTS | CFG | `app/styles/app.css:243-250` | Auth panel in OS dark theme: white text on `--sage` #76A5AF ~2.7:1 contrast. | OPEN (Minor, not fixed) | | |
-| SHR-CQ-001 | Important | STATE | SHR | `components/forms/useDemoForm.js:39-44` | Simulated-submit timer is never cancelled; leaving the form within 650 ms still runs `onSuccess` and redirects. | FIXED (awaiting re-review) | 1e64ed8 | 1 |
-| SHR-CQ-002 | Important | CONTRACTS | SHR | `components/feedback/Feedback.js:41-47` | Confirmation `alertdialog` (`aria-modal`) does not contain Tab/Shift+Tab; focus reaches background controls. | FIXED (awaiting re-review) | 720451e | 1 |
-| SHR-CQ-003 | Important | STATE | SHR | `components/feedback/Feedback.js:31-38` | Confirmation survives navigation (provider in root layout); old `onConfirm` can still run on the new page. | FIXED (awaiting re-review) | 8be1d9b | 1 |
-| SHR-CQ-004 | Important | CONTRACTS | SHR | `components/layout/AppShell.js:25-31` | Open mobile drawer does not contain keyboard focus; Tab reaches covered page controls. | FIXED (awaiting re-review) | c33e5a0 | 1 |
-| SHR-CQ-005 | Important | CONTRACTS | SHR | `lib/validation.js:4-10` | `match` compares trimmed values, so `Password1` and `Password1 ` pass confirmation. | FIXED (awaiting re-review) | 8fbe432 | 1 |
-| SHR-CQ-006 | Important | TESTS | SHR | `components/forms/useDemoForm.js:33-44` (area) | No tests for shared validation, form lifetime, confirmation and drawer behavior. | FIXED (awaiting re-review) | b88365c (+ tests in 8fbe432, 1e64ed8, 720451e, c33e5a0, 8be1d9b) | 1 |
+| SHR-CQ-001 | Important | STATE | SHR | `components/forms/useDemoForm.js:39-44` | Simulated-submit timer is never cancelled; leaving the form within 650 ms still runs `onSuccess` and redirects. | RESOLVED | 1e64ed8, d32904a | 2 |
+| SHR-CQ-002 | Important | CONTRACTS | SHR | `components/feedback/Feedback.js:41-47` | Confirmation `alertdialog` (`aria-modal`) does not contain Tab/Shift+Tab; focus reaches background controls. | RESOLVED | 720451e | 1 |
+| SHR-CQ-003 | Important | STATE | SHR | `components/feedback/Feedback.js:31-38` | Confirmation survives navigation (provider in root layout); old `onConfirm` can still run on the new page. | RESOLVED | 8be1d9b, f5bc0b9, 4cd6e54 | 3 |
+| SHR-CQ-004 | Important | CONTRACTS | SHR | `components/layout/AppShell.js:25-31` | Open mobile drawer does not contain keyboard focus; Tab reaches covered page controls. | RESOLVED | c33e5a0 | 1 |
+| SHR-CQ-005 | Important | CONTRACTS | SHR | `lib/validation.js:4-10` | `match` compares trimmed values, so `Password1` and `Password1 ` pass confirmation. | RESOLVED | 8fbe432 | 1 |
+| SHR-CQ-006 | Important | TESTS | SHR | `components/forms/useDemoForm.js:33-44` (area) | No tests for shared validation, form lifetime, confirmation and drawer behavior. | RESOLVED | b88365c (+ tests in 8fbe432, 1e64ed8, 720451e, c33e5a0, 8be1d9b) | 1 |
 | SHR-CQ-007 | Minor | STATE | SHR | `components/ui/Button.js:12` | Busy button stays natively enabled; keyboard can submit twice. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-008 | Minor | STATE | SHR | `components/forms/useDemoForm.js:16-20` | Errors of dependent fields (`match`, `requiredIf`) are not refreshed when the other field changes. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-009 | Minor | CONTRACTS | SHR | `components/ui/Fields.js:13-19` | Hints and password-strength text are not linked via `aria-describedby`. | OPEN (Minor, not fixed) | | |
@@ -213,5 +213,39 @@ are committed. Next: full checks, re-review per area (include the SHOP-CQ-004 ch
 - Round 1 full checks after fixes (HEAD 3f4f6c8): lint 0 errors / 2 known `no-img-element`
   warnings; `npm test` 11 files, 66 tests, exit 0; `next build` 250/250 pages, exit 0 (same
   workspace-root warning, CFG-CQ-005). Type-check N/A.
+
+Round 1 re-reviews (fresh reviewer per area, HEAD 2bac449):
+- CFG: APPROVED. CFG-CQ-001, 002, 003 RESOLVED. No new findings. All criteria PASS (STATE N/A).
+  Residual: drawer geometry verified manually in a browser (no E2E framework approved).
+- SHR: CHANGES_REQUIRED. RESOLVED: SHR-CQ-002, 004, 005, 006. OPEN again: SHR-CQ-001 (a second
+  submit overwrites the timer ref; the first timer survives unmount) and SHR-CQ-003 (query-only
+  history navigation, e.g. browser Back to `?estado=vazio`, keeps the dialog and its old action).
+  Lead verified both. Attempt 2 next. STATE FAIL, TESTS FAIL, others PASS.
+  - SHR-CQ-001 attempt 2 (d32904a): RED "submitting twice and then leaving the form cancels every
+    pending success callback" failed. Fix: `clearTimeout(pending.current)` before scheduling.
+  - SHR-CQ-003 attempt 2 (commit "SHR-CQ-003: Discard an open confirmation on browser history
+    navigation"): RED "browser history navigation (Back/Forward, even query-only) discards an open
+    confirmation" failed. Fix: `popstate` listener closes the dialog (focus is trapped and the scrim
+    closes on click, so history traversal is the only way the URL changes while it is open;
+    `useSearchParams` in the root provider would need a Suspense boundary). GREEN 68/68, lint clean.
+- SHR re-review of attempt 2 (HEAD f5bc0b9): SHR-CQ-001 RESOLVED. SHR-CQ-003 still OPEN: a
+  query-only Link navigation started before the dialog opens can commit while it is open (no
+  pathname change, no popstate) and remount the keyed view, keeping the stale action. Reviewer also
+  asked for a fresh build on the current candidate.
+  - Attempt 3 plan (last before asking the user): tie the dialog to the component that opened it.
+    `useConfirm` registers an owner; when the owner unmounts (any navigation that replaces the
+    view), the provider discards its dialog. Replaces the pathname and popstate effects.
+  - Attempt 3 (4cd6e54): RED "leaving the page that opened a confirmation discards it" and "a
+    query-only navigation that remounts the page (link or Back/Forward) discards its confirmation"
+    failed. Fix: `useConfirm` owner + provider `cancel(owner)` on unmount; pathname/popstate effects
+    and their tests replaced by view-lifetime tests (+ "re-rendering the same page keeps its
+    confirmation open"). GREEN 69/69, lint 0 errors, build 250/250 at 4cd6e54.
+- SHR re-review of attempt 3 (HEAD 4cd6e54): APPROVED. SHR-CQ-003 RESOLVED. No new findings. All
+  criteria PASS. Residual: navigation modelled by unmount/keyed remount in jsdom (no E2E).
+
+User request (later): after this reviewer loop reaches Done, run complete-review-architecture,
+-cleancode, -critical, -security, -performance in parallel, in rounds, until no Critical or High
+(Important) findings remain.
+
 - Note: untracked `api/PLANO-BACKEND.md` (user file, not part of this work) and `.playwright-mcp/`
   (browser tool output) are left unstaged.
