@@ -260,7 +260,7 @@ Round 1 re-reviews (fresh reviewer per area, HEAD 2bac449):
   - SHOP-CQ-008 attempt 2 (e1eccc7): edit page prefilled values + save, product delete cancel/confirm.
     GREEN 75/75, lint clean.
 - Re-review of CLST-CQ-004 and SHOP-CQ-008 attempt 2 (HEAD bfbc25c): APPROVED, both RESOLVED.
-- Round 1 result: all 24 Important findings RESOLVED (SHOP-CQ-004 DISPROVED). 21 Minor recorded.
+- Round 1 result: all 24 Important findings RESOLVED (SHOP-CQ-004 DISPROVED). 16 Minor recorded.
   Next: full checks at HEAD, then Round 2 fresh full review of all 5 areas (CFG, SHR, ACCT, CLST,
   SHOP) with code-quality-next-js-reviewer, new IDs continue per area (CFG-CQ-008, SHR-CQ-013,
   ACCT-CQ-005, CLST-CQ-006, SHOP-CQ-013). Then complete-review agents in parallel.
@@ -328,9 +328,116 @@ findings. Fixes follow the same RED-GREEN-REFACTOR, one commit per finding, re-r
 
 ### CR Round 1
 
+Launched in parallel at HEAD 9b168cf (background agent ids: ARCH 23da2d41, CLEAN 48a4018f,
+CRIT 38501f43, SEC b42082d5, PERF 45885c34). Security was listed twice by the user; run once.
+
 User request (later): after this reviewer loop reaches Done, run complete-review-architecture,
 -cleancode, -critical, -security, -performance in parallel, in rounds, until no Critical or High
 (Important) findings remain.
 
 - Note: untracked `api/PLANO-BACKEND.md` (user file, not part of this work) and `.playwright-mcp/`
   (browser tool output) are left unstaged.
+
+CR Round 1 result (HEAD 9b168cf): ARCH, CLEAN, CRIT, SEC, PERF all APPROVED; no findings of any
+severity. Security: PostCSS advisory not exploitable here. DONE.
+
+## Final report
+
+### Verdict
+- Code-quality loop (code-quality-next-js-reviewer, one fresh reviewer at a time): 3 rounds.
+  Round 1: 24 Important, 16 Minor. Round 2: 3 Important, 3 Minor. Round 3: none. Verdict: DONE.
+- Complete-review loop (user request; architecture, clean code, critical, security, performance in
+  parallel): 1 round, all five APPROVED with no Critical/High findings. Verdict: DONE.
+- Important findings: 27 total, 26 RESOLVED, 1 DISPROVED (SHOP-CQ-004), 0 open. Critical: 0.
+- Minor findings recorded and left open: 19.
+
+### All findings
+
+| ID | Severity | Area | Status | Commit |
+| --- | --- | --- | --- | --- |
+| CFG-CQ-001 | Important | CFG | RESOLVED | f3ccb2b |
+| CFG-CQ-002 | Important | CFG | RESOLVED | 3f4f6c8 (+ all area test commits) |
+| CFG-CQ-003 | Important | CFG | RESOLVED | 55d9b81 |
+| CFG-CQ-004 | Minor | CFG | Minor, open (not fixed) | - |
+| CFG-CQ-005 | Minor | CFG | Minor, open (not fixed) | - |
+| CFG-CQ-006 | Minor | CFG | Minor, open (not fixed) | - |
+| CFG-CQ-007 | Minor | CFG | Minor, open (not fixed) | - |
+| CFG-CQ-008 | Important | CFG | RESOLVED | 2f1dca4 |
+| SHR-CQ-001 | Important | SHR | RESOLVED | 1e64ed8, d32904a |
+| SHR-CQ-002 | Important | SHR | RESOLVED | 720451e |
+| SHR-CQ-003 | Important | SHR | RESOLVED | 8be1d9b, f5bc0b9, 4cd6e54 |
+| SHR-CQ-004 | Important | SHR | RESOLVED | c33e5a0 |
+| SHR-CQ-005 | Important | SHR | RESOLVED | 8fbe432 |
+| SHR-CQ-006 | Important | SHR | RESOLVED | b88365c (+ tests in 8fbe432, 1e64ed8, 720451e, c33e5a0, 8be1d9b) |
+| SHR-CQ-007 | Minor | SHR | Minor, open (not fixed) | - |
+| SHR-CQ-008 | Minor | SHR | Minor, open (not fixed) | - |
+| SHR-CQ-009 | Minor | SHR | Minor, open (not fixed) | - |
+| SHR-CQ-010 | Minor | SHR | Minor, open (not fixed) | - |
+| SHR-CQ-011 | Minor | SHR | Minor, open (not fixed) | - |
+| SHR-CQ-012 | Minor | SHR | Minor, open (not fixed) | - |
+| SHR-CQ-013 | Minor | SHR | Minor, open (not fixed) | - |
+| ACCT-CQ-001 | Important | ACCT | RESOLVED | d38f9b1 |
+| ACCT-CQ-002 | Important | ACCT | RESOLVED | 0037254 |
+| ACCT-CQ-003 | Important | ACCT | RESOLVED | 4014fa9 (+ tests in d38f9b1, 0037254) |
+| ACCT-CQ-004 | Minor | ACCT | Minor, open (not fixed) | - |
+| ACCT-CQ-005 | Minor | ACCT | Minor, open (not fixed) | - |
+| CLST-CQ-001 | Important | CLST | RESOLVED | 67acf9a |
+| CLST-CQ-002 | Important | CLST | RESOLVED | 2481e34 |
+| CLST-CQ-003 | Important | CLST | RESOLVED | 2d8039e |
+| CLST-CQ-004 | Important | CLST | RESOLVED | 999d86d, 5532d86 (+ tests in 2d8039e, 67acf9a, 2481e34) |
+| CLST-CQ-005 | Minor | CLST | Minor, open (not fixed) | - |
+| SHOP-CQ-001 | Important | SHOP | RESOLVED | 8568b2d |
+| SHOP-CQ-002 | Important | SHOP | RESOLVED | 24b9b75 |
+| SHOP-CQ-003 | Important | SHOP | RESOLVED | 17f8111 |
+| SHOP-CQ-004 | Important | SHOP | DISPROVED (reviewer: design shows only per-link notes) | - |
+| SHOP-CQ-005 | Important | SHOP | RESOLVED | c468260 |
+| SHOP-CQ-006 | Important | SHOP | RESOLVED | 01233f5 |
+| SHOP-CQ-007 | Important | SHOP | RESOLVED | 3496274 |
+| SHOP-CQ-008 | Important | SHOP | RESOLVED | 60d26c3, e1eccc7 (+ tests in 24b9b75, 8568b2d, 17f8111, c468260, 01233f5, 3496274) |
+| SHOP-CQ-009 | Minor | SHOP | Minor, open (not fixed) | - |
+| SHOP-CQ-010 | Minor | SHOP | Minor, open (not fixed) | - |
+| SHOP-CQ-011 | Minor | SHOP | Minor, open (not fixed) | - |
+| SHOP-CQ-012 | Minor | SHOP | Minor, open (not fixed) | - |
+| SHOP-CQ-013 | Important | SHOP | RESOLVED | ab0ae8c |
+| SHOP-CQ-014 | Important | SHOP | RESOLVED | fa8c9ef |
+| SHOP-CQ-015 | Minor | SHOP | Minor, open (not fixed) | - |
+
+### Minor findings left open
+- CFG-CQ-004 (CFG): Fonts loaded from external Google stylesheet with lint suppression instead of `next/font`.
+- CFG-CQ-005 (CFG): Workspace root inferred from a lockfile outside the repo; set `outputFileTracingRoot`.
+- CFG-CQ-006 (CFG): `--muted` #888 small labels/hints ~3.5:1 contrast on white, below 4.5:1.
+- CFG-CQ-007 (CFG): Auth panel in OS dark theme: white text on `--sage` #76A5AF ~2.7:1 contrast.
+- SHR-CQ-007 (SHR): Busy button stays natively enabled; keyboard can submit twice.
+- SHR-CQ-008 (SHR): Errors of dependent fields (`match`, `requiredIf`) are not refreshed when the other field changes.
+- SHR-CQ-009 (SHR): Hints and password-strength text are not linked via `aria-describedby`.
+- SHR-CQ-010 (SHR): Label inside `.lbl-row` loses the shared label style (selector `.field>label`).
+- SHR-CQ-011 (SHR): ProtoNav panel is before its trigger in DOM order; Tab skips the opened links.
+- SHR-CQ-012 (SHR): Drawer stays open on same-path or query-only navigation.
+- SHR-CQ-013 (SHR): After confirming an inline deletion, focus is not moved to a surviving control (trigger removed). (Round 2)
+- ACCT-CQ-004 (ACCT): Minimum password length 8 repeated in three forms and placeholders.
+- ACCT-CQ-005 (ACCT): Recovery and reset confirmations replace the form without moving focus to the confirmation. (Round 2)
+- CLST-CQ-005 (CLST): Full `CLIENTS` records sent to `ListForm`, which only needs id and name.
+- SHOP-CQ-009 (SHOP): Empty client preview still shows the "Adicionar primeiro produto" edit action.
+- SHOP-CQ-010 (SHOP): Full list and client records sent to `ShoppingList`, which needs only id and name.
+- SHOP-CQ-011 (SHOP): Purchase-link URL regex and message duplicate `lib/validation.js:8`.
+- SHOP-CQ-012 (SHOP): Raw `<img>` thumbnails (lint warnings) instead of `next/image`.
+- SHOP-CQ-015 (SHOP): Concurrent FileReader callbacks can overwrite the latest image preview with an older one. (Round 2)
+
+### Checks before and after
+
+| Check | Baseline (3e3d0bf) | Final (code 2f1dca4, checked at 5efe2e9) |
+| --- | --- | --- |
+| Lint | 0 errors, 2 `no-img-element` warnings | 0 errors, same 2 warnings (Minor SHOP-CQ-012) |
+| Type-check | N/A (plain JavaScript) | N/A |
+| Tests | No test files (`npm test` exit 1) | 11 files, 79 tests, exit 0 |
+| Build | Pass, 250 pages, workspace-root warning | Pass, 250 pages, same warning (Minor CFG-CQ-005) |
+| npm audit | 1 high (postcss inside next 15.5.28) | Unchanged; security reviewer: not reachable (build-time only, own CSS) |
+
+### Blocked or waiting for a decision
+- Nothing blocked. No Critical/Important finding is open.
+- Optional decisions for the user: upgrade to Next 16 to clear the bundled PostCSS advisory (major
+  upgrade, not required by the security review); whether to fix any Minor findings; whether to add
+  an E2E tool (Playwright) so layout fixes CFG-CQ-003/008 get automated tests (verified manually in
+  a browser only).
+- Untracked and left alone: `api/PLANO-BACKEND.md` (user file) and `.playwright-mcp/` (browser tool
+  output, safe to delete). Nothing pushed.
