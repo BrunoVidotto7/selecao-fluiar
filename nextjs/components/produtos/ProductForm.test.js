@@ -11,6 +11,15 @@ const newProductPage = (query) => NewProductPage({ params: Promise.resolve({ id:
 
 afterEach(() => { vi.useRealTimers(); push.mockClear(); });
 
+test('the new product form resets its room and draft when only the query changes', async () => {
+  const view = render(await newProductPage({ ambiente: 'Cozinha' }));
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Rascunho' } });
+
+  view.rerender(await newProductPage({}));
+  expect(screen.getByLabelText('Ambiente').value).toBe('');
+  expect(screen.getByLabelText('Nome do produto').value).toBe('');
+});
+
 test('a known room in the query is preselected', async () => {
   render(await newProductPage({ ambiente: 'Cozinha' }));
   expect(screen.getByLabelText('Ambiente').value).toBe('Cozinha');

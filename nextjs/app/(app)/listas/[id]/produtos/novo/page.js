@@ -15,7 +15,7 @@ export default async function Page({ params, searchParams }) {
     <div className="wrap narrow">
       <PageHeader crumbs={[{ href: '/listas', label: 'Listas' }, { href: `/listas/${list.id}`, label: list.name }, { label: 'Novo produto' }]}
         title={<>Novo <em>produto</em></>} meta={`${list.name} · ${getClient(list.clientId).name}`} />
-      <ProductForm listId={list.id} rooms={ROOM_NAMES} defaultRoom={room} />
+      <ProductForm key={room} listId={list.id} rooms={ROOM_NAMES} defaultRoom={room} />
     </div>
   );
 }
