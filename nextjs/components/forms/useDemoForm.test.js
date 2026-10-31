@@ -38,6 +38,19 @@ test('an invalid submission shows the errors and never calls onSuccess', () => {
   expect(onSuccess).not.toHaveBeenCalled();
 });
 
+test('submitting twice and then leaving the form cancels every pending success callback', () => {
+  const onSuccess = vi.fn((values, { go }) => go('/clientes', 'Cliente cadastrado.'));
+  const { result, unmount } = renderHook(() => useDemoForm({ initial: { nome: 'Ana' }, rules, onSuccess }));
+
+  act(() => result.current.submit(event));
+  act(() => result.current.submit(event));
+  unmount();
+  act(() => vi.advanceTimersByTime(SERVER_DELAY_MS));
+
+  expect(onSuccess).not.toHaveBeenCalled();
+  expect(push).not.toHaveBeenCalled();
+});
+
 test('an invalid submission focuses the first invalid field and shows its message', () => {
   function Form() {
     const f = useDemoForm({ initial: { nome: 'Ana' }, rules: { nome: { required: true }, email: { required: true } } });

@@ -41,6 +41,7 @@ export default function useDemoForm({ initial = {}, rules = {}, onSuccess }) {
     if (first) { document.getElementById(first)?.focus(); toast('Revise os campos destacados.', 'err'); return; }
     setBusy(true);
     // simula o tempo de resposta do servidor
+    clearTimeout(pending.current);
     pending.current = setTimeout(() => {
       setBusy(false);
       onSuccess?.(values, { go: (url, msg) => { if (msg) flash(msg); router.push(url); }, toast });
