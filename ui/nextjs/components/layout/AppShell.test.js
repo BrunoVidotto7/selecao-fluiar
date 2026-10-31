@@ -69,6 +69,18 @@ test('the shell shows the authenticated name, initials and real office instead o
   expect(screen.getByRole('main').textContent).toBe('Conteúdo da página');
 });
 
+test('office navigation is available and active on the office management route', () => {
+  route.pathname = '/escritorio';
+  const view = render(<AppShell user={ME}>Conteúdo da página</AppShell>);
+  const link = screen.queryByRole('link', { name: 'Escritório' });
+  expect(link).toBeTruthy();
+  expect(link.getAttribute('href')).toBe('/escritorio');
+  expect(link.getAttribute('aria-current')).toBe('page');
+  view.rerender(<AppShell user={{ ...ME, officeName: 'Ateliê Ana' }}>Conteúdo da página</AppShell>);
+  expect(screen.getByText('Ateliê Ana')).toBeTruthy();
+  expect(screen.queryByText('Escritório de Ana Lima')).toBeNull();
+});
+
 test('Sair submits the logout command rather than merely navigating to login', async () => {
   render(<AppShell user={ME}>Conteúdo da página</AppShell>);
   const button = screen.getByRole('button', { name: 'Sair' });

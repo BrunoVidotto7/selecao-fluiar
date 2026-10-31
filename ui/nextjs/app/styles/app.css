@@ -335,6 +335,12 @@ a.stat:hover{border-color:var(--brass);box-shadow:var(--shadow);color:inherit}
 .savebar{position:sticky;bottom:0;display:flex;justify-content:flex-end;gap:10px;align-items:center;flex-wrap:wrap;padding-block:14px calc(14px + env(safe-area-inset-bottom,0px));background:linear-gradient(transparent,var(--bg) 30%)}
 .savebar .meta{margin-right:auto}
 
+/* ---------- Escritório ---------- */
+.office-rows{min-width:0}
+.office-rows li{display:flex;align-items:center;flex-wrap:wrap;gap:10px;padding-block:12px}
+.office-person{display:grid;gap:4px;flex:1;min-width:0;overflow-wrap:anywhere}
+@media (max-width:620px){.office-person{flex-basis:100%}}
+
 /* ---------- Modal de confirmação ---------- */
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-left,0px))}
 .modal[hidden]{display:none!important}

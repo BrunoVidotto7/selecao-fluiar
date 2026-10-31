@@ -13,6 +13,19 @@ export const ME = {
   email: 'ana@example.com',
 };
 
+export const OFFICE = {
+  id: ME.officeId,
+  name: ME.officeName,
+  members: [{ id: ME.id, name: ME.name, email: ME.email }],
+};
+
+export const INVITATION = {
+  id: '99999999-9999-4999-8999-999999999999',
+  email: 'new@example.com',
+  createdAt: '2026-10-31T12:00:00Z',
+  expiresAt: '2026-11-07T12:00:00Z',
+};
+
 export const PRODUCT = {
   id: '44444444-4444-4444-8444-444444444444',
   roomId: ROOM_ID,

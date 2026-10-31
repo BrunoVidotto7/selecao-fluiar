@@ -16,6 +16,7 @@ const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
   { href: '/clientes', label: 'Clientes', icon: 'users' },
   { href: '/listas', label: 'Listas de compras', icon: 'list' },
+  { href: '/escritorio', label: 'Escritório', icon: 'users' },
   { href: '/configuracoes', label: 'Configurações', icon: 'gear' },
 ];
 

@@ -70,7 +70,7 @@ Tests are `actions.test.js` / `OfficeManager.test.js` / `InvitationForm.test.js`
 - Produces: `renameOffice({name}) -> Promise<ActionResult<OfficeResponse>>`, `inviteMember({email}) -> Promise<ActionResult<InvitationResponse>>`, `revokeInvitation(id) -> Promise<ActionResult<undefined>>`.
 - Produces: `OfficeManager({office:OfficeResponse,invitations:InvitationResponse[],now:string})`; `now` is one ISO instant captured by the server page, not a separate browser clock read during hydration.
 
-- [ ] **Step 1: Write failing action/component tests.** Use `OFFICE={id:ME.officeId,name:ME.officeName,members:[{id:ME.id,name:ME.name,email:ME.email}]}` and an invitation with deterministic UUID, email `new@example.com`, `createdAt:'2026-10-31T12:00:00Z'`, `expiresAt:'2026-11-07T12:00:00Z'`.
+- [x] **Step 1: Write failing action/component tests.** Use `OFFICE={id:ME.officeId,name:ME.officeName,members:[{id:ME.id,name:ME.name,email:ME.email}]}` and an invitation with deterministic UUID, email `new@example.com`, `createdAt:'2026-10-31T12:00:00Z'`, `expiresAt:'2026-11-07T12:00:00Z'`.
 
 ```js
 test('renaming the office sends only its name', async () => {
@@ -92,11 +92,11 @@ test('a failed revoke keeps the invitation visible', async () => {
 ```
 
 Also assert required/121-character office-name rejection, `name -> nomeEscritorio` server-error mapping, duplicate-account email error under `emailConvite`, 429/email-send failure detail without success, pending/expired labels based on supplied `now`, member names/emails from DTOs, confirmation cancellation never invoking DELETE, missing session redirect, malformed revoke UUID rejected before write and upstream other-office invitation 404. Page starts `GET /api/office` and `GET /api/office/invitations` concurrently; no member-delete/role controls exist.
-- [ ] **Step 2: Run RED.** `npx vitest run components/escritorio/actions.test.js components/escritorio/OfficeManager.test.js components/layout/AppShell.test.js`.
-- [ ] **Step 3: Implement the three actions.** Use `PUT /api/office`, `POST /api/office/invitations`, `DELETE /api/office/invitations/{id}`. Whitelist bodies/validate IDs, await responses, preserve exact ProblemDetail errors. After rename call `revalidatePath('/(app)','layout')` so `/api/me` office names and private list signatures refresh; after invite/revoke invalidate `/escritorio`. Public signatures are no-store and reflect the API on their next read.
-- [ ] **Step 4: Implement the page and manager.** Add "Escritório" to `AppShell` navigation. Use separate "Salvar escritório" and "Enviar convite" forms with unique IDs `nomeEscritorio` and `emailConvite`. Pending rows show address, expiry and "Revogar convite"; expired rows remain visible as "Expirado". Await successful mutations before feedback and `router.refresh`; props own member/invitation collections. Warn on revoke that the invitation link stops working. Do not expose invitation tokens or invent a resend API.
-- [ ] **Step 5: Run GREEN.** Repeat Step 2; all pass.
-- [ ] **Step 6: Review and commit.** Follow the selected execution approach's main-plan review gate; `git commit -m "Add office management and invitation administration."`
+- [x] **Step 2: Run RED.** `npx vitest run components/escritorio/actions.test.js components/escritorio/OfficeManager.test.js components/layout/AppShell.test.js`.
+- [x] **Step 3: Implement the three actions.** Use `PUT /api/office`, `POST /api/office/invitations`, `DELETE /api/office/invitations/{id}`. Whitelist bodies/validate IDs, await responses, preserve exact ProblemDetail errors. After rename call `revalidatePath('/(app)','layout')` so `/api/me` office names and private list signatures refresh; after invite/revoke invalidate `/escritorio`. Public signatures are no-store and reflect the API on their next read.
+- [x] **Step 4: Implement the page and manager.** Add "Escritório" to `AppShell` navigation. Use separate "Salvar escritório" and "Enviar convite" forms with unique IDs `nomeEscritorio` and `emailConvite`. Pending rows show address, expiry and "Revogar convite"; expired rows remain visible as "Expirado". Await successful mutations before feedback and `router.refresh`; props own member/invitation collections. Warn on revoke that the invitation link stops working. Do not expose invitation tokens or invent a resend API.
+- [x] **Step 5: Run GREEN.** Repeat Step 2; all pass.
+- [x] **Step 6: Review and commit.** Follow the selected execution approach's main-plan review gate; `git commit -m "Add office management and invitation administration."`
 
 ### Task 2: Public Invitation Inspection And Acceptance
 
