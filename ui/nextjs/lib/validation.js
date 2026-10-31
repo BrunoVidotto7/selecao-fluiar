@@ -1,17 +1,61 @@
-// Validação visual dos formulários (protótipo). Regras por campo:
-// { required: true | 'mensagem', email: true, url: true, minLength: 8, match: 'outroCampo', requiredIf: 'outroCampo',
+// Regras por campo: { required: true | 'mensagem', email: true, url: true, minLength: 8,
+//   maxLength: 120, min: 1, max: 999, integer: true, phone: true, password: true, money: true,
+//   match: 'outroCampo', requiredIf: 'outroCampo',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
 
+const REQUIRED_MESSAGE = 'Preencha este campo.';
+const INVALID_REQUEST_MESSAGE = 'Revise os dados enviados.';
+const PHONE_MESSAGE = 'Digite o telefone com DDD, como (31) 99999-9999.';
+const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MAX_LENGTH = 72;
+const PASSWORD_MAX_BYTES = 72;
+const PASSWORD_SIZE_MESSAGE = 'Use entre 8 e 72 caracteres.';
+const PASSWORD_BYTES_MESSAGE = 'Senha longa demais: letras com acento e emojis ocupam mais de um caractere.';
+const MONEY_INTEGER_DIGITS = 10;
+const MONEY_FORMAT = /^(?:\d+|\d{1,3}(?:\.\d{3})+)(?:,\d{1,2})?$/;
+const MONEY_PRECISION_MESSAGE = 'Use no máximo 10 dígitos e 2 casas decimais.';
+const MONEY_NEGATIVE_MESSAGE = 'Use um valor a partir de 0.00.';
+
+function validatePassword(raw) {
+  if (!raw.trim()) return REQUIRED_MESSAGE;
+  if (raw.length < PASSWORD_MIN_LENGTH || raw.length > PASSWORD_MAX_LENGTH) return PASSWORD_SIZE_MESSAGE;
+  if (new TextEncoder().encode(raw).length > PASSWORD_MAX_BYTES) return PASSWORD_BYTES_MESSAGE;
+  return '';
+}
+
+function validateMoney(value) {
+  if (!value) return '';
+  const negative = value.startsWith('-');
+  const unsigned = negative ? value.slice(1) : value;
+  if (!MONEY_FORMAT.test(unsigned)) return MONEY_PRECISION_MESSAGE;
+  const integerDigits = unsigned.split(',')[0].replace(/\./g, '').length;
+  if (integerDigits > MONEY_INTEGER_DIGITS) return MONEY_PRECISION_MESSAGE;
+  return negative ? MONEY_NEGATIVE_MESSAGE : '';
+}
+
 export function validateField(name, values, rule = {}) {
   if (rule.when && !rule.when(values)) return '';
-  const v = String(values[name] ?? '').trim();
-  if (rule.required && !v) return typeof rule.required === 'string' ? rule.required : 'Preencha este campo.';
+  const raw = String(values[name] ?? '');
+  const v = raw.trim();
+  if (rule.required && !v) return typeof rule.required === 'string' ? rule.required : REQUIRED_MESSAGE;
   if (rule.requiredIf && !v && values[rule.requiredIf]) return 'Informe a senha atual para trocar a senha.';
   if (v && rule.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Digite um e-mail válido, como nome@email.com.';
-  if (v && rule.url && !/^https?:\/\/\S+\.\S+/.test(v)) return 'Cole o link completo, começando com https://';
+  if (v && rule.url && !/^https?:\/\/[^\s.]+\.\S+$/.test(v)) return 'Cole o link completo, começando com https://';
+  if (rule.phone && !/^\d{10,11}$/.test(v.replace(/\D/g, ''))) return PHONE_MESSAGE;
+  if (rule.password) {
+    const message = validatePassword(raw);
+    if (message) return message;
+  }
   if (v && rule.minLength && v.length < rule.minLength) return `Use pelo menos ${rule.minLength} caracteres.`;
-  if (v && rule.min && Number(v) < rule.min) return `Use um número a partir de ${rule.min}.`;
+  if (rule.maxLength != null && v.length > rule.maxLength) return `Use no máximo ${rule.maxLength} caracteres.`;
+  if (v && rule.integer && !Number.isInteger(Number(v))) return INVALID_REQUEST_MESSAGE;
+  if (v && rule.min != null && Number(v) < rule.min) return `Use um valor a partir de ${rule.min}.`;
+  if (v && rule.max != null && Number(v) > rule.max) return `Use um valor até ${rule.max}.`;
+  if (rule.money) {
+    const message = validateMoney(v);
+    if (message) return message;
+  }
   if (rule.match && String(values[name] ?? '') !== String(values[rule.match] ?? '')) return 'As senhas não são iguais.';
   return '';
 }

@@ -18,8 +18,8 @@ describe('validateField', () => {
   });
 
   test('min rejects numbers below the minimum', () => {
-    expect(validateField('qtd', { qtd: '0' }, { min: 1 })).toBe('Use um número a partir de 1.');
-    expect(validateField('qtd', { qtd: '-3' }, { min: 1 })).toBe('Use um número a partir de 1.');
+    expect(validateField('qtd', { qtd: '0' }, { min: 1 })).toBe('Use um valor a partir de 1.');
+    expect(validateField('qtd', { qtd: '-3' }, { min: 1 })).toBe('Use um valor a partir de 1.');
     expect(validateField('qtd', { qtd: '2' }, { min: 1 })).toBe('');
   });
 
@@ -41,6 +41,80 @@ describe('validateField', () => {
   test('match rejects passwords that differ only by surrounding spaces', () => {
     expect(validateField('senha2', { senha: 'Password1', senha2: 'Password1 ' }, { match: 'senha' })).toBe(MISMATCH);
     expect(validateField('senha2', { senha: ' Password1', senha2: 'Password1' }, { match: 'senha' })).toBe(MISMATCH);
+  });
+
+  test.each(['https://example.com extra', 'https://example.com\nextra', 'javascript:alert(1)', 'https://.example.com'])(
+    'url rejects an invalid complete link: %s', (url) => {
+      expect(validateField('url', { url }, { url: true })).toBe('Cole o link completo, começando com https://');
+    },
+  );
+
+  test.each(['https://example.com/product?x=1#details', 'http://shop.example.com', ''])(
+    'url accepts an optional HTTP link: %s', (url) => {
+      expect(validateField('url', { url }, { url: true })).toBe('');
+    },
+  );
+
+  test.each(['', 'abc', '319999999', '319999999999'])('phone rejects an invalid digit count: %s', (tel) => {
+    expect(validateField('tel', { tel }, { phone: true })).toBe('Digite o telefone com DDD, como (31) 99999-9999.');
+  });
+
+  test.each(['31999998888', '3133334444', '(31) 99999-8888', '(31) 3333-4444'])('phone accepts 10 or 11 normalized digits: %s', (tel) => {
+    expect(validateField('tel', { tel }, { phone: true })).toBe('');
+  });
+
+  test.each([
+    ['0', 'Use um valor a partir de 1.'],
+    ['-1', 'Use um valor a partir de 1.'],
+    ['1000', 'Use um valor até 999.'],
+    ['1.5', 'Revise os dados enviados.'],
+    ['1,5', 'Revise os dados enviados.'],
+    ['abc', 'Revise os dados enviados.'],
+    ['Infinity', 'Revise os dados enviados.'],
+    ['', 'Preencha este campo.'],
+    ['1', ''],
+    ['999', ''],
+  ])('quantity validates the draft %s without rounding or clamping', (qtd, message) => {
+    expect(validateField('qtd', { qtd }, { required: true, min: 1, max: 999, integer: true })).toBe(message);
+  });
+
+  test.each([60, 120, 200, 254, 500, 1000, 2048])('maxLength enforces a text limit of %i', (maxLength) => {
+    expect(validateField('texto', { texto: 'x'.repeat(maxLength) }, { maxLength })).toBe('');
+    expect(validateField('texto', { texto: 'x'.repeat(maxLength + 1) }, { maxLength })).toBe(`Use no máximo ${maxLength} caracteres.`);
+  });
+
+  test.each(['', '  ', '0', '0,00', '12', '12,5', '12,50', '1.234,56', '1234,56', '9.999.999.999,99', '9999999999,99'])(
+    'money accepts an optional Brazilian decimal: %s', (preco) => {
+      expect(validateField('preco', { preco }, { money: true })).toBe('');
+    },
+  );
+
+  test.each(['abc', 'NaN', 'Infinity', '1e3', 'R$ 12,50', '12.34', '1.23,45', '1,234', '1,', ',50', '10000000000', '10.000.000.000,00', '-', '-abc', '-1,234', '-12.34'])(
+    'money rejects invalid syntax or excess digits: %s', (preco) => {
+      expect(validateField('preco', { preco }, { money: true })).toBe('Use no máximo 10 dígitos e 2 casas decimais.');
+    },
+  );
+
+  test.each(['-1', '-0,01', '-1.234,50'])('money rejects a negative price: %s', (preco) => {
+    expect(validateField('preco', { preco }, { money: true })).toBe('Use um valor a partir de 0.00.');
+  });
+
+  test.each([
+    ['1234567', 'Use entre 8 e 72 caracteres.'],
+    ['x'.repeat(73), 'Use entre 8 e 72 caracteres.'],
+    ['  abc123  ', ''],
+    [' a12345 ', ''],
+    ['x'.repeat(72), ''],
+    ['á'.repeat(36), ''],
+    ['á'.repeat(37), 'Senha longa demais: letras com acento e emojis ocupam mais de um caractere.'],
+    ['😀'.repeat(18), ''],
+    ['😀'.repeat(19), 'Senha longa demais: letras com acento e emojis ocupam mais de um caractere.'],
+  ])('password checks untrimmed UTF-16 length before UTF-8 bytes: %s', (senha, message) => {
+    expect(validateField('senha', { senha }, { password: true })).toBe(message);
+  });
+
+  test.each(['', '        '])('password rejects blank input with the existing required message', (senha) => {
+    expect(validateField('senha', { senha }, { password: true })).toBe('Preencha este campo.');
   });
 });
 

@@ -18,3 +18,34 @@ export const maskPhone = (v) => {
   if (d.length > 2) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   return d;
 };
+
+const TIME_ZONE = 'America/Sao_Paulo';
+const DAY_MS = 24 * 60 * 60 * 1000;
+const SHORT_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'short', year: 'numeric' });
+const LONG_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'long', year: 'numeric' });
+const CALENDAR_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'numeric', year: 'numeric' });
+const TIME = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+
+function shortDate(date, includeYear) {
+  return SHORT_DATE.formatToParts(date)
+    .filter(({ type }) => type === 'day' || type === 'month' || (includeYear && type === 'year'))
+    .map(({ value }) => value.replace(/\.$/, ''))
+    .join(' ');
+}
+
+function calendarDay(date) {
+  const parts = Object.fromEntries(CALENDAR_DATE.formatToParts(date).map(({ type, value }) => [type, value]));
+  return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
+}
+
+export const formatShortDate = (iso) => shortDate(new Date(iso), true);
+export const formatLongDate = (iso) => LONG_DATE.format(new Date(iso));
+export function formatUpdatedAt(iso, now = new Date()) {
+  const date = new Date(iso);
+  const daysAgo = (calendarDay(now) - calendarDay(date)) / DAY_MS;
+  if (daysAgo === 0) return `Hoje, ${TIME.format(date)}`;
+  if (daysAgo === 1) return 'Ontem';
+  return shortDate(date, false);
+}
+
+export const imageSource = (imageUrl) => imageUrl == null ? null : new URL(imageUrl, process.env.NEXT_PUBLIC_API_URL).href;

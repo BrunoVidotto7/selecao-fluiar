@@ -163,3 +163,5 @@ Never:
 If something in `ui/` took more than one attempt to get right, add one line about it to this file.
 
 For server helpers, assert returned data and navigation before cache wiring; a cache spy alone can hide an unfinished implementation.
+
+For async forms, hold actions and success callbacks with deferred promises and resolve them inside `act()`; do not use the prototype timer to test pending state or unmount cleanup.

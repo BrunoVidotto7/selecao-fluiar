@@ -5,11 +5,11 @@ const VARIANTS = { primary: 'btn', ghost: 'btn btn-ghost', danger: 'btn btn-dang
 
 // Botão em pílula (estilo do "Ver como cliente" da lista original).
 // Com href vira link; sem href, <button>.
-export default function Button({ href, variant = 'primary', size, block, icon, busy, className = '', children, ...props }) {
+export default function Button({ href, variant = 'primary', size, block, icon, busy, disabled, className = '', children, ...props }) {
   const cls = [VARIANTS[variant], size === 'sm' && 'btn-sm', block && 'btn-block', className].filter(Boolean).join(' ');
   const content = <>{icon && <Icon name={icon} />}{children}</>;
-  if (href) return <Link className={cls} href={href} {...props}>{content}</Link>;
-  return <button className={cls} type="button" aria-busy={busy ? 'true' : undefined} {...props}>{content}</button>;
+  if (href) return <Link className={cls} href={href} disabled={disabled} {...props}>{content}</Link>;
+  return <button className={cls} type="button" aria-busy={busy ? 'true' : undefined} disabled={busy || disabled} {...props}>{content}</button>;
 }
 
 export function IconButton({ href, icon, label, danger, ...props }) {
