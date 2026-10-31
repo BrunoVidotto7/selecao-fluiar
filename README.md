@@ -34,7 +34,7 @@ Estados extras pelo final do endereço: `#vazio` (estados vazios), `#editar` (fo
 
 ## Versão Next.js (`nextjs/`)
 
-Requer Node.js 18.18 ou mais recente.
+Requer Node.js 22.22.2 (linha 22), 24.15 (linha 24) ou 26 e mais recente.
 
 ```bash
 cd nextjs
