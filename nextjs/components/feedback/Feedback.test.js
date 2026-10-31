@@ -1,5 +1,5 @@
 import { beforeEach, expect, test, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { FeedbackProvider, useConfirm } from './Feedback';
 
 const nav = vi.hoisted(() => ({ pathname: '/clientes' }));
@@ -60,6 +60,13 @@ test('navigating to another page discards an open confirmation and its action', 
   nav.pathname = '/listas';
   view.rerender(<FeedbackProvider><Page onConfirm={onConfirm} /></FeedbackProvider>);
 
+  expect(screen.queryByRole('alertdialog')).toBeNull();
+  expect(onConfirm).not.toHaveBeenCalled();
+});
+
+test('browser history navigation (Back/Forward, even query-only) discards an open confirmation', () => {
+  const { onConfirm } = openDialog();
+  act(() => { window.dispatchEvent(new PopStateEvent('popstate')); });
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(onConfirm).not.toHaveBeenCalled();
 });

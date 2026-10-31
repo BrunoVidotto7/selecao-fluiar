@@ -31,6 +31,12 @@ export function FeedbackProvider({ children }) {
   }, []);
 
   useEffect(() => { setDialog(null); }, [pathname]);
+  // Voltar/avançar do navegador também troca a tela, mesmo quando só a query muda.
+  useEffect(() => {
+    const close = () => setDialog(null);
+    window.addEventListener('popstate', close);
+    return () => window.removeEventListener('popstate', close);
+  }, []);
   useEffect(() => {
     try {
       const f = sessionStorage.getItem('flash');
