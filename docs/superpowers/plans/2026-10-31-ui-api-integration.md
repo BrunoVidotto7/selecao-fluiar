@@ -568,25 +568,22 @@ Execute the office/invitation companion before claiming the whole integration is
 
 - [x] Run once from `ui/nextjs/`: `npm run lint`, `npm test`, then stop any Next dev server before `npm run build`. Expected: zero lint errors, only the two accepted image warnings, all tests pass, production build succeeds. Record logs and the route table. Authenticated user-data routes must be dynamic; no fake `generateStaticParams` remains. No TypeScript check applies.
 - [x] Start/reuse the local API, PostgreSQL, Mailpit and production Next server using the repo commands. Environment repair/execution is delegated under the chosen execution workflow; reuse live processes rather than launching duplicates. No production access or real outgoing email is needed. If network/package downloads are needed, ask first. Leave a requested preview running and report its URL/process ownership.
-- [ ] Use the available browser automation/preview tools, without installing Playwright, to record the actual full-stack flow at 1440px and 390px: signup -> create client -> create empty list -> create/reorder rooms -> create/move/edit product with links and image -> inline quantity/purchased updates -> reload -> public copy/rotation -> profile/password update -> logout/login. Check drawer focus, field errors, overflow, empty-state CTAs and persistence after refresh.
-- [ ] Use Mailpit for reset/resend and office invitation acceptance; confirm single-use/expired/revoked links fail clearly and the new member shares the same office data. These emails stay in the local sink.
-- [ ] Use two local accounts in different offices: private URLs/actions for the other office return 404, and a mismatched product-under-list URL is 404. Confirm user B never receives user A's private RSC data after login/logout transitions.
+- [x] Use the available browser automation/preview tools, without installing Playwright, to record the actual full-stack flow at 1440px and 390px: signup -> create client -> create empty list -> create/reorder rooms -> create/move/edit product with links and image -> inline quantity/purchased updates -> reload -> public copy/rotation -> profile/password update -> logout/login. Check drawer focus, field errors, overflow, empty-state CTAs and persistence after refresh.
+- [x] Use Mailpit for reset/resend and office invitation acceptance; confirm single-use/expired/revoked links fail clearly and the new member shares the same office data. These emails stay in the local sink.
+- [x] Use two local accounts in different offices: private URLs/actions for the other office return 404, and a mismatched product-under-list URL is 404. Confirm user B never receives user A's private RSC data after login/logout transitions.
 - [x] Inspect rendered HTML/RSC and Server Action responses for JWTs, passwords and private data on public routes. The httpOnly cookie is the only frontend JWT store; browser calls to Next do not expose upstream AuthResponse. Verify a forged cross-origin Server Action POST is rejected by Next's built-in origin check; do not loosen `allowedOrigins`.
 - [x] Verify bodyless 202/204, 401 expiry, invalid credentials, 409 duplicate fields, 429, API downtime, failed image upload and denied clipboard against either recorded browser execution or the focused regression tests. Never simulate a success message when the corresponding write failed.
 - [x] Run one final independent whole-change Next.js review, including both plans' files, against the recorded baseline. Resolve blocking findings and refresh invalidated evidence; do not rerun the full suite for unchanged inputs. Report actual checks, remaining limitations, baseline hash and final diff. Do not claim automated end-to-end coverage: this repo has unit/component tests plus a recorded browser acceptance check.
 
-**Gate status:** Implementation and reviewed corrections are committed. Current checks pass:
-1127 tests across 40 files, lint with only the two accepted image warnings, and production build.
-Recorded local acceptance passed 87 HTTP/framework assertions, including 67 real Next actions,
-Mailpit links, persistence, private/public response privacy and cross-office API/action denial.
-The final review and its one scoped correction review resolved all code findings.
-
-**Overall acceptance remains NOT_VERIFIED.** No browser tool was available for the required
-1440px/390px interactive workflow, hydration, clipboard, focus/overflow or genuine Flight transitions.
-Mailpit single-use/revoked/resend behavior passed; live time-based expiry was not manufactured.
-Independent HTTP isolation is not browser transition evidence. The unchecked steps above remain
-incomplete. Owned temporary services were stopped, database volume preserved, no preview requested.
-Logs, exact review ranges and limitations remain in `.superpowers/sdd/2026-10-31-ui-api-integration/`.
+**Gate status:** Complete. Browser acceptance ran with Playwright MCP against the production build,
+local API, PostgreSQL and Mailpit at 1440x900 and 390x844: full flow, Mailpit reset/invitations and
+two-office isolation passed, with no hydration errors or data leaks. It found two defects introduced by
+the integration (focus lost after room moves and invitation revokes, duplicated `/convite` title), fixed
+with TDD in `6e3c2d5`, independently reviewed and re-checked in the browser. Two older issues are
+out of scope: a blur error can move the submit button and swallow the first click, and there is no
+favicon. Time-based link expiry was not exercised. Final checks: 1130 tests across 40 files, lint with
+only the two accepted image warnings, production build passed. Evidence is in
+`.superpowers/sdd/2026-10-31-ui-api-integration/`.
 
 ## Plan Self-Review
 

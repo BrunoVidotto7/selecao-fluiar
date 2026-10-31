@@ -143,7 +143,7 @@ Add page assertions for missing/array/malformed tokens (no fetch and no form), v
 
 ## Completion And Self-Review
 
-- [ ] Execute the main plan's final integration gate once after both plans are complete, including local Mailpit acceptance, same-office shared data, revoked links and cross-office denial. Reuse unchanged focused-test evidence; do not add a second full-suite gate.
+- [x] Execute the main plan's final integration gate once after both plans are complete, including local Mailpit acceptance, same-office shared data, revoked links and cross-office denial. Reuse unchanged focused-test evidence; do not add a second full-suite gate.
 
 Both implementation tasks and reviewed corrections are complete. The shared final UI checks pass
 1127 tests, lint with only the accepted warnings, and production build. Recorded local Next/API/Mailpit
