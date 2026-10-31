@@ -1,0 +1,11 @@
+**/node_modules/
+**/.next/
+**/out/
+api/target/
+ui/.playwright-mcp/
+.env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example

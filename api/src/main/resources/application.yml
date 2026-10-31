@@ -1,0 +1,53 @@
+spring:
+  application:
+    name: selecao-api
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/selecao}
+    username: ${DB_USERNAME:selecao}
+    password: ${DB_PASSWORD:selecao}
+    hikari:
+      data-source-properties:
+        logServerErrorDetail: false   # o log de erro do banco não repete os valores da linha (ex.: o e-mail duplicado)
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        default_batch_fetch_size: 100   # carrega ambientes -> produtos -> links em lote (evita N+1)
+  jackson:
+    deserialization:
+      accept-float-as-int: false   # quantidade 1.9 vira erro 400, em vez de ser salva como 1
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+  mail:
+    host: ${MAIL_HOST:localhost}
+    port: ${MAIL_PORT:1025}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:                       # milissegundos; sem isso um SMTP travado prende a requisição para sempre
+      "[mail.smtp.connectiontimeout]": 5000
+      "[mail.smtp.timeout]": 5000
+      "[mail.smtp.writetimeout]": 5000
+      "[mail.smtp.starttls.enable]": ${MAIL_STARTTLS:false}   # true nos provedores que exigem STARTTLS (ex.: porta 587)
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+app:
+  jwt:
+    secret: ${JWT_SECRET:}
+    ttl: 12h
+    remember-me-ttl: 30d
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  cors-allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+  time-zone: America/Sao_Paulo
+  mail-from: ${MAIL_FROM:nao-responda@fluiar.com.br}
