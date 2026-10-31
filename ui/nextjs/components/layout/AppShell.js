@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Icon from '../ui/Icon';
-import { USER } from '@/lib/data';
-import { flash } from '../feedback/Feedback';
+import Button from '../ui/Button';
+import { logout } from '../auth/actions';
 import { initials } from '@/lib/format';
 import { keepFocusInside } from '@/lib/focus';
 
@@ -19,7 +19,7 @@ const NAV = [
   { href: '/configuracoes', label: 'Configurações', icon: 'gear' },
 ];
 
-export default function AppShell({ children }) {
+export default function AppShell({ user, children }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const openBtn = useRef(null);
@@ -60,8 +60,8 @@ export default function AppShell({ children }) {
           ))}
         </nav>
         <div className="me">
-          <div className="me-card"><span className="avatar">{initials(USER.name)}</span><div><b>{USER.name}</b><span>{USER.role}</span></div></div>
-          <nav className="nav"><Link className="out" href="/login" onClick={() => flash('Você saiu da sua conta.')}><Icon name="out" />Sair</Link></nav>
+          <div className="me-card"><span className="avatar">{initials(user.name)}</span><div><b>{user.name}</b><span>{user.officeName}</span></div></div>
+          <form className="nav" action={logout}><Button type="submit" variant="text" className="out" icon="out" style={{ justifyContent: 'flex-start' }}>Sair</Button></form>
         </div>
       </aside>
       <div className={'scrim' + (open ? ' open' : '')} onClick={() => setOpen(false)} />

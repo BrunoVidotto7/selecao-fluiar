@@ -1,2 +1,7 @@
 import AppShell from '@/components/layout/AppShell';
-export default function Layout({ children }) { return <AppShell>{children}</AppShell>; }
+import { getCurrentUser } from '@/lib/api.server';
+
+export default async function Layout({ children }) {
+  const user = await getCurrentUser();
+  return <AppShell user={user}>{children}</AppShell>;
+}

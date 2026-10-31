@@ -3,41 +3,40 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
 import Button from '../ui/Button';
-import { Alert } from '../ui/Display';
 import { TextInput, PasswordInput } from '../ui/Fields';
 import useDemoForm from '../forms/useDemoForm';
+import useApiForm from '../forms/useApiForm';
+import { login, signup } from './actions';
 import { USER } from '@/lib/data';
 
-export function LoginForm({ showError = false }) {
-  const [failed, setFailed] = useState(showError);
-  const f = useDemoForm({
-    initial: { email: 'paula.hooper@fluiar.com.br', senha: '' },
+export function LoginForm() {
+  const f = useApiForm({
+    initial: { email: '', senha: '', rememberMe: true },
     rules: { email: { required: true, email: true }, senha: { required: true } },
-    onSuccess: (v, { go }) => {
-      if (v.senha === 'erro') { setFailed(true); return; } // erro simulado
-      go('/dashboard', 'Bem-vinda, Paula.');
-    },
+    fieldMap: { password: 'senha' },
+    action: ({ email, senha, rememberMe }) => login({ email, password: senha, rememberMe }),
+    onSuccess: (user, values, { go }) => go('/dashboard', `Bem-vinda, ${user.name}.`),
   });
   return (
     <>
       <header><p className="eyebrow">Bem-vinda de volta</p><h1>Entre na <em>sua conta</em></h1><p className="meta">Acesse seus clientes e as listas de compras de cada um.</p></header>
-      <form className="form" onSubmit={(e) => { setFailed(false); f.submit(e); }} noValidate>
-        {failed && <Alert>E-mail ou senha incorretos. Confira os dados ou redefina sua senha.</Alert>}
+      <form className="form" onSubmit={f.submit} noValidate>
         <TextInput label="E-mail" type="email" autoComplete="email" placeholder="nome@escritorio.com.br" {...f.field('email')} />
         <PasswordInput label="Senha" autoComplete="current-password" placeholder="Sua senha" labelRight={<Link href="/recuperar-senha">Esqueceu a senha?</Link>} {...f.field('senha')} />
-        <label className="checkrow"><input type="checkbox" className="check" defaultChecked /> Manter conectada neste aparelho</label>
+        <label className="checkrow"><input type="checkbox" className="check" checked={f.values.rememberMe} onChange={(e) => f.setValue('rememberMe', e.target.checked)} /> Manter conectada neste aparelho</label>
         <Button type="submit" block busy={f.busy}>{f.busy ? 'Entrando…' : 'Entrar'}</Button>
       </form>
       <p className="alt">Ainda não tem conta? <Link href="/cadastro">Criar conta</Link></p>
-      <p className="demo">Protótipo: qualquer e-mail e senha entram. Digite <b>erro</b> na senha para ver a mensagem de erro.</p>
     </>
   );
 }
 
 export function SignupForm() {
-  const f = useDemoForm({
-    rules: { nome: { required: true }, email: { required: true, email: true }, senha: { required: true, minLength: 8 }, senha2: { required: true, match: 'senha' } },
-    onSuccess: (v, { go }) => go('/dashboard?estado=vazio', 'Conta criada. Cadastre seu primeiro cliente.'),
+  const f = useApiForm({
+    rules: { nome: { required: true }, email: { required: true, email: true }, senha: { required: true, password: true }, senha2: { required: true, match: 'senha' } },
+    fieldMap: { name: 'nome', password: 'senha' },
+    action: ({ nome, email, senha }) => signup({ name: nome, email, password: senha }),
+    onSuccess: (user, values, { go }) => go('/dashboard', 'Conta criada. Cadastre seu primeiro cliente.'),
   });
   return (
     <>

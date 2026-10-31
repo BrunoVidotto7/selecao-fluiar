@@ -202,7 +202,7 @@ Exact remaining validation copy: `maxLength -> Use no máximo {max} caracteres.`
 - Produces: `login({email,password,rememberMe}) -> Promise<ActionResult<MeResponse>>`, `signup({name,email,password}) -> Promise<ActionResult<MeResponse>>`, `logout() -> Promise<never>` in `'use server'` `components/auth/actions.js`.
 - Produces: `AppShell({user:MeResponse,children})`; `LoginForm()` and `SignupForm()` have no demo-state props.
 
-- [ ] **Step 1: Write failing auth/action/layout tests.** Mock HTTP responses at `fetch` in action tests so cookie forwarding is exercised; mock actions only in component tests.
+- [x] **Step 1: Write failing auth/action/layout tests.** Mock HTTP responses at `fetch` in action tests so cookie forwarding is exercised; mock actions only in component tests.
 
 ```js
 test('login consumes AuthResponse without serializing its token', async () => {
@@ -224,10 +224,10 @@ test('logout clears the cookie instead of merely following a link', async () => 
 ```
 
 Also assert signup maps `nome/senha -> name/password`, omits confirmation, uses a session cookie and navigates to `/dashboard` without `estado`; invalid credentials render `E-mail ou senha incorretos.` on `/login` with a toast and no session; 429 displays the exact API detail; signup conflict maps `email` inline; a protected layout without a cookie redirects; the shell renders `Ana Lima` and the real `officeName`, never a fake role/person. Retain the drawer Escape/focus-trap tests with a `user={ME}` fixture. In `app/error.test.js`, render the root boundary with a synthetic error and `reset=vi.fn()`; clicking "Tentar novamente" must call `reset` once and must not render the error's internal message.
-- [ ] **Step 2: Run RED.** `npx vitest run components/auth/actions.test.js components/auth/AuthForms.test.js components/layout/AppShell.test.js app/error.test.js app/routes.test.js`.
-- [ ] **Step 3: Implement auth commands and migrate only login/signup.** Whitelist request fields, never trim passwords, call auth endpoints with `auth:'public'`, set the session before returning only `user`. Keep login accessible even with an invalid cookie, avoiding redirect loops. Bind the remember-me checkbox to state (initially checked, matching today's UI). The private layout awaits `getCurrentUser()` and passes it to the shell; every protected action/read still checks its own session via `apiRequest`. Keep `/` redirecting to `/login`. Remove the root `ProtoNav` mount/file and login prototype copy. Unexpected read failures show "Não conseguimos carregar esta página." and a "Tentar novamente" button; the root `app/error.js` handles failures thrown by `(app)/layout.js`, which its same-segment error boundary cannot catch. Loading uses existing classes and Portuguese text.
-- [ ] **Step 4: Run GREEN.** Repeat Step 2; all pass. Keep forgot/reset on their old hook only until Task 9; do not rewrite them prematurely.
-- [ ] **Step 5: Review and commit.** `git commit -m "Connect signup login and logout to the API."`
+- [x] **Step 2: Run RED.** `npx vitest run components/auth/actions.test.js components/auth/AuthForms.test.js components/layout/AppShell.test.js app/error.test.js app/routes.test.js`.
+- [x] **Step 3: Implement auth commands and migrate only login/signup.** Whitelist request fields, never trim passwords, call auth endpoints with `auth:'public'`, set the session before returning only `user`. Keep login accessible even with an invalid cookie, avoiding redirect loops. Bind the remember-me checkbox to state (initially checked, matching today's UI). The private layout awaits `getCurrentUser()` and passes it to the shell; every protected action/read still checks its own session via `apiRequest`. Keep `/` redirecting to `/login`. Remove the root `ProtoNav` mount/file and login prototype copy. Unexpected read failures show "Não conseguimos carregar esta página." and a "Tentar novamente" button; the root `app/error.js` handles failures thrown by `(app)/layout.js`, which its same-segment error boundary cannot catch. Loading uses existing classes and Portuguese text.
+- [x] **Step 4: Run GREEN.** Repeat Step 2; all pass. Keep forgot/reset on their old hook only until Task 9; do not rewrite them prematurely.
+- [x] **Step 5: Review and commit.** `git commit -m "Connect signup login and logout to the API."`
 
 ### Task 4: Persist Lists And Display API DTOs
 

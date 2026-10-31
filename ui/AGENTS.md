@@ -8,8 +8,8 @@ This file covers `ui/` only. For files under `ui/`, it wins over the repo root `
 - `html/`: a static HTML/CSS/JS copy of the same screens, for quick design review. Not built, not
   tested, and it already differs from `nextjs/`. Edit it only when the task asks for it.
 
-The app is a prototype: all data is fake (`nextjs/lib/data.js`), nothing is saved and there is no
-authentication. The REST API in `../api/` is ready, but the UI does not call it yet.
+Authentication and the private layout use the REST API in `../api/`. Other feature screens still
+use prototype data from `nextjs/lib/data.js`.
 
 ## Commands
 
@@ -42,7 +42,7 @@ app/styles/lista.css           rules copied from the original list page, scoped 
 components/ui/                 Button, Fields (TextInput, Select, ...), Display (PageHeader, EmptyState, ...), Icon
 components/feedback/Feedback.js  useToast, useConfirm (delete confirmation), flash
 components/forms/useDemoForm.js  form state and validation; a setTimeout fakes the server
-components/layout/ProtoNav.js  prototype-only "Telas" menu, mounted in app/layout.js; remove before publishing
+components/forms/useApiForm.js   async forms and API field errors; login and signup use this hook
 lib/data.js                    all fake data; replacing it with API calls is the main pending work
 lib/validation.js              validation rules and their messages
 docs/quality-ledger.md         record of a finished code review; history, not instructions
@@ -165,3 +165,7 @@ If something in `ui/` took more than one attempt to get right, add one line abou
 For server helpers, assert returned data and navigation before cache wiring; a cache spy alone can hide an unfinished implementation.
 
 For async forms, hold actions and success callbacks with deferred promises and resolve them inside `act()`; do not use the prototype timer to test pending state or unmount cleanup.
+
+For malformed-input tables, wrap each argument in a row so an empty array is tested as the body, not expanded into no arguments. Recovery/reset still use `useDemoForm` until their migration.
+
+Retry failed Server Component reads with `router.refresh()` and boundary reset in one transition; reset alone reuses the rejected server payload.
