@@ -4,10 +4,10 @@ import Link from 'next/link';
 import Icon from '../ui/Icon';
 import Button from '../ui/Button';
 import { TextInput, PasswordInput } from '../ui/Fields';
-import useDemoForm from '../forms/useDemoForm';
 import useApiForm from '../forms/useApiForm';
-import { login, signup } from './actions';
-import { USER } from '@/lib/data';
+import { confirmPasswordReset, login, requestPasswordReset, signup } from './actions';
+
+const RESET_REQUEST_COPY = 'Se houver uma conta com este e-mail, enviaremos um link. Ele vale por 1 hora.';
 
 export function LoginForm() {
   const f = useApiForm({
@@ -53,22 +53,26 @@ export function SignupForm() {
   );
 }
 
-export function ForgotPasswordForm({ sent = false }) {
-  const [sentTo, setSentTo] = useState(sent ? USER.email : '');
-  const f = useDemoForm({ rules: { email: { required: true, email: true } }, onSuccess: (v) => setSentTo(v.email) });
+export function ForgotPasswordForm() {
+  const [sentTo, setSentTo] = useState('');
+  const f = useApiForm({
+    rules: { email: { required: true, email: true } },
+    action: ({ email }) => requestPasswordReset({ email }),
+    onSuccess: (data, values) => setSentTo(values.email),
+  });
   if (sentTo) {
     return (
       <div className="sent" role="status">
         <span className="art"><Icon name="send" /></span>
-        <p className="eyebrow">E-mail enviado</p>
+        <p className="eyebrow">Solicitação recebida</p>
         <h1>Confira sua <em>caixa de entrada</em></h1>
-        <p>Enviamos um link para <b>{sentTo}</b>. Ele vale por 1 hora.</p>
+        <p>{RESET_REQUEST_COPY}</p>
+        <p className="meta">E-mail informado: <b>{sentTo}</b></p>
         <p className="meta">Não chegou? Veja a pasta de spam ou envie de novo.</p>
         <div className="quick">
           <Button href="/login">Voltar para o login</Button>
-          <ResendButton />
+          <ResendButton email={sentTo} />
         </div>
-        <p className="demo" style={{ marginTop: 8 }}>Protótipo: <Link href="/nova-senha">abrir o link do e-mail</Link> para ver a tela de nova senha.</p>
       </div>
     );
   }
@@ -77,7 +81,7 @@ export function ForgotPasswordForm({ sent = false }) {
       <header>
         <Link className="crumbs" href="/login"><Icon name="back" /> Voltar para o login</Link>
         <h1>Recupere <em>sua senha</em></h1>
-        <p className="meta">Informe o e-mail da sua conta. Enviaremos um link para você criar uma senha nova.</p>
+        <p className="meta">Informe seu e-mail para pedir um link de recuperação.</p>
       </header>
       <form className="form" onSubmit={f.submit} noValidate>
         <TextInput label="E-mail" type="email" autoComplete="email" placeholder="nome@escritorio.com.br" {...f.field('email')} />
@@ -87,14 +91,22 @@ export function ForgotPasswordForm({ sent = false }) {
   );
 }
 
-function ResendButton() {
-  const f = useDemoForm({ onSuccess: (v, { toast }) => toast('Enviamos o link de novo.') });
+function ResendButton({ email }) {
+  const f = useApiForm({
+    action: () => requestPasswordReset({ email }),
+    onSuccess: (data, values, { toast }) => toast(RESET_REQUEST_COPY),
+  });
   return <Button variant="ghost" onClick={f.submit} busy={f.busy}>Reenviar e-mail</Button>;
 }
 
-export function ResetPasswordForm() {
+export function ResetPasswordForm({ token, email }) {
   const [done, setDone] = useState(false);
-  const f = useDemoForm({ rules: { senha: { required: true, minLength: 8 }, senha2: { required: true, match: 'senha' } }, onSuccess: () => setDone(true) });
+  const f = useApiForm({
+    rules: { senha: { required: true, password: true }, senha2: { required: true, match: 'senha' } },
+    fieldMap: { newPassword: 'senha' },
+    action: ({ senha }) => confirmPasswordReset({ token, newPassword: senha }),
+    onSuccess: () => setDone(true),
+  });
   if (done) {
     return (
       <div className="sent" role="status">
@@ -108,12 +120,13 @@ export function ResetPasswordForm() {
   }
   return (
     <>
-      <header><p className="eyebrow">Redefinir senha</p><h1>Crie uma <em>senha nova</em></h1><p className="meta">Conta: paula.hooper@fluiar.com.br</p></header>
+      <header><p className="eyebrow">Redefinir senha</p><h1>Crie uma <em>senha nova</em></h1><p className="meta">Conta: {email}</p></header>
       <form className="form" onSubmit={f.submit} noValidate>
         <PasswordInput label="Nova senha" autoComplete="new-password" placeholder="Mínimo de 8 caracteres" showStrength {...f.field('senha')} />
         <PasswordInput label="Confirme a nova senha" autoComplete="new-password" placeholder="Digite a senha de novo" {...f.field('senha2')} />
         <Button type="submit" block busy={f.busy}>Salvar nova senha</Button>
       </form>
+      <p className="alt"><Link href="/recuperar-senha">Pedir novo link</Link></p>
     </>
   );
 }

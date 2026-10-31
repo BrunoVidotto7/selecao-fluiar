@@ -44,7 +44,7 @@ app/styles/lista.css           rules copied from the original list page, scoped 
 components/ui/                 Button, Fields (TextInput, Select, ...), Display (PageHeader, EmptyState, ...), Icon
 components/feedback/Feedback.js  useToast, useConfirm (delete confirmation), flash
 components/forms/useDemoForm.js  form state and validation; a setTimeout fakes the server
-components/forms/useApiForm.js   async forms and API field errors; login and signup use this hook
+components/forms/useApiForm.js   async forms and API field errors; authentication uses this hook
 lib/data.js                    all fake data; replacing it with API calls is the main pending work
 lib/validation.js              validation rules and their messages
 docs/quality-ledger.md         record of a finished code review; history, not instructions
@@ -55,8 +55,8 @@ docs/quality-ledger.md         record of a finished code review; history, not in
 - Pages in `app/` are Server Components. They read data and pass it as props to the client
   components in `components/` (files that start with `'use client'`). Keep data loading in pages.
 - `params` and `searchParams` are Promises in Next 15. Await them. An unknown id calls `notFound()`.
-- `?estado=` switches demo states: `vazio` (empty state), `erro` (login), `enviado` (password
-  recovery). Pages render the client component with `key={empty ? 'vazio' : 'cheio'}` so its state
+- `?estado=` switches remaining demo states such as `vazio` (empty state). Authentication ignores
+  retired demo queries. Pages render the client component with `key={empty ? 'vazio' : 'cheio'}` so its state
   resets when only the query changes. Do the same on new screens with an empty state.
 - Forms use `useDemoForm` with the inputs from `components/ui/Fields.js`. Copy `ClientForm` in
   `components/clientes/Clientes.js`:
@@ -168,7 +168,9 @@ For server helpers, assert returned data and navigation before cache wiring; a c
 
 For async forms, hold actions and success callbacks with deferred promises and resolve them inside `act()`; do not use the prototype timer to test pending state or unmount cleanup.
 
-For malformed-input tables, wrap each argument in a row so an empty array is tested as the body, not expanded into no arguments. Recovery/reset still use `useDemoForm` until their migration.
+For malformed-input tables, wrap each argument in a row so an empty array is tested as the body, not expanded into no arguments.
+
+Reset-link tests should wrap page calls in an async helper so a synchronous prototype fails behavior assertions, not Promise matcher errors.
 
 Retry failed Server Component reads with `router.refresh()` and boundary reset in one transition; reset alone reuses the rejected server payload.
 

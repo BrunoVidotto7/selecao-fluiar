@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { login, logout, signup } from './actions';
+import { confirmPasswordReset, login, logout, requestPasswordReset, signup } from './actions';
 import { ME } from '@/test-support/fixtures';
 
 const { cookieStore, cookies, fetchMock, redirect } = vi.hoisted(() => ({
@@ -172,4 +172,93 @@ test('logout clears the cookie before redirecting without an API request', async
   expect(redirect).toHaveBeenCalledExactlyOnceWith('/login');
   expect(cookieStore.delete.mock.invocationCallOrder[0]).toBeLessThan(redirect.mock.invocationCallOrder[0]);
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+const RESET_TOKEN = '-_Ab'.repeat(10) + 'XYZ';
+const RESET_REQUEST = { email: 'other@example.com' };
+const RESET_CONFIRM = { token: RESET_TOKEN, newPassword: '  Sênha1234 🔑  ' };
+const resetActions = [
+  ['request', requestPasswordReset, RESET_REQUEST, '/api/auth/password-reset-requests', 202],
+  ['confirmation', confirmPasswordReset, RESET_CONFIRM, '/api/auth/password-resets', 204],
+];
+
+test.each(resetActions)('password reset %s sends only its fixed public body and accepts an empty response', async (_, action, values, path, status) => {
+  fetchMock.mockResolvedValue(new Response(null, { status }));
+  const result = await action({
+    ...values, officeId: ME.officeId, emailOverride: ME.email, accessToken: 'injected',
+    path: '/api/me', method: 'DELETE', passwordConfirmation: 'ignored',
+  });
+
+  expect(result).toEqual({ ok: true, data: undefined });
+  expect(fetchMock).toHaveBeenCalledExactlyOnceWith(API_ORIGIN + path, expect.objectContaining({
+    method: 'POST', body: JSON.stringify(values), cache: 'no-store', redirect: 'error',
+  }));
+  const { headers } = fetchMock.mock.calls[0][1];
+  expect(headers.get('Authorization')).toBeNull();
+  expect(headers.get('Cookie')).toBeNull();
+  expect(headers.get('Content-Type')).toBe('application/json');
+  expect(cookies).not.toHaveBeenCalled();
+  expect(cookieStore.set).not.toHaveBeenCalled();
+  expect(cookieStore.delete).not.toHaveBeenCalled();
+  expect(redirect).not.toHaveBeenCalled();
+});
+
+test.each([undefined, null, [], 'body', 123, {}, { email: null }, { email: [] }, { email: 123 }, { email: {} }].map((input) => [input]))(
+  'reset request rejects malformed input %j without HTTP or session access', async (input) => {
+    expect(await requestPasswordReset(input)).toEqual(INVALID_INPUT);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(cookies).not.toHaveBeenCalled();
+  },
+);
+
+test.each([
+  undefined, null, [], 'body', 123, {},
+  { ...RESET_CONFIRM, token: null }, { ...RESET_CONFIRM, token: [RESET_TOKEN] },
+  { ...RESET_CONFIRM, token: '' }, { ...RESET_CONFIRM, token: 'a'.repeat(42) },
+  { ...RESET_CONFIRM, token: 'a'.repeat(44) }, { ...RESET_CONFIRM, token: '/'.repeat(43) },
+  { ...RESET_CONFIRM, token: RESET_TOKEN + '\n' },
+  { ...RESET_CONFIRM, newPassword: null }, { ...RESET_CONFIRM, newPassword: [] },
+  { ...RESET_CONFIRM, newPassword: 123 }, { ...RESET_CONFIRM, newPassword: {} },
+].map((input) => [input]))('reset confirmation rejects malformed input %j without HTTP or session access', async (input) => {
+  expect(await confirmPasswordReset(input)).toEqual(INVALID_INPUT);
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(cookies).not.toHaveBeenCalled();
+});
+
+test.each(resetActions)('password reset %s waits for the real write before reporting success', async (_, action, values, path, status) => {
+  let release;
+  fetchMock.mockImplementationOnce(() => new Promise((resolve) => { release = resolve; }));
+  let settled = false;
+  const result = action(values).then((value) => { settled = true; return value; });
+  await new Promise(setImmediate);
+  expect(fetchMock).toHaveBeenCalledOnce();
+  expect(settled).toBe(false);
+  release(new Response(null, { status }));
+  expect(await result).toEqual({ ok: true, data: undefined });
+  expect(cookies).not.toHaveBeenCalled();
+});
+
+test.each([
+  ['request validation', requestPasswordReset, RESET_REQUEST, 400, 'Revise os campos destacados.', { email: 'Digite um e-mail válido, como nome@email.com.' }],
+  ['request rate limit', requestPasswordReset, RESET_REQUEST, 429, 'Muitas tentativas. Tente novamente em alguns minutos.', {}],
+  ['request mail failure', requestPasswordReset, RESET_REQUEST, 503, 'Não conseguimos enviar o e-mail agora. Tente novamente em alguns minutos.', {}],
+  ['expired confirmation', confirmPasswordReset, RESET_CONFIRM, 400, 'Este link expirou ou já foi usado. Peça um novo.', {}],
+  ['confirmation validation', confirmPasswordReset, RESET_CONFIRM, 400, 'Revise os campos destacados.', { newPassword: 'Use entre 8 e 72 caracteres.' }],
+  ['confirmation rate limit', confirmPasswordReset, RESET_CONFIRM, 429, 'Muitas tentativas. Tente novamente em alguns minutos.', {}],
+])('%s preserves API feedback without session changes', async (_, action, values, status, detail, errors) => {
+  fetchMock.mockResolvedValue(json({ type: 'about:blank', status, detail, errors }, status));
+  expect(await action(values)).toEqual({ ok: false, status, detail, errors });
+  expect(cookies).not.toHaveBeenCalled();
+  expect(redirect).not.toHaveBeenCalled();
+});
+
+test.each(resetActions)('password reset %s preserves navigation and programming exceptions', async (_, action, values) => {
+  fetchMock.mockResolvedValueOnce(new Response(null, { status: 401 }));
+  await expect(action(values)).rejects.toThrow('NEXT_REDIRECT');
+  expect(redirect).toHaveBeenCalledExactlyOnceWith('/login');
+  expect(cookies).not.toHaveBeenCalled();
+
+  vi.stubEnv('NEXT_PUBLIC_API_URL', '');
+  await expect(action(values)).rejects.toThrow('Configure NEXT_PUBLIC_API_URL');
+  expect(fetchMock).toHaveBeenCalledOnce();
 });

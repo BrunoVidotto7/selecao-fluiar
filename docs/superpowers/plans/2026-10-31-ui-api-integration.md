@@ -461,7 +461,7 @@ Also assert 0, fractions and 1000 are rejected rather than clamped; a failed qua
 - Produces: `requestPasswordReset({email}) -> Promise<ActionResult<undefined>>`, `confirmPasswordReset({token,newPassword}) -> Promise<ActionResult<undefined>>`.
 - Produces: `ForgotPasswordForm()`, `ResetPasswordForm({token,email})`; invalid-link state renders without a reset form.
 
-- [ ] **Step 1: Write failing reset/resend/link tests.**
+- [x] **Step 1: Write failing reset/resend/link tests.**
 
 ```js
 test('resend uses the submitted address rather than a demo user', async () => {
@@ -483,10 +483,10 @@ test('a reset link that expired after inspection remains actionable', async () =
 ```
 
 Assert 202/204 empty-body success; missing/array/malformed tokens never fetch; valid token GET retrieves the displayed email; an expired/used token GET 400 shows a recovery link, not a fake email/form. A revoked session cookie is never forwarded on inspect/request/confirm. Failed resend and 429 show real `detail` and no success message. Confirmation returns to a real login rather than auto-authentication.
-- [ ] **Step 2: Run RED.** `npx vitest run components/auth/actions.test.js components/auth/AuthForms.test.js`.
-- [ ] **Step 3: Implement public reset flows.** The reset page awaits `searchParams`, accepts one valid token, inspects `/api/auth/password-resets/{token}`, and passes only email/token to its form. For invalid links render the exact API link-error copy and "Pedir novo link" to `/recuperar-senha`; preserve other failures for the auth error boundary. Request/resend always use the last submitted email and non-enumerating copy `Se houver uma conta com este e-mail, enviaremos um link. Ele vale por 1 hora.` Remove the fake sent-state query, demo link and hard-coded account email.
-- [ ] **Step 4: Run GREEN.** Repeat Step 2; all pass.
-- [ ] **Step 5: Review and commit.** `git commit -m "Connect password recovery and reset links."`
+- [x] **Step 2: Run RED.** `npx vitest run components/auth/actions.test.js components/auth/AuthForms.test.js`.
+- [x] **Step 3: Implement public reset flows.** The reset page awaits `searchParams`, accepts one valid token, inspects `/api/auth/password-resets/{token}`, and passes only email/token to its form. For invalid links render the exact API link-error copy and "Pedir novo link" to `/recuperar-senha`; preserve other failures for the auth error boundary. Request/resend always use the last submitted email and non-enumerating copy `Se houver uma conta com este e-mail, enviaremos um link. Ele vale por 1 hora.` Remove the fake sent-state query, demo link and hard-coded account email.
+- [x] **Step 4: Run GREEN.** Repeat Step 2; all pass.
+- [x] **Step 5: Review and commit.** `git commit -m "Connect password recovery and reset links."`
 
 ### Task 10: Profile And Password Settings With Token Replacement
 
