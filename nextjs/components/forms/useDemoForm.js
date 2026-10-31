@@ -1,7 +1,7 @@
 'use client';
 // Estado + validação visual de um formulário de protótipo.
 // Uso: const f = useDemoForm({ initial, rules, onSuccess }); <input {...f.field('email')} />
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { validateAll, validateField } from '@/lib/validation';
 import { useToast, flash } from '../feedback/Feedback';
@@ -12,6 +12,9 @@ export default function useDemoForm({ initial = {}, rules = {}, onSuccess }) {
   const [busy, setBusy] = useState(false);
   const toast = useToast();
   const router = useRouter();
+  const pending = useRef(null);
+
+  useEffect(() => () => clearTimeout(pending.current), []);
 
   const setValue = (name, v) => {
     setValues((s) => {
@@ -38,7 +41,7 @@ export default function useDemoForm({ initial = {}, rules = {}, onSuccess }) {
     if (first) { document.getElementById(first)?.focus(); toast('Revise os campos destacados.', 'err'); return; }
     setBusy(true);
     // simula o tempo de resposta do servidor
-    setTimeout(() => {
+    pending.current = setTimeout(() => {
       setBusy(false);
       onSuccess?.(values, { go: (url, msg) => { if (msg) flash(msg); router.push(url); }, toast });
     }, 650);
