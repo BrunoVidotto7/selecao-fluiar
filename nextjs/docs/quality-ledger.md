@@ -76,7 +76,7 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 | CFG-CQ-005 | Minor | CONTRACTS | CFG | `next.config.mjs:2` | Workspace root inferred from a lockfile outside the repo; set `outputFileTracingRoot`. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-006 | Minor | CONTRACTS | CFG | `app/styles/app.css:77-89` | `--muted` #888 small labels/hints ~3.5:1 contrast on white, below 4.5:1. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-007 | Minor | CONTRACTS | CFG | `app/styles/app.css:243-250` | Auth panel in OS dark theme: white text on `--sage` #76A5AF ~2.7:1 contrast. | OPEN (Minor, not fixed) | | |
-| CFG-CQ-008 | Important | CONTRACTS | CFG | `app/styles/app.css:339-346` | Confirmation overlay/box has no max height or vertical scroll; on short viewports (e.g. 320x240) its buttons can be clipped. (Round 2) | OPEN | | 0 |
+| CFG-CQ-008 | Important | CONTRACTS | CFG | `app/styles/app.css:339-346` | Confirmation overlay/box has no max height or vertical scroll; on short viewports (e.g. 320x240) its buttons can be clipped. (Round 2) | FIXED (awaiting re-review) | 2f1dca4 | 1 |
 | SHR-CQ-001 | Important | STATE | SHR | `components/forms/useDemoForm.js:39-44` | Simulated-submit timer is never cancelled; leaving the form within 650 ms still runs `onSuccess` and redirects. | RESOLVED | 1e64ed8, d32904a | 2 |
 | SHR-CQ-002 | Important | CONTRACTS | SHR | `components/feedback/Feedback.js:41-47` | Confirmation `alertdialog` (`aria-modal`) does not contain Tab/Shift+Tab; focus reaches background controls. | RESOLVED | 720451e | 1 |
 | SHR-CQ-003 | Important | STATE | SHR | `components/feedback/Feedback.js:31-38` | Confirmation survives navigation (provider in root layout); old `onConfirm` can still run on the new page. | RESOLVED | 8be1d9b, f5bc0b9, 4cd6e54 | 3 |
@@ -112,8 +112,8 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 | SHOP-CQ-010 | Minor | CONTRACTS | SHOP | `app/(app)/listas/[id]/page.js:15` | Full list and client records sent to `ShoppingList`, which needs only id and name. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-011 | Minor | DUPLICATION | SHOP | `components/produtos/ProductForm.js:28-29` | Purchase-link URL regex and message duplicate `lib/validation.js:8`. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-012 | Minor | SIMPLICITY | SHOP | `components/lista/RoomTable.js:49` | Raw `<img>` thumbnails (lint warnings) instead of `next/image`. | OPEN (Minor, not fixed) | | |
-| SHOP-CQ-013 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:38-45` | Inline quantity `commitQty` accepts values >0 (e.g. 0.5) despite min=1; summary uses it. (Round 2) | OPEN | | 0 |
-| SHOP-CQ-014 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:29-32` | Purchase-link regex checks only a prefix: `https://loja.com oferta` passes and the form reports success. (Round 2) | OPEN | | 0 |
+| SHOP-CQ-013 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:38-45` | Inline quantity `commitQty` accepts values >0 (e.g. 0.5) despite min=1; summary uses it. (Round 2) | FIXED (awaiting re-review) | ab0ae8c | 1 |
+| SHOP-CQ-014 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:29-32` | Purchase-link regex checks only a prefix: `https://loja.com oferta` passes and the form reports success. (Round 2) | FIXED (awaiting re-review) | fa8c9ef | 1 |
 | SHOP-CQ-015 | Minor | STATE | SHOP | `components/produtos/ProductForm.js:39-42` | Concurrent FileReader callbacks can overwrite the latest image preview with an older one. (Round 2) | OPEN (Minor, not fixed) | | |
 
 ## Rounds
@@ -287,6 +287,18 @@ blur/Enter + summary), SHOP-CQ-014 (complete URL validation with `new URL` + htt
 shared rule if simple; test malformed link keeps form open), CFG-CQ-008 (`.modal` overlay scrollable /
 `.box` max-height + overflow; verify in Playwright at 320x240, RED then GREEN). Then re-review,
 full checks, Round 3 full review, then complete-review agents in parallel.
+- SHOP-CQ-013 (ab0ae8c): RED "an inline quantity below 1 is corrected to 1 on blur/Enter" failed
+  (0.5 kept, total R$ 25). Fix: `+qty >= 1 ? +qty : 1`. GREEN 77/77.
+- SHOP-CQ-014 (commit "SHOP-CQ-014: Validate the whole purchase link"): RED "the purchase link
+  'https://loja.com oferta' is accepted: false" failed (saved). Fix: end anchor `$` on the link
+  regex in ProductForm. The shared `url` rule in lib/validation.js has the same pattern but is unused
+  (duplication already recorded as Minor SHOP-CQ-011). GREEN 79/79, lint clean.
+- CFG-CQ-008 (2f1dca4): Playwright on next dev, /clientes/sergio-hooper, "Excluir" dialog. RED at
+  320x240: box 16..290px, confirm button bottom 264, overflowY visible on overlay and box, no scroll.
+  Fix: `.modal .box` gets `max-height:100%; overflow-y:auto; overscroll-behavior:contain`. GREEN: box
+  16..224, scrollable (274 > 208), confirm button reachable (bottom 198). Desktop 1280x800: no
+  scrollbar. No automated test (jsdom has no layout).
+- Next: re-review SHOP-CQ-013, SHOP-CQ-014, CFG-CQ-008 (one reviewer), full checks, Round 3.
 
 User request (later): after this reviewer loop reaches Done, run complete-review-architecture,
 -cleancode, -critical, -security, -performance in parallel, in rounds, until no Critical or High
