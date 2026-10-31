@@ -339,7 +339,7 @@ a.stat:hover{border-color:var(--brass);box-shadow:var(--shadow);color:inherit}
 .modal{position:fixed;inset:0;z-index:50;display:grid;place-items:center;padding:max(16px,env(safe-area-inset-left,0px))}
 .modal[hidden]{display:none!important}
 .modal .scrimm{position:absolute;inset:0;background:var(--scrim);animation:fade .2s}
-.modal .box{position:relative;width:100%;max-width:420px;background:var(--paper);border-radius:14px;box-shadow:var(--shadow);padding:26px;display:grid;gap:14px;animation:rise .22s ease}
+.modal .box{position:relative;width:100%;max-width:420px;background:var(--paper);border-radius:14px;box-shadow:var(--shadow);padding:26px;display:grid;gap:14px;animation:rise .22s ease;max-height:100%;overflow-y:auto;overscroll-behavior:contain}
 .modal .box .art{width:46px;height:46px;border-radius:50%;background:var(--err-bg);color:var(--err);display:grid;place-items:center}
 .modal h2{font-family:var(--display);font-weight:600;font-size:18px;margin:0;color:var(--ink);text-wrap:balance}
 .modal p{margin:0;font-size:14px;color:var(--muted)}
