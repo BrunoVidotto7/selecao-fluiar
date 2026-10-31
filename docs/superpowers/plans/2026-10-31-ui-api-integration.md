@@ -331,7 +331,7 @@ Retain accent-insensitive client search, no-results and cancel-confirmation asse
 - Produces: `createRoom(listId,{name}) -> Promise<ActionResult<RoomResponse>>`, `renameRoom(roomId,{name}) -> Promise<ActionResult<RoomResponse>>`, `deleteRoom(roomId) -> Promise<ActionResult<undefined>>`, `reorderRooms(listId,roomIds:string[]) -> Promise<ActionResult<RoomResponse[]>>`.
 - Produces: `RoomManager({listId,rooms:RoomResponse[]})`, names limited to 60 characters.
 
-- [ ] **Step 1: Write failing room action/component tests.**
+- [x] **Step 1: Write failing room action/component tests.**
 
 ```js
 test('moving a room sends every UUID once in the new order', async () => {
@@ -353,11 +353,11 @@ test('an empty list still offers room management', () => {
 ```
 
 Also assert blank/61-character names never submit, rename uses room ID, first/last movement buttons are disabled at boundaries, DELETE requires a cascade warning including `products.length`, cancelling does nothing, and a failed reorder/delete leaves server order/rows unchanged. An incomplete room-order 400 shows `Envie todos os ambientes da lista, sem repetir.` and refreshes the room list so a concurrently added room is available on retry. No request is sent to order zero rooms.
-- [ ] **Step 2: Run RED.** `npx vitest run components/ambientes/actions.test.js components/ambientes/RoomManager.test.js components/lista/ShoppingList.test.js`.
-- [ ] **Step 3: Implement actions and the room page.** Use the exact four endpoints from the backend table. Validate UUID shapes/array uniqueness before write, let the API validate list membership and complete order. Add rows with "Renomear", "Mover ... para cima/baixo", "Excluir ambiente" and an add form; unique input IDs include room UUIDs. Use existing cards/buttons/confirmation; await writes before refreshing. Never optimistically remove a room with products.
-- [ ] **Step 4: Expose room management independent of product count.** Keep list editing/room navigation available for empty lists. With no rooms, the product CTA points to `/listas/{id}/ambientes`; with rooms but no products, it points to `/listas/{id}/produtos/novo`.
-- [ ] **Step 5: Run GREEN.** Repeat Step 2; all pass.
-- [ ] **Step 6: Review and commit.** `git commit -m "Add room management for shopping lists."`
+- [x] **Step 2: Run RED.** `npx vitest run components/ambientes/actions.test.js components/ambientes/RoomManager.test.js components/lista/ShoppingList.test.js`.
+- [x] **Step 3: Implement actions and the room page.** Use the exact four endpoints from the backend table. Validate UUID shapes/array uniqueness before write, let the API validate list membership and complete order. Add rows with "Renomear", "Mover ... para cima/baixo", "Excluir ambiente" and an add form; unique input IDs include room UUIDs. Use existing cards/buttons/confirmation; await writes before refreshing. Never optimistically remove a room with products.
+- [x] **Step 4: Expose room management independent of product count.** Keep list editing/room navigation available for empty lists. With no rooms, the product CTA points to `/listas/{id}/ambientes`; with rooms but no products, it points to `/listas/{id}/produtos/novo`.
+- [x] **Step 5: Run GREEN.** Repeat Step 2; all pass.
+- [x] **Step 6: Review and commit.** `git commit -m "Add room management for shopping lists."`
 
 ### Task 7: Persist Products And Images Without Duplicate Retries
 

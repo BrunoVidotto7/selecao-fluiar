@@ -22,6 +22,7 @@ export default function ShoppingList({ list, signature }) {
   const toast = useToast();
   const [t1, t2] = splitTitle(list.name);
   const base = `/listas/${list.id}`;
+  const productHref = rooms.length ? `${base}/produtos/novo` : `${base}/ambientes`;
 
   const stats = useMemo(() => {
     if (!localRooms) return list.stats;
@@ -51,29 +52,30 @@ export default function ShoppingList({ list, signature }) {
         </div>
       </header>
 
-      {mode === 'edit' && stats.totalProducts > 0 && (
+      {mode === 'edit' && (
         <div>
           <div className="listbar">
-            <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
-              options={[{ value: 'all', label: 'Todos', count: stats.totalProducts }, { value: 'pend', label: 'Pendentes', count: stats.pendingProducts }, { value: 'done', label: 'Comprados', count: stats.boughtProducts }]} />
+            {stats.totalProducts > 0 && <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
+              options={[{ value: 'all', label: 'Todos', count: stats.totalProducts }, { value: 'pend', label: 'Pendentes', count: stats.pendingProducts }, { value: 'done', label: 'Comprados', count: stats.boughtProducts }]} />}
             <div className="btns">
               <Button href={`${base}/editar`} variant="ghost" size="sm" icon="edit">Editar lista</Button>
-              <Button href={`${base}/produtos/novo`} size="sm" icon="plus">Adicionar produto</Button>
+              <Button href={`${base}/ambientes`} variant="ghost" size="sm">Gerenciar ambientes</Button>
+              {stats.totalProducts > 0 && <Button href={productHref} size="sm" icon="plus">Adicionar produto</Button>}
             </div>
           </div>
-          <div className="summary">
+          {stats.totalProducts > 0 && <div className="summary">
             <div><span className="k">Itens</span><span className="v">{stats.totalProducts}</span></div>
             <div><span className="k">Comprados</span><span className="v">{stats.boughtProducts}</span></div>
             <div><span className="k">Pendentes</span><span className="v">{stats.pendingProducts}</span></div>
             <div className="bar"><span>Estimado {brl(stats.estimatedTotal)} · faltam {brl(stats.remainingTotal)}</span><span className="progress"><i style={{ width: `${stats.totalProducts ? Math.round((100 * stats.boughtProducts) / stats.totalProducts) : 0}%` }} /></span></div>
-          </div>
+          </div>}
         </div>
       )}
 
       {!stats.totalProducts ? (
         <div style={{ marginTop: 24 }}>
           <EmptyState icon="bag" title="Esta lista ainda não tem produtos" text="Adicione os produtos por ambiente, com os links das lojas e as suas observações.">
-            <Button href={`${base}/produtos/novo`} icon="plus">Adicionar primeiro produto</Button>
+            <Button href={productHref} icon="plus">Adicionar primeiro produto</Button>
           </EmptyState>
         </div>
       ) : mode === 'view' ? (

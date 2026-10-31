@@ -124,6 +124,12 @@ h3{font-family:var(--display);font-weight:600;font-size:15px;margin:0;color:var(
 .card-pad{padding:22px}
 .card-head{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
 .card-head a{font-family:var(--display);font-size:12px;font-weight:500;text-decoration:none}
+.room-manager{border:0;padding:0;margin:0;min-width:0;display:grid;gap:16px}
+.room-list{list-style:none;padding:0;margin:0;display:grid;gap:16px}
+.room-row{display:grid;gap:12px}
+.room-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.room-heading h2{overflow-wrap:anywhere}
+.room-actions{display:flex;gap:8px;flex-wrap:wrap}
 .alert{display:flex;gap:10px;align-items:flex-start;padding:12px 14px;border-radius:var(--r-sm);font-size:14px;line-height:1.45}
 .alert .ic{margin-top:1px}
 .alert-err{background:var(--err-bg);color:var(--err)}

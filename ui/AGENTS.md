@@ -8,9 +8,9 @@ This file covers `ui/` only. For files under `ui/`, it wins over the repo root `
 - `html/`: a static HTML/CSS/JS copy of the same screens, for quick design review. Not built, not
   tested, and it already differs from `nextjs/`. Edit it only when the task asks for it.
 
-Authentication, the private layout, office administration, clients, dashboard and shopping-list pages
-use the REST API in `../api/`. Product/room writes still use prototype workflows. Private inline
-product controls remain local until their persistence migration.
+Authentication, the private layout, office administration, clients, dashboard, shopping-list pages
+and separate room management use the REST API in `../api/`. Product writes still use prototype
+workflows. Private inline product controls remain local until their persistence migration.
 
 ## Commands
 
@@ -174,3 +174,5 @@ Retry failed Server Component reads with `router.refresh()` and boundary reset i
 List preselection uses the API client's actual UUID value, matching case-insensitively; key edit forms by list ID so navigation cannot retain another list's fields.
 
 Scope recent-client link queries to their section: recent-list links also include the client's name.
+
+Room order arrays must reject sparse entries before writing; array iteration can silently skip them.

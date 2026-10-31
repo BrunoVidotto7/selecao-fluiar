@@ -159,6 +159,28 @@ test('a real empty API list has its empty state and can display only real signat
   }} signature={signature} />);
   expect(screen.queryByText(EMPTY)).not.toBeNull();
   expect(screen.queryByRole('link', { name: 'Adicionar primeiro produto' })?.getAttribute('href'))
-    .toBe('/listas/' + LIST.id + '/produtos/novo');
+    .toBe('/listas/' + LIST.id + '/ambientes');
   expect(screen.getByText('Bruna Reis')).toBeTruthy();
+});
+
+test.each([[[], '/ambientes'], [[{ ...ROOM, products: [] }], '/produtos/novo']])(
+  'empty lists retain edit and room navigation and choose a product CTA from room presence', (rooms, target) => {
+    render(<ShoppingList list={{ ...LIST, rooms,
+      stats: { totalProducts: 0, boughtProducts: 0, pendingProducts: 0, estimatedTotal: 0, remainingTotal: 0 },
+    }} signature={signature} />);
+    expect(screen.getByRole('link', { name: 'Gerenciar ambientes' }).getAttribute('href')).toBe(`/listas/${LIST.id}/ambientes`);
+    expect(screen.getByRole('link', { name: 'Editar lista' }).getAttribute('href')).toBe(`/listas/${LIST.id}/editar`);
+    expect(screen.getByRole('link', { name: 'Adicionar primeiro produto' }).getAttribute('href')).toBe(`/listas/${LIST.id}${target}`);
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+    expect(screen.queryByRole('link', { name: 'Gerenciar ambientes' })).toBeNull();
+  },
+);
+
+test('populated lists expose room management without changing product controls or client mode', () => {
+  renderFull();
+  expect(screen.getByRole('link', { name: 'Gerenciar ambientes' }).getAttribute('href')).toBe(`/listas/${LIST.id}/ambientes`);
+  expect(screen.getByRole('link', { name: 'Adicionar produto' }).getAttribute('href')).toBe(`/listas/${LIST.id}/produtos/novo`);
+  expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  expect(screen.queryByRole('link', { name: 'Gerenciar ambientes' })).toBeNull();
 });
