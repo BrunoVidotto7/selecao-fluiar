@@ -161,3 +161,5 @@ Never:
 5. New behavior has a test. Do not commit unless asked.
 
 If something in `ui/` took more than one attempt to get right, add one line about it to this file.
+
+For server helpers, assert returned data and navigation before cache wiring; a cache spy alone can hide an unfinished implementation.

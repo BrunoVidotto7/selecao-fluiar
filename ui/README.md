@@ -44,6 +44,25 @@ npm run dev        # abre em http://localhost:3000
 
 Para produção: `npm run build` e `npm start`.
 
+### Configuração da API
+
+A integração usa chamadas no servidor Next.js. Configure a origem da API em
+`nextjs/.env.local`, sem o sufixo `/api`:
+
+```dotenv
+NEXT_PUBLIC_API_URL=http://localhost:8080
+```
+
+Para usar os fluxos integrados localmente, a API precisa estar em execução. Ela exige
+JDK 25, Docker, PostgreSQL, Mailpit e a variável `JWT_SECRET`. Siga as instruções de
+[`../api/README.md`](../api/README.md) antes de iniciar o Next.js. Os testes unitários
+da interface simulam a API e não precisam desses serviços.
+
+O JWT fica somente no cookie httpOnly `fluiar_session`, nunca no armazenamento do
+navegador ou nas respostas das ações. O cookie de sessão não tem prazo persistente;
+ao escolher lembrar o acesso, ele usa o `expiresAt` enviado pela API. Apenas ações
+do servidor podem gravar ou apagar esse cookie, não a renderização de páginas.
+
 ### Estrutura
 
 ```
