@@ -3,9 +3,10 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import NewListPage from '@/app/(app)/listas/nova/page';
 import ListsPage from '@/app/(app)/listas/page';
 import DashboardPage from '@/app/(app)/dashboard/page';
+import EditListPage from '@/app/(app)/listas/[id]/editar/page';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), notFound: vi.fn() }));
 
 const SERVER_DELAY_MS = 650;
 const CHOOSE_CLIENT = 'Escolha o cliente desta lista.';
@@ -48,6 +49,21 @@ test('the list form requires a name and a client', async () => {
   expect(screen.getByText('Preencha este campo.')).toBeTruthy();
   expect(screen.getByText(CHOOSE_CLIENT)).toBeTruthy();
   expect(push).not.toHaveBeenCalled();
+});
+
+test('a valid new list is saved and opens the list', async () => {
+  vi.useFakeTimers();
+  render(await page(NewListPage, { cliente: 'sergio-hooper' }));
+  submitList('Casa de praia');
+  expect(push).toHaveBeenCalledWith('/listas/lista-da-casa');
+});
+
+test('editing a list saves and returns to that list', async () => {
+  vi.useFakeTimers();
+  render(await EditListPage({ params: Promise.resolve({ id: 'home-office' }) }));
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar lista' }));
+  act(() => vi.advanceTimersByTime(SERVER_DELAY_MS));
+  expect(push).toHaveBeenCalledWith('/listas/home-office');
 });
 
 test('the dashboard shows the summary, or the first-steps state when empty', async () => {

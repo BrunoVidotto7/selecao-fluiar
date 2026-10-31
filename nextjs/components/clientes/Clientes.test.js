@@ -1,10 +1,43 @@
-import { expect, test, vi } from 'vitest';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, expect, test, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import ClientsPage from '@/app/(app)/clientes/page';
 import ClientPage from '@/app/(app)/clientes/[id]/page';
 import { FeedbackProvider } from '../feedback/Feedback';
+import { ClientForm } from './Clientes';
+import { getClient } from '@/lib/data';
 
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => '/clientes', notFound: vi.fn() }));
+const { push } = vi.hoisted(() => ({ push: vi.fn() }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => '/clientes', notFound: vi.fn() }));
+
+afterEach(() => { vi.useRealTimers(); push.mockClear(); });
+
+const saveClient = () => {
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+  act(() => vi.advanceTimersByTime(650));
+};
+
+test('the client form validates name, e-mail and phone before saving a new client', () => {
+  vi.useFakeTimers();
+  render(<ClientForm />);
+  fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ana@' } });
+  saveClient();
+  expect(screen.getAllByText('Preencha este campo.')).toHaveLength(2);
+  expect(screen.getByText(/e-mail válido/)).toBeTruthy();
+  expect(push).not.toHaveBeenCalled();
+
+  fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Ana Lima' } });
+  fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: 'ana@mail.com' } });
+  fireEvent.change(screen.getByLabelText('Telefone'), { target: { value: '31999998888' } });
+  saveClient();
+  expect(push).toHaveBeenCalledWith('/clientes/sergio-hooper');
+});
+
+test('editing a client saves and returns to that client', () => {
+  vi.useFakeTimers();
+  render(<ClientForm client={getClient('marina-duarte')} listCount={1} />);
+  saveClient();
+  expect(push).toHaveBeenCalledWith('/clientes/marina-duarte');
+});
 
 const clientPage = async (id, query = {}) => ClientPage({ params: Promise.resolve({ id }), searchParams: Promise.resolve(query) });
 
