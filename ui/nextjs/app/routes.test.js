@@ -11,6 +11,7 @@ import PrivateLayout from './(app)/layout';
 import RootLayout from './layout';
 import LoginPage from './(auth)/login/page';
 import SignupPage from './(auth)/cadastro/page';
+import InvitationPage from './(auth)/convite/page';
 import RootError from './error';
 import { ME } from '@/test-support/fixtures';
 
@@ -25,6 +26,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/login',
 }));
 vi.mock('@/components/auth/actions', () => ({ login: vi.fn(), signup: vi.fn(), logout: vi.fn() }));
+vi.mock('@/components/convite/actions', () => ({ acceptInvitation: vi.fn() }));
 
 const props = (params) => ({ params: Promise.resolve(params), searchParams: Promise.resolve({}) });
 
@@ -144,4 +146,19 @@ test('the root layout keeps page content and feedback without the prototype navi
   expect(document.body.textContent).toContain('Conteúdo da página');
   expect(document.querySelector('[role="status"]')).not.toBeNull();
   expect(Array.from(document.querySelectorAll('button'), (button) => button.textContent)).not.toContain('Telas');
+});
+
+test('the invitation route stays in the public auth layout with a revoked browser session', async () => {
+  cookieStore.get.mockReturnValue({ value: 'revoked-jwt' });
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({
+    email: 'nova@example.com', officeName: 'Ateliê Horizonte', invitedByName: 'Ana Lima',
+  })));
+  render(await InvitationPage({ searchParams: Promise.resolve({ token: 'a'.repeat(43) }) }));
+  expect(screen.queryByRole('button', { name: 'Criar conta e aceitar convite' })).not.toBeNull();
+  expect(fetchMock).toHaveBeenCalledOnce();
+  expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBeNull();
+  expect(cookieStore.get).not.toHaveBeenCalled();
+  expect(cookieStore.set).not.toHaveBeenCalled();
+  expect(cookieStore.delete).not.toHaveBeenCalled();
+  expect(redirect).not.toHaveBeenCalled();
 });

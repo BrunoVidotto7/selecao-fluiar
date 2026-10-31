@@ -63,6 +63,31 @@ navegador ou nas respostas das ações. O cookie de sessão não tem prazo persi
 ao escolher lembrar o acesso, ele usa o `expiresAt` enviado pela API. Apenas ações
 do servidor podem gravar ou apagar esse cookie, não a renderização de páginas.
 
+### Convites pelo Mailpit
+
+Com a API e o Next.js em execução conforme a configuração acima:
+
+1. Entre com uma conta em `/login`, abra `/escritorio` e envie um convite para um
+   e-mail que ainda não tenha conta.
+2. Abra o Mailpit em `http://localhost:8025`, encontre a mensagem de convite e abra
+   o link completo `/convite?token=...`. O link vale por 7 dias; reenviar o convite
+   para o mesmo e-mail no mesmo escritório invalida o link anterior.
+3. Confira o escritório, quem convidou e o e-mail fixo. Informe seu nome e uma
+   senha, confirme-a e clique em **Criar conta e aceitar convite**. Não há escolha
+   de outro e-mail ou escritório.
+4. A aceitação cria a conta convidada e entra nela neste navegador, com cookie de
+   sessão não persistente. Se já havia outra conta conectada, somente a sessão
+   deste navegador é substituída: a conta anterior não é movida nem modificada.
+   Apenas abrir o link não troca a sessão.
+5. Para conferir os dados compartilhados, abra a mesma lista com as duas contas
+   do escritório, usando navegadores ou perfis separados.
+6. Reabra um link já aceito, revogue um convite pendente ou teste o link antigo
+   após um reenvio. A página deve pedir um novo convite, sem formulário de conta.
+   Se o link for revogado entre a abertura e o envio, a aceitação deve falhar sem
+   trocar a sessão. Um e-mail que ganhou uma conta nesse intervalo também não
+   permite a aceitação. Falhas da API não devem indicar sucesso; na leitura,
+   use **Tentar novamente** após o serviço voltar.
+
 ### Estrutura
 
 ```

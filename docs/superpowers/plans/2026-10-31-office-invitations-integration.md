@@ -109,7 +109,7 @@ Also assert required/121-character office-name rejection, `name -> nomeEscritori
 - Produces: `acceptInvitation(token,{name,password}) -> Promise<ActionResult<MeResponse>>` in `'use server'` `components/convite/actions.js`.
 - Produces: `InvitationForm({token,invitation:InvitationInfoResponse})`; fields `nome/senha/senha2`, error map `name -> nome`, `password -> senha`.
 
-- [ ] **Step 1: Write failing public-route/session/acceptance tests.**
+- [x] **Step 1: Write failing public-route/session/acceptance tests.**
 
 ```js
 test('invitation acceptance cannot choose its office or email', async () => {
@@ -135,11 +135,11 @@ test('a token revoked between inspection and acceptance cannot succeed', async (
 ```
 
 Add page assertions for missing/array/malformed tokens (no fetch and no form), valid token inspection (public request), expired/used/revoked 400 (exact invalid-link copy, no form), upstream network error (auth boundary, not invalid-link copy), correct office/inviter/fixed email display, mismatched passwords (no accept), duplicate-email 409 (no success), and the explicit account/session-switch copy. Direct action calls must validate token shape and never allow extra email/office fields into the upstream JSON. Inspecting on GET must not set/delete any session cookie.
-- [ ] **Step 2: Run RED.** `npx vitest run components/convite/actions.test.js components/convite/InvitationForm.test.js app/'(auth)'/convite/page.test.js app/routes.test.js`.
-- [ ] **Step 3: Implement public invitation inspection.** Await `searchParams`, accept one valid `token`, `GET /api/auth/invitations/{token}` with `auth:'public'`. Render office/inviter/email context from that response. Missing/invalid/expired links show `Este link expirou ou já foi usado. Peça um novo.` plus `Peça um novo convite ao escritório.` and a login link; never display a signup form with a fabricated address.
-- [ ] **Step 4: Implement explicit invitation acceptance.** Form copy states `Este convite cria uma conta para {email} no escritório {officeName}. Ao aceitar, você entrará nessa conta neste navegador.` Button label is "Criar conta e aceitar convite". `POST /api/auth/invitations/{token}/acceptance` sends only `name/password`; success stores a session cookie (`persistent:false`), returns only `user`, then navigates to `/dashboard` with real data and refreshes. It does not transfer or modify the previously signed-in account.
-- [ ] **Step 5: Run GREEN.** Repeat Step 2; all pass. Add Mailpit invitation instructions to the existing README runbook, without new infrastructure or credentials.
-- [ ] **Step 6: Review and commit.** Follow the selected execution approach's main-plan review gate; `git commit -m "Accept office invitations through real email links."`
+- [x] **Step 2: Run RED.** `npx vitest run components/convite/actions.test.js components/convite/InvitationForm.test.js app/'(auth)'/convite/page.test.js app/routes.test.js`.
+- [x] **Step 3: Implement public invitation inspection.** Await `searchParams`, accept one valid `token`, `GET /api/auth/invitations/{token}` with `auth:'public'`. Render office/inviter/email context from that response. Missing/invalid/expired links show `Este link expirou ou já foi usado. Peça um novo.` plus `Peça um novo convite ao escritório.` and a login link; never display a signup form with a fabricated address.
+- [x] **Step 4: Implement explicit invitation acceptance.** Form copy states `Este convite cria uma conta para {email} no escritório {officeName}. Ao aceitar, você entrará nessa conta neste navegador.` Button label is "Criar conta e aceitar convite". `POST /api/auth/invitations/{token}/acceptance` sends only `name/password`; success stores a session cookie (`persistent:false`), returns only `user`, then navigates to `/dashboard` with real data and refreshes. It does not transfer or modify the previously signed-in account.
+- [x] **Step 5: Run GREEN.** Repeat Step 2; all pass. Add Mailpit invitation instructions to the existing README runbook, without new infrastructure or credentials.
+- [x] **Step 6: Review and commit.** Follow the selected execution approach's main-plan review gate; `git commit -m "Accept office invitations through real email links."`
 
 ## Completion And Self-Review
 
