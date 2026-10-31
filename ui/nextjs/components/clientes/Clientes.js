@@ -1,17 +1,21 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { IconButton } from '../ui/Button';
 import Button from '../ui/Button';
 import { Avatar, EmptyState } from '../ui/Display';
 import { SearchInput, TextInput } from '../ui/Fields';
 import { useConfirm, useToast, flash } from '../feedback/Feedback';
-import useDemoForm from '../forms/useDemoForm';
-import { useRouter } from 'next/navigation';
-import { maskPhone, plural } from '@/lib/format';
+import useApiForm from '../forms/useApiForm';
+import { unstable_rethrow, useRouter } from 'next/navigation';
+import { formatShortDate, formatUpdatedAt, maskPhone, plural } from '@/lib/format';
 import { EmptyLists, ListCards } from '../listas/Listas';
+import { saveClient, deleteClient } from './actions';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
+const CLIENT_NAME_MAX_LENGTH = 120;
+const CLIENT_EMAIL_MAX_LENGTH = 254;
 
 function deleteText(name, n) {
   if (n > 1) return `As ${n} listas de compras de ${name} também serão excluídas. Essa ação não pode ser desfeita.`;
@@ -19,22 +23,56 @@ function deleteText(name, n) {
   return 'Essa ação não pode ser desfeita.';
 }
 
-// Hook para excluir cliente com confirmação (usado na tabela, no detalhe e no formulário)
 export function useDeleteClient() {
   const confirm = useConfirm();
-  return (client, listCount, onDone) => confirm({
-    title: `Excluir ${client.name}?`, text: deleteText(client.name, listCount), confirmLabel: 'Excluir cliente', onConfirm: onDone,
-  });
+  const toast = useToast();
+  const router = useRouter();
+  const pending = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  return (client, listCount, onDone) => {
+    if (pending.current) return;
+    confirm({
+      title: `Excluir ${client.name}?`,
+      text: deleteText(client.name, listCount),
+      confirmLabel: 'Excluir cliente',
+      onConfirm: async () => {
+        if (pending.current) return;
+        pending.current = true;
+        try {
+          const result = await deleteClient(client.id);
+          if (!mounted.current) return;
+          if (!result.ok) {
+            toast(result.detail, 'err');
+            return;
+          }
+          await onDone?.();
+          if (!mounted.current) return;
+          toast('Cliente excluído.');
+          router.refresh();
+        } catch (error) {
+          unstable_rethrow(error);
+          if (mounted.current) toast(DELETE_FAILED_DETAIL, 'err');
+        } finally {
+          pending.current = false;
+        }
+      },
+    });
+  };
 }
 
+/** @param {{ clients: import('./queries.server').ClientSummaryResponse[] }} props */
 export function ClientsTable({ clients }) {
-  const [rows, setRows] = useState(clients);
   const [q, setQ] = useState('');
-  const toast = useToast();
   const del = useDeleteClient();
-  const shown = useMemo(() => rows.filter((c) => norm(c.name).includes(norm(q.trim()))), [rows, q]);
+  const shown = useMemo(() => clients.filter((c) => norm(c.name).includes(norm(q.trim()))), [clients, q]);
 
-  if (!rows.length) return <EmptyClients />;
+  if (!clients.length) return <EmptyClients />;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <p className="meta" style={{ margin: 0 }}>{plural(shown.length, 'cliente', 'clientes')}{q && ` para “${q}”`}</p>
@@ -45,14 +83,14 @@ export function ClientsTable({ clients }) {
           <tbody>
             {shown.map((c) => (
               <tr key={c.id}>
-                <td className="main"><div className="who"><Avatar name={c.name} /><div><Link href={`/clientes/${c.id}`}>{c.name}</Link><span className="sub">Cliente desde {c.since}</span></div></div></td>
-                <td data-label="Contato"><span>{c.email}<span className="sub">{c.phone}</span></span></td>
+                <td className="main"><div className="who"><Avatar name={c.name} /><div><Link href={`/clientes/${c.id}`}>{c.name}</Link><span className="sub">Cliente desde {formatShortDate(c.createdAt)}</span></div></div></td>
+                <td data-label="Contato"><span>{c.email}<span className="sub">{maskPhone(c.phone)}</span></span></td>
                 <td data-label="Listas" className="num">{c.listCount}</td>
-                <td data-label="Atualizado">{c.updated}</td>
+                <td data-label="Atualizado">{formatUpdatedAt(c.updatedAt)}</td>
                 <td className="actions-cell"><div className="actions">
                   <IconButton href={`/clientes/${c.id}`} icon="eye" label={`Ver ${c.name}`} />
                   <IconButton href={`/clientes/${c.id}/editar`} icon="edit" label={`Editar ${c.name}`} />
-                  <IconButton danger icon="trash" label={`Excluir ${c.name}`} onClick={() => del(c, c.listCount, () => { setRows((r) => r.filter((x) => x.id !== c.id)); toast('Cliente excluído.'); })} />
+                  <IconButton danger icon="trash" label={`Excluir ${c.name}`} onClick={() => del(c, c.listCount)} />
                 </div></td>
               </tr>
             ))}
@@ -74,13 +112,20 @@ export function EmptyClients() {
   );
 }
 
-export function ClientForm({ client, listCount = 0 }) {
+/** @param {{ client?: import('./queries.server').ClientDetailResponse }} props */
+export function ClientForm({ client }) {
   const router = useRouter();
   const del = useDeleteClient();
-  const f = useDemoForm({
-    initial: { nome: client?.name || '', email: client?.email || '', tel: client?.phone || '' },
-    rules: { nome: { required: true }, email: { required: true, email: true }, tel: { required: true } },
-    onSuccess: (v, { go }) => go(`/clientes/${client?.id || 'sergio-hooper'}`, client ? 'Alterações salvas.' : 'Cliente cadastrado.'),
+  const f = useApiForm({
+    initial: { nome: client?.name || '', email: client?.email || '', tel: maskPhone(client?.phone || '') },
+    rules: {
+      nome: { required: true, maxLength: CLIENT_NAME_MAX_LENGTH },
+      email: { required: true, email: true, maxLength: CLIENT_EMAIL_MAX_LENGTH },
+      tel: { required: true, phone: true },
+    },
+    action: (v) => saveClient(client?.id ?? null, { name: v.nome, email: v.email, phone: v.tel.replace(/\D/g, '') }),
+    fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
+    onSuccess: (saved, values, { go }) => go(`/clientes/${saved.id}`, client ? 'Alterações salvas.' : 'Cliente cadastrado.'),
   });
   const tel = f.field('tel');
   return (
@@ -93,7 +138,7 @@ export function ClientForm({ client, listCount = 0 }) {
       <div className="formfoot">
         {client && (
           <Button variant="text-danger" icon="trash" className="left"
-            onClick={() => del(client, listCount, () => { flash('Cliente excluído.'); router.push('/clientes'); })}>Excluir cliente</Button>
+            onClick={() => del(client, client.lists.length, () => { flash('Cliente excluído.'); router.push('/clientes'); })}>Excluir cliente</Button>
         )}
         <Button variant="ghost" href={client ? `/clientes/${client.id}` : '/clientes'}>Cancelar</Button>
         <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar cliente'}</Button>
@@ -102,10 +147,9 @@ export function ClientForm({ client, listCount = 0 }) {
   );
 }
 
-// Detalhe do cliente: as listas exibidas são a única fonte da contagem, do aviso de exclusão e do estado vazio.
-// children: dados do perfil renderizados no servidor.
-export function ClientDetail({ client, lists: initialLists, children }) {
-  const [lists, setLists] = useState(initialLists);
+/** @param {{ client: import('./queries.server').ClientDetailResponse, children?: import('react').ReactNode }} props */
+export function ClientDetail({ client, children }) {
+  const lists = client.lists;
   const newHref = `/listas/nova?cliente=${client.id}`;
   return (
     <>
@@ -121,7 +165,7 @@ export function ClientDetail({ client, lists: initialLists, children }) {
         <Button href={newHref} icon="plus">Nova lista</Button>
       </div>
       {lists.length
-        ? <ListCards lists={lists} onDeleted={(id) => setLists((ls) => ls.filter((l) => l.id !== id))} />
+        ? <ListCards lists={lists} />
         : <EmptyLists clientName={client.name} newHref={newHref} />}
     </>
   );

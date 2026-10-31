@@ -286,7 +286,7 @@ Also assert list create/PUT bodies exclude UI-only keys, server `clientId` error
 - Produces: `saveClient(id:null|string, body:{name,email,phone}) -> Promise<ActionResult<ClientResponse>>`, `deleteClient(id) -> Promise<ActionResult<undefined>>`; request-scoped `getClient(id) -> Promise<ClientDetailResponse>`.
 - Produces: `ClientDetail({client:ClientDetailResponse,children})`; derives lists/count/deletion copy from `client.lists`, never a duplicate local list.
 
-- [ ] **Step 1: Write failing client and dashboard tests.**
+- [x] **Step 1: Write failing client and dashboard tests.**
 
 ```js
 test('a masked phone is sent as digits and the created UUID selects the route', async () => {
@@ -314,11 +314,11 @@ test('the dashboard uses API counts rather than recent-array lengths', async () 
 ```
 
 Retain accent-insensitive client search, no-results and cancel-confirmation assertions. Add direct-action missing-session and upstream other-office 404 tests (no success feedback/invalidation). Add the last-list deletion regression using a server-prop rerender: until DELETE succeeds the count is 1; after refreshed `client.lists:[]`, the heading/count, empty state and client cascade warning all use zero. A GET failure must render the error boundary, not "Nenhum cliente". Ignore `?estado=vazio` when API data is nonempty.
-- [ ] **Step 2: Run RED.** `npx vitest run components/clientes/actions.test.js components/clientes/queries.server.test.js components/clientes/Clientes.test.js app/'(app)'/dashboard/page.test.js app/routes.test.js`.
-- [ ] **Step 3: Implement client commands and reads.** Map `nome -> name`, `tel -> phone`, and server errors in reverse; use `listCount` on summaries and `lists.length` on detail. Show masked phone/creation dates only at render time. Replace fake ID redirects and every static params export. Make `useDeleteClient` perform the real delete before its completion callback and refresh; all three entry points (row, detail, edit form) share that behavior. No local row/list copies.
-- [ ] **Step 4: Implement dashboard reads.** Start `getCurrentUser()` and `/api/dashboard` together; use all seven API count fields and its recent arrays without recomputing global totals. Render the real first name and current Sao Paulo date, not the prototype's Friday. Only `clientCount === 0 && listCount === 0` selects the first-use empty dashboard.
-- [ ] **Step 5: Run GREEN.** Repeat Step 2; all pass.
-- [ ] **Step 6: Review and commit.** `git commit -m "Persist clients and load the live dashboard."`
+- [x] **Step 2: Run RED.** `npx vitest run components/clientes/actions.test.js components/clientes/queries.server.test.js components/clientes/Clientes.test.js app/'(app)'/dashboard/page.test.js app/routes.test.js`.
+- [x] **Step 3: Implement client commands and reads.** Map `nome -> name`, `tel -> phone`, and server errors in reverse; use `listCount` on summaries and `lists.length` on detail. Show masked phone/creation dates only at render time. Replace fake ID redirects and every static params export. Make `useDeleteClient` perform the real delete before its completion callback and refresh; all three entry points (row, detail, edit form) share that behavior. No local row/list copies.
+- [x] **Step 4: Implement dashboard reads.** Start `getCurrentUser()` and `/api/dashboard` together; use all seven API count fields and its recent arrays without recomputing global totals. Render the real first name and current Sao Paulo date, not the prototype's Friday. Only `clientCount === 0 && listCount === 0` selects the first-use empty dashboard.
+- [x] **Step 5: Run GREEN.** Repeat Step 2; all pass.
+- [x] **Step 6: Review and commit.** `git commit -m "Persist clients and load the live dashboard."`
 
 ### Task 6: Separate Room Management
 

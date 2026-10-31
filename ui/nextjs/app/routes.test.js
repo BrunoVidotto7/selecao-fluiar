@@ -5,6 +5,9 @@ import { redirect } from 'next/navigation';
 import Home from './page';
 import NotFound from './not-found';
 import ClientPage from './(app)/clientes/[id]/page';
+import { generateMetadata as clientMetadata } from './(app)/clientes/[id]/page';
+import ClientsPage from './(app)/clientes/page';
+import EditClientPage from './(app)/clientes/[id]/editar/page';
 import ListPage from './(app)/listas/[id]/page';
 import { generateMetadata as listMetadata } from './(app)/listas/[id]/page';
 import ListsPage from './(app)/listas/page';
@@ -15,6 +18,7 @@ import LoginPage from './(auth)/login/page';
 import SignupPage from './(auth)/cadastro/page';
 import InvitationPage from './(auth)/convite/page';
 import RootError from './error';
+import PrivateError from './(app)/error';
 import { CLIENT, LIST, ME, OFFICE } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
@@ -207,4 +211,57 @@ test('a lists read outage is not swallowed as a successful empty page', async ()
   await expect(ListsPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({
     status: 503, detail: 'Tente novamente.',
   });
+});
+
+test('client metadata and detail both consume the authoritative private client endpoint', async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify(CLIENT)));
+  expect(await clientMetadata(props({ id: CLIENT.id }))).toEqual({ title: CLIENT.name });
+  render(await ClientPage({ ...props({ id: CLIENT.id }), searchParams: Promise.resolve({ estado: 'vazio' }) }));
+  expect(screen.getByRole('heading', { name: CLIENT.name })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Listas de compras · 1' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Casa nova' }).getAttribute('href')).toBe('/listas/' + LIST.id);
+  expect(screen.getByText('(31) 99999-8888')).toBeTruthy();
+  expect(screen.getByText('Cliente desde 31 de outubro de 2026')).toBeTruthy();
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    'http://localhost:8080/api/clients/' + CLIENT.id, 'http://localhost:8080/api/clients/' + CLIENT.id,
+  ]);
+});
+
+test('the clients page loads API summaries and ignores a prototype empty query', async () => {
+  const summary = { id: CLIENT.id, name: CLIENT.name, email: CLIENT.email, phone: CLIENT.phone,
+    createdAt: CLIENT.createdAt, updatedAt: CLIENT.updatedAt, listCount: 7 };
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify([summary])));
+  render(await ClientsPage({ searchParams: Promise.resolve({ estado: 'vazio' }) }));
+  expect(screen.getByRole('link', { name: CLIENT.name })).toBeTruthy();
+  expect(screen.getByText('7')).toBeTruthy();
+  expect(screen.getByText('Cliente desde 31 out 2026')).toBeTruthy();
+  expect(screen.getByText('(31) 99999-8888')).toBeTruthy();
+  expect(screen.queryByText('Nenhum cliente por aqui ainda')).toBeNull();
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/clients']);
+});
+
+test('a clients GET outage renders the error boundary, not a successful empty clients page', async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ detail: 'Tente novamente.' }), { status: 503 }));
+  const result = await ClientsPage({ searchParams: Promise.resolve({}) }).catch((error) => error);
+  expect(result).toMatchObject({ status: 503, detail: 'Tente novamente.' });
+  render(<PrivateError error={result} reset={vi.fn()} />);
+  expect(screen.getByText('Não conseguimos carregar esta página.')).toBeTruthy();
+  expect(screen.queryByText('Nenhum cliente por aqui ainda')).toBeNull();
+});
+
+test.each([['detail', ClientPage], ['edit', EditClientPage], ['metadata', clientMetadata]])(
+  'a cross-office client 404 becomes notFound in %s', async (_, Page) => {
+    fetchMock.mockImplementation(async () => new Response(JSON.stringify({ detail: 'Não encontramos o que você procurava.' }), { status: 404 }));
+    await expect(Page(props({ id: CLIENT.id }))).rejects.toThrow('NEXT_NOT_FOUND');
+  },
+);
+
+test('edit client forms are keyed by the returned UUID so navigation cannot retain another draft', async () => {
+  const second = { ...CLIENT, id: '11111111-1111-4111-8111-111111115555', name: 'Beatriz Silva', lists: [] };
+  fetchMock.mockImplementation(async (url) => new Response(JSON.stringify(url.endsWith(CLIENT.id) ? CLIENT : second)));
+  const view = render(await EditClientPage(props({ id: CLIENT.id })));
+  fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Rascunho' } });
+  view.rerender(await EditClientPage(props({ id: second.id })));
+  expect(screen.getByLabelText('Nome completo').value).toBe('Beatriz Silva');
+  expect(screen.getByLabelText('Telefone').value).toBe('(31) 99999-8888');
 });

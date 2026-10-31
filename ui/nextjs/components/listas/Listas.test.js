@@ -6,7 +6,7 @@ import DashboardPage from '@/app/(app)/dashboard/page';
 import EditListPage from '@/app/(app)/listas/[id]/editar/page';
 import { ListCards, ListForm, ListsTable } from './Listas';
 import { FeedbackProvider } from '../feedback/Feedback';
-import { CLIENT, DASHBOARD, LIST } from '@/test-support/fixtures';
+import { CLIENT, DASHBOARD, LIST, ME } from '@/test-support/fixtures';
 
 const { push, refresh, saveList, deleteList, fetchMock, cookies, revalidatePath, unstable_rethrow } = vi.hoisted(() => ({
   push: vi.fn(), refresh: vi.fn(), saveList: vi.fn(), deleteList: vi.fn(), fetchMock: vi.fn(), cookies: vi.fn(),
@@ -354,9 +354,16 @@ test('unmounting the form does not cancel the confirmed server delete or its suc
   expect(refresh).not.toHaveBeenCalled();
 });
 
-test('the dashboard still owns its prototype summary until Task 5', async () => {
+test('the dashboard uses API summaries and server empty counts rather than a demo query', async () => {
+  fetchMock.mockImplementation(async (url) => json(url.endsWith('/api/me') ? ME : DASHBOARD));
   const view = render(await page(DashboardPage));
   expect(screen.getByText('Clientes recentes')).toBeTruthy();
+  expect(screen.getByRole('link', { name: /Casa nova/ })).toBeTruthy();
   view.rerender(await page(DashboardPage, { estado: 'vazio' }));
+  expect(screen.queryByText('Cadastre seu primeiro cliente')).toBeNull();
+  fetchMock.mockImplementation(async (url) => json(url.endsWith('/api/me') ? ME : {
+    ...DASHBOARD, clientCount: 0, listCount: 0, recentClients: [], recentLists: [],
+  }));
+  view.rerender(await page(DashboardPage));
   expect(screen.getByText('Cadastre seu primeiro cliente')).toBeTruthy();
 });

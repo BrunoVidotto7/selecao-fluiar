@@ -1,0 +1,11 @@
+import 'server-only';
+import { cache } from 'react';
+import { readApi } from '@/lib/api.server';
+import { requireUuid } from '@/lib/route-input';
+
+/** @typedef {{ id: string, name: string, email: string, phone: string, createdAt: string, updatedAt: string }} ClientResponse */
+/** @typedef {ClientResponse & { listCount: number }} ClientSummaryResponse */
+/** @typedef {ClientResponse & { lists: import('../listas/queries.server').ListSummaryResponse[] }} ClientDetailResponse */
+
+/** @param {string} id @returns {Promise<ClientDetailResponse>} */
+export const getClient = cache(async (id) => readApi(`/api/clients/${requireUuid(id)}`));
