@@ -47,7 +47,7 @@ export default function ShoppingList({ list, client, rooms: initialRooms, empty 
         </div>
       </header>
 
-      {mode === 'edit' && rooms.length > 0 && (
+      {mode === 'edit' && stats.n > 0 && (
         <div>
           <div className="listbar">
             <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
@@ -66,7 +66,7 @@ export default function ShoppingList({ list, client, rooms: initialRooms, empty 
         </div>
       )}
 
-      {!rooms.length ? (
+      {!stats.n ? (
         <div style={{ marginTop: 24 }}>
           <EmptyState icon="bag" title="Esta lista ainda não tem produtos" text="Adicione os produtos por ambiente, com os links das lojas e as suas observações.">
             <Button href={`${base}/produtos/novo`} icon="plus">Adicionar primeiro produto</Button>
