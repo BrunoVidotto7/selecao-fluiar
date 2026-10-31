@@ -76,6 +76,7 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 | CFG-CQ-005 | Minor | CONTRACTS | CFG | `next.config.mjs:2` | Workspace root inferred from a lockfile outside the repo; set `outputFileTracingRoot`. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-006 | Minor | CONTRACTS | CFG | `app/styles/app.css:77-89` | `--muted` #888 small labels/hints ~3.5:1 contrast on white, below 4.5:1. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-007 | Minor | CONTRACTS | CFG | `app/styles/app.css:243-250` | Auth panel in OS dark theme: white text on `--sage` #76A5AF ~2.7:1 contrast. | OPEN (Minor, not fixed) | | |
+| CFG-CQ-008 | Important | CONTRACTS | CFG | `app/styles/app.css:339-346` | Confirmation overlay/box has no max height or vertical scroll; on short viewports (e.g. 320x240) its buttons can be clipped. (Round 2) | OPEN | | 0 |
 | SHR-CQ-001 | Important | STATE | SHR | `components/forms/useDemoForm.js:39-44` | Simulated-submit timer is never cancelled; leaving the form within 650 ms still runs `onSuccess` and redirects. | RESOLVED | 1e64ed8, d32904a | 2 |
 | SHR-CQ-002 | Important | CONTRACTS | SHR | `components/feedback/Feedback.js:41-47` | Confirmation `alertdialog` (`aria-modal`) does not contain Tab/Shift+Tab; focus reaches background controls. | RESOLVED | 720451e | 1 |
 | SHR-CQ-003 | Important | STATE | SHR | `components/feedback/Feedback.js:31-38` | Confirmation survives navigation (provider in root layout); old `onConfirm` can still run on the new page. | RESOLVED | 8be1d9b, f5bc0b9, 4cd6e54 | 3 |
@@ -88,10 +89,12 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 | SHR-CQ-010 | Minor | CONTRACTS | SHR | `components/ui/Fields.js:8-11` | Label inside `.lbl-row` loses the shared label style (selector `.field>label`). | OPEN (Minor, not fixed) | | |
 | SHR-CQ-011 | Minor | CONTRACTS | SHR | `components/layout/ProtoNav.js:23-35` | ProtoNav panel is before its trigger in DOM order; Tab skips the opened links. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-012 | Minor | STATE | SHR | `components/layout/AppShell.js:49-51` | Drawer stays open on same-path or query-only navigation. | OPEN (Minor, not fixed) | | |
+| SHR-CQ-013 | Minor | CONTRACTS | SHR | `components/feedback/Feedback.js:80-82` | After confirming an inline deletion, focus is not moved to a surviving control (trigger removed). (Round 2) | OPEN (Minor, not fixed) | | |
 | ACCT-CQ-001 | Important | STATE | ACCT | `components/auth/AuthForms.js:10-11,56-57` | `useState(showError)` / `useState(initialSent)` ignore later prop changes; query-only navigation (`/login` to `/login?estado=erro`) does not change the screen. | RESOLVED | d38f9b1 | 1 |
 | ACCT-CQ-002 | Important | STATE | ACCT | `components/auth/AuthForms.js:58-65` | Recovery confirmation shows the current input draft, not the submitted (validated) email. | RESOLVED | 0037254 | 1 |
 | ACCT-CQ-003 | Important | TESTS | ACCT | `components/auth/AuthForms.js` (area) | No tests for login/signup/recovery/reset/settings workflows. | RESOLVED | 4014fa9 (+ tests in d38f9b1, 0037254) | 1 |
 | ACCT-CQ-004 | Minor | DUPLICATION | ACCT | `components/auth/AuthForms.js:38-47` | Minimum password length 8 repeated in three forms and placeholders. | OPEN (Minor, not fixed) | | |
+| ACCT-CQ-005 | Minor | CONTRACTS | ACCT | `components/auth/AuthForms.js:60-62,99-101` | Recovery and reset confirmations replace the form without moving focus to the confirmation. (Round 2) | OPEN (Minor, not fixed) | | |
 | CLST-CQ-001 | Important | STATE | CLST | `app/(app)/clientes/page.js:9-14`, `listas/page.js:14`, `listas/nova/page.js:12` | Tables and new-list form copy query-derived props into state without a reset `key`; query-only navigation keeps stale rows/draft. | RESOLVED | 67acf9a | 1 |
 | CLST-CQ-002 | Important | STATE | CLST | `components/listas/Listas.js:85-97`, `clientes/[id]/page.js:31-38` | Client detail: `ListCards` deletes locally but heading count, delete-client warning and empty state use the original server list. | RESOLVED | 2481e34 | 1 |
 | CLST-CQ-003 | Important | CONTRACTS | CLST | `app/(app)/listas/nova/page.js:7-12` | `?cliente=` forwarded unvalidated; unknown or repeated value passes the required-client rule. | RESOLVED | 2d8039e | 1 |
@@ -109,6 +112,9 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 | SHOP-CQ-010 | Minor | CONTRACTS | SHOP | `app/(app)/listas/[id]/page.js:15` | Full list and client records sent to `ShoppingList`, which needs only id and name. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-011 | Minor | DUPLICATION | SHOP | `components/produtos/ProductForm.js:28-29` | Purchase-link URL regex and message duplicate `lib/validation.js:8`. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-012 | Minor | SIMPLICITY | SHOP | `components/lista/RoomTable.js:49` | Raw `<img>` thumbnails (lint warnings) instead of `next/image`. | OPEN (Minor, not fixed) | | |
+| SHOP-CQ-013 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:38-45` | Inline quantity `commitQty` accepts values >0 (e.g. 0.5) despite min=1; summary uses it. (Round 2) | OPEN | | 0 |
+| SHOP-CQ-014 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:29-32` | Purchase-link regex checks only a prefix: `https://loja.com oferta` passes and the form reports success. (Round 2) | OPEN | | 0 |
+| SHOP-CQ-015 | Minor | STATE | SHOP | `components/produtos/ProductForm.js:39-42` | Concurrent FileReader callbacks can overwrite the latest image preview with an older one. (Round 2) | OPEN (Minor, not fixed) | | |
 
 ## Rounds
 
@@ -264,6 +270,23 @@ Round 1 re-reviews (fresh reviewer per area, HEAD 2bac449):
 ### Round 2
 
 Fresh full review of all 5 areas (one reviewer at a time, fresh context).
+
+| Area | Verdict | Findings | Criteria |
+| --- | --- | --- | --- |
+| CFG | CHANGES_REQUIRED | 1 Important (CFG-CQ-008) | FLOW PASS, COHESION PASS, STATE N/A, SIMPLICITY PASS, DUPLICATION PASS, CONTRACTS FAIL, TESTS FAIL (layout not covered by jsdom) |
+
+| SHR | APPROVED | 1 Minor (SHR-CQ-013) | all PASS; SHR-CQ-001..006 confirmed RESOLVED |
+| ACCT | APPROVED | 1 Minor (ACCT-CQ-005) | all PASS; ACCT-CQ-001..003 confirmed RESOLVED |
+| CLST | APPROVED | none | all PASS; CLST-CQ-001..004 confirmed RESOLVED |
+| SHOP | CHANGES_REQUIRED | 2 Important (SHOP-CQ-013, 014), 1 Minor (015) | CONTRACTS FAIL, TESTS FAIL, others PASS; SHOP-CQ-001..008 confirmed RESOLVED, 004 DISPROVED |
+
+CFG round 2 notes: CFG-CQ-001..003 confirmed RESOLVED (no regression). CFG-CQ-008 to be verified
+in a real browser (Playwright on next dev, 320x240) before fixing.
+Round 2 fix plan (one commit each, RED-GREEN): SHOP-CQ-013 (clamp inline qty to >=1, test 0.5 via
+blur/Enter + summary), SHOP-CQ-014 (complete URL validation with `new URL` + http(s) protocol; reuse
+shared rule if simple; test malformed link keeps form open), CFG-CQ-008 (`.modal` overlay scrollable /
+`.box` max-height + overflow; verify in Playwright at 320x240, RED then GREEN). Then re-review,
+full checks, Round 3 full review, then complete-review agents in parallel.
 
 User request (later): after this reviewer loop reaches Done, run complete-review-architecture,
 -cleancode, -critical, -security, -performance in parallel, in rounds, until no Critical or High
