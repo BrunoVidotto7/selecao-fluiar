@@ -30,6 +30,7 @@ export function FeedbackProvider({ children }) {
     setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 2950);
   }, []);
 
+  useEffect(() => { setDialog(null); }, [pathname]);
   useEffect(() => {
     try {
       const f = sessionStorage.getItem('flash');

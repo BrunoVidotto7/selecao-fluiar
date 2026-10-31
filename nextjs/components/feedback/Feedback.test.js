@@ -1,8 +1,11 @@
-import { expect, test, vi } from 'vitest';
+import { beforeEach, expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FeedbackProvider, useConfirm } from './Feedback';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/clientes' }));
+const nav = vi.hoisted(() => ({ pathname: '/clientes' }));
+vi.mock('next/navigation', () => ({ usePathname: () => nav.pathname }));
+
+beforeEach(() => { nav.pathname = '/clientes'; });
 
 function Page({ onConfirm }) {
   const confirm = useConfirm();
@@ -15,11 +18,11 @@ function Page({ onConfirm }) {
 }
 
 function openDialog(onConfirm = vi.fn()) {
-  render(<FeedbackProvider><Page onConfirm={onConfirm} /></FeedbackProvider>);
+  const view = render(<FeedbackProvider><Page onConfirm={onConfirm} /></FeedbackProvider>);
   const opener = screen.getByRole('button', { name: 'Excluir' });
   opener.focus();
   fireEvent.click(opener);
-  return { opener, onConfirm };
+  return { opener, onConfirm, view };
 }
 
 test('opening the confirmation focuses Cancel', () => {
@@ -48,6 +51,17 @@ test('the confirm button closes the dialog and runs the action', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Excluir cliente' }));
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(onConfirm).toHaveBeenCalledTimes(1);
+});
+
+test('navigating to another page discards an open confirmation and its action', () => {
+  const onConfirm = vi.fn();
+  const { view } = openDialog(onConfirm);
+
+  nav.pathname = '/listas';
+  view.rerender(<FeedbackProvider><Page onConfirm={onConfirm} /></FeedbackProvider>);
+
+  expect(screen.queryByRole('alertdialog')).toBeNull();
+  expect(onConfirm).not.toHaveBeenCalled();
 });
 
 test('Tab and Shift+Tab keep the focus inside the confirmation', () => {
