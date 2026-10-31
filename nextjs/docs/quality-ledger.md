@@ -69,42 +69,42 @@ Tests are colocated as `*.test.js` next to the module they cover and belong to t
 
 | ID | Severity | Criterion | Area | File | Summary | Status | Commit | Attempts |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CFG-CQ-001 | Important | CONTRACTS | CFG | `package.json`, `README.md:37` | README promises Node 18.18+, but the test toolchain needs Node `^22.22.2 \|\| ^24.15.0 \|\| >=26` (jsdom 30, vitest 5, vite 8). | OPEN | | 0 |
-| CFG-CQ-002 | Important | TESTS | CFG | `package.json:10` | No permanent tests; `npm test` fails ("No test files found"); root redirect and not-found fallback unprotected. | OPEN | | 0 |
-| CFG-CQ-003 | Important | CONTRACTS | CFG | `app/styles/app.css:191,212` | Mobile drawer `.side` is fixed full-height with no vertical scrolling; on short viewports (568x320) the account footer and "Sair" are unreachable. | OPEN | | 0 |
+| CFG-CQ-001 | Important | CONTRACTS | CFG | `package.json`, `README.md:37` | README promises Node 18.18+, but the test toolchain needs Node `^22.22.2 \|\| ^24.15.0 \|\| >=26` (jsdom 30, vitest 5, vite 8). | FIXED (awaiting re-review) | f3ccb2b | 1 |
+| CFG-CQ-002 | Important | TESTS | CFG | `package.json:10` | No permanent tests; `npm test` fails ("No test files found"); root redirect and not-found fallback unprotected. | FIXED (awaiting re-review) | 3f4f6c8 (+ all area test commits) | 1 |
+| CFG-CQ-003 | Important | CONTRACTS | CFG | `app/styles/app.css:191,212` | Mobile drawer `.side` is fixed full-height with no vertical scrolling; on short viewports (568x320) the account footer and "Sair" are unreachable. | FIXED (awaiting re-review) | 55d9b81 | 1 |
 | CFG-CQ-004 | Minor | SIMPLICITY | CFG | `app/layout.js:13-16` | Fonts loaded from external Google stylesheet with lint suppression instead of `next/font`. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-005 | Minor | CONTRACTS | CFG | `next.config.mjs:2` | Workspace root inferred from a lockfile outside the repo; set `outputFileTracingRoot`. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-006 | Minor | CONTRACTS | CFG | `app/styles/app.css:77-89` | `--muted` #888 small labels/hints ~3.5:1 contrast on white, below 4.5:1. | OPEN (Minor, not fixed) | | |
 | CFG-CQ-007 | Minor | CONTRACTS | CFG | `app/styles/app.css:243-250` | Auth panel in OS dark theme: white text on `--sage` #76A5AF ~2.7:1 contrast. | OPEN (Minor, not fixed) | | |
-| SHR-CQ-001 | Important | STATE | SHR | `components/forms/useDemoForm.js:39-44` | Simulated-submit timer is never cancelled; leaving the form within 650 ms still runs `onSuccess` and redirects. | OPEN | | 0 |
-| SHR-CQ-002 | Important | CONTRACTS | SHR | `components/feedback/Feedback.js:41-47` | Confirmation `alertdialog` (`aria-modal`) does not contain Tab/Shift+Tab; focus reaches background controls. | OPEN | | 0 |
-| SHR-CQ-003 | Important | STATE | SHR | `components/feedback/Feedback.js:31-38` | Confirmation survives navigation (provider in root layout); old `onConfirm` can still run on the new page. | OPEN | | 0 |
-| SHR-CQ-004 | Important | CONTRACTS | SHR | `components/layout/AppShell.js:25-31` | Open mobile drawer does not contain keyboard focus; Tab reaches covered page controls. | OPEN | | 0 |
-| SHR-CQ-005 | Important | CONTRACTS | SHR | `lib/validation.js:4-10` | `match` compares trimmed values, so `Password1` and `Password1 ` pass confirmation. | OPEN | | 0 |
-| SHR-CQ-006 | Important | TESTS | SHR | `components/forms/useDemoForm.js:33-44` (area) | No tests for shared validation, form lifetime, confirmation and drawer behavior. | OPEN | | 0 |
+| SHR-CQ-001 | Important | STATE | SHR | `components/forms/useDemoForm.js:39-44` | Simulated-submit timer is never cancelled; leaving the form within 650 ms still runs `onSuccess` and redirects. | FIXED (awaiting re-review) | 1e64ed8 | 1 |
+| SHR-CQ-002 | Important | CONTRACTS | SHR | `components/feedback/Feedback.js:41-47` | Confirmation `alertdialog` (`aria-modal`) does not contain Tab/Shift+Tab; focus reaches background controls. | FIXED (awaiting re-review) | 720451e | 1 |
+| SHR-CQ-003 | Important | STATE | SHR | `components/feedback/Feedback.js:31-38` | Confirmation survives navigation (provider in root layout); old `onConfirm` can still run on the new page. | FIXED (awaiting re-review) | 8be1d9b | 1 |
+| SHR-CQ-004 | Important | CONTRACTS | SHR | `components/layout/AppShell.js:25-31` | Open mobile drawer does not contain keyboard focus; Tab reaches covered page controls. | FIXED (awaiting re-review) | c33e5a0 | 1 |
+| SHR-CQ-005 | Important | CONTRACTS | SHR | `lib/validation.js:4-10` | `match` compares trimmed values, so `Password1` and `Password1 ` pass confirmation. | FIXED (awaiting re-review) | 8fbe432 | 1 |
+| SHR-CQ-006 | Important | TESTS | SHR | `components/forms/useDemoForm.js:33-44` (area) | No tests for shared validation, form lifetime, confirmation and drawer behavior. | FIXED (awaiting re-review) | b88365c (+ tests in 8fbe432, 1e64ed8, 720451e, c33e5a0, 8be1d9b) | 1 |
 | SHR-CQ-007 | Minor | STATE | SHR | `components/ui/Button.js:12` | Busy button stays natively enabled; keyboard can submit twice. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-008 | Minor | STATE | SHR | `components/forms/useDemoForm.js:16-20` | Errors of dependent fields (`match`, `requiredIf`) are not refreshed when the other field changes. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-009 | Minor | CONTRACTS | SHR | `components/ui/Fields.js:13-19` | Hints and password-strength text are not linked via `aria-describedby`. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-010 | Minor | CONTRACTS | SHR | `components/ui/Fields.js:8-11` | Label inside `.lbl-row` loses the shared label style (selector `.field>label`). | OPEN (Minor, not fixed) | | |
 | SHR-CQ-011 | Minor | CONTRACTS | SHR | `components/layout/ProtoNav.js:23-35` | ProtoNav panel is before its trigger in DOM order; Tab skips the opened links. | OPEN (Minor, not fixed) | | |
 | SHR-CQ-012 | Minor | STATE | SHR | `components/layout/AppShell.js:49-51` | Drawer stays open on same-path or query-only navigation. | OPEN (Minor, not fixed) | | |
-| ACCT-CQ-001 | Important | STATE | ACCT | `components/auth/AuthForms.js:10-11,56-57` | `useState(showError)` / `useState(initialSent)` ignore later prop changes; query-only navigation (`/login` to `/login?estado=erro`) does not change the screen. | OPEN | | 0 |
-| ACCT-CQ-002 | Important | STATE | ACCT | `components/auth/AuthForms.js:58-65` | Recovery confirmation shows the current input draft, not the submitted (validated) email. | OPEN | | 0 |
-| ACCT-CQ-003 | Important | TESTS | ACCT | `components/auth/AuthForms.js` (area) | No tests for login/signup/recovery/reset/settings workflows. | OPEN | | 0 |
+| ACCT-CQ-001 | Important | STATE | ACCT | `components/auth/AuthForms.js:10-11,56-57` | `useState(showError)` / `useState(initialSent)` ignore later prop changes; query-only navigation (`/login` to `/login?estado=erro`) does not change the screen. | FIXED (awaiting re-review) | d38f9b1 | 1 |
+| ACCT-CQ-002 | Important | STATE | ACCT | `components/auth/AuthForms.js:58-65` | Recovery confirmation shows the current input draft, not the submitted (validated) email. | FIXED (awaiting re-review) | 0037254 | 1 |
+| ACCT-CQ-003 | Important | TESTS | ACCT | `components/auth/AuthForms.js` (area) | No tests for login/signup/recovery/reset/settings workflows. | FIXED (awaiting re-review) | 4014fa9 (+ tests in d38f9b1, 0037254) | 1 |
 | ACCT-CQ-004 | Minor | DUPLICATION | ACCT | `components/auth/AuthForms.js:38-47` | Minimum password length 8 repeated in three forms and placeholders. | OPEN (Minor, not fixed) | | |
-| CLST-CQ-001 | Important | STATE | CLST | `app/(app)/clientes/page.js:9-14`, `listas/page.js:14`, `listas/nova/page.js:12` | Tables and new-list form copy query-derived props into state without a reset `key`; query-only navigation keeps stale rows/draft. | OPEN | | 0 |
-| CLST-CQ-002 | Important | STATE | CLST | `components/listas/Listas.js:85-97`, `clientes/[id]/page.js:31-38` | Client detail: `ListCards` deletes locally but heading count, delete-client warning and empty state use the original server list. | OPEN | | 0 |
-| CLST-CQ-003 | Important | CONTRACTS | CLST | `app/(app)/listas/nova/page.js:7-12` | `?cliente=` forwarded unvalidated; unknown or repeated value passes the required-client rule. | OPEN | | 0 |
-| CLST-CQ-004 | Important | TESTS | CLST | `components/listas/Listas.js` (area) | No tests for search/filters, deletions, empty states, form validation, client preselection, query navigation. | OPEN | | 0 |
+| CLST-CQ-001 | Important | STATE | CLST | `app/(app)/clientes/page.js:9-14`, `listas/page.js:14`, `listas/nova/page.js:12` | Tables and new-list form copy query-derived props into state without a reset `key`; query-only navigation keeps stale rows/draft. | FIXED (awaiting re-review) | 67acf9a | 1 |
+| CLST-CQ-002 | Important | STATE | CLST | `components/listas/Listas.js:85-97`, `clientes/[id]/page.js:31-38` | Client detail: `ListCards` deletes locally but heading count, delete-client warning and empty state use the original server list. | FIXED (awaiting re-review) | 2481e34 | 1 |
+| CLST-CQ-003 | Important | CONTRACTS | CLST | `app/(app)/listas/nova/page.js:7-12` | `?cliente=` forwarded unvalidated; unknown or repeated value passes the required-client rule. | FIXED (awaiting re-review) | 2d8039e | 1 |
+| CLST-CQ-004 | Important | TESTS | CLST | `components/listas/Listas.js` (area) | No tests for search/filters, deletions, empty states, form validation, client preselection, query navigation. | FIXED (awaiting re-review) | 999d86d (+ tests in 2d8039e, 67acf9a, 2481e34) | 1 |
 | CLST-CQ-005 | Minor | CONTRACTS | CLST | `app/(app)/listas/[id]/editar/page.js:15`, `listas/nova/page.js:12` | Full `CLIENTS` records sent to `ListForm`, which only needs id and name. | OPEN (Minor, not fixed) | | |
-| SHOP-CQ-001 | Important | STATE | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `ProductForm` keeps the old draft/room on query-only navigation (no reset `key`). | OPEN | | 0 |
-| SHOP-CQ-002 | Important | CONTRACTS | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `?ambiente=` forwarded unvalidated; unknown or repeated value passes the required-room rule. | OPEN | | 0 |
-| SHOP-CQ-003 | Important | STATE | SHOP | `components/lista/ShoppingList.js:69-79` | Emptiness checked by room count; removing every product shows empty tables / blank client view instead of the empty state. | OPEN | | 0 |
+| SHOP-CQ-001 | Important | STATE | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `ProductForm` keeps the old draft/room on query-only navigation (no reset `key`). | FIXED (awaiting re-review) | 8568b2d | 1 |
+| SHOP-CQ-002 | Important | CONTRACTS | SHOP | `app/(app)/listas/[id]/produtos/novo/page.js:12-17` | `?ambiente=` forwarded unvalidated; unknown or repeated value passes the required-room rule. | FIXED (awaiting re-review) | 24b9b75 | 1 |
+| SHOP-CQ-003 | Important | STATE | SHOP | `components/lista/ShoppingList.js:69-79` | Emptiness checked by room count; removing every product shows empty tables / blank client view instead of the empty state. | FIXED (awaiting re-review) | 17f8111 | 1 |
 | SHOP-CQ-004 | Important | CONTRACTS | SHOP | `components/lista/ClientView.js:15-17`, `RoomTable.js:61` | Product-level `notes` are not rendered in either list mode. | CHALLENGED (design reference has no product notes in the list) | | 0 |
-| SHOP-CQ-005 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:67-75` | Quantity normalised only on blur; Enter submits 0 or negative quantity as success. | OPEN | | 0 |
-| SHOP-CQ-006 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:37-39` | Upload promises "JPG ou PNG, até 5 MB" but accepts any `image/*` of any size. | OPEN | | 0 |
-| SHOP-CQ-007 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:54-55` | Armed two-step remove keeps `aria-label="Remover item"`; screen readers get no confirmation cue. | OPEN | | 0 |
-| SHOP-CQ-008 | Important | TESTS | SHOP | `components/lista/ShoppingList.js` (area) | No tests for list counts/filters/toggles/removal/empty states or product form validation. | OPEN | | 0 |
+| SHOP-CQ-005 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:67-75` | Quantity normalised only on blur; Enter submits 0 or negative quantity as success. | FIXED (awaiting re-review) | c468260 | 1 |
+| SHOP-CQ-006 | Important | CONTRACTS | SHOP | `components/produtos/ProductForm.js:37-39` | Upload promises "JPG ou PNG, até 5 MB" but accepts any `image/*` of any size. | FIXED (awaiting re-review) | 01233f5 | 1 |
+| SHOP-CQ-007 | Important | CONTRACTS | SHOP | `components/lista/RoomTable.js:54-55` | Armed two-step remove keeps `aria-label="Remover item"`; screen readers get no confirmation cue. | FIXED (awaiting re-review) | 3496274 | 1 |
+| SHOP-CQ-008 | Important | TESTS | SHOP | `components/lista/ShoppingList.js` (area) | No tests for list counts/filters/toggles/removal/empty states or product form validation. | FIXED (awaiting re-review) | 60d26c3 (+ tests in 24b9b75, 8568b2d, 17f8111, c468260, 01233f5, 3496274) | 1 |
 | SHOP-CQ-009 | Minor | CONTRACTS | SHOP | `components/lista/ShoppingList.js:69-73` | Empty client preview still shows the "Adicionar primeiro produto" edit action. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-010 | Minor | CONTRACTS | SHOP | `app/(app)/listas/[id]/page.js:15` | Full list and client records sent to `ShoppingList`, which needs only id and name. | OPEN (Minor, not fixed) | | |
 | SHOP-CQ-011 | Minor | DUPLICATION | SHOP | `components/produtos/ProductForm.js:28-29` | Purchase-link URL regex and message duplicate `lib/validation.js:8`. | OPEN (Minor, not fixed) | | |
@@ -142,3 +142,76 @@ notes in the list is a design decision; the challenge goes to the next reviewer.
 Fix plan (one commit per finding): CFG-CQ-001; SHR-CQ-005, 001, 002, 004, 003, 006; ACCT-CQ-001,
 002, 003; CLST-CQ-003, 001, 002, 004; SHOP-CQ-002, 001, 003, 005, 006, 007, 008; CFG-CQ-003
 (verified in a real browser, since jsdom has no layout); CFG-CQ-002 last (root tests, suite green).
+
+Fix evidence:
+- CFG-CQ-001 (f3ccb2b): RED Vitest crashes on Node 20.19.2 (inside the old README promise). GREEN on
+  Node 22.22.2 (installed with nvm): throwaway test passes, lint 0 errors, build 250/250 pages.
+- SHR-CQ-005 (8fbe432): RED `lib/validation.test.js` "match rejects passwords that differ only by
+  surrounding spaces" failed (expected mismatch, got ''). GREEN 7/7, lint clean.
+- SHR-CQ-001 (1e64ed8): RED `useDemoForm.test.js` "leaving the form before the simulated delay
+  ends cancels the success callback" failed (onSuccess called once). GREEN 10/10, lint clean.
+- SHR-CQ-002 (720451e): RED `Feedback.test.js` "Tab and Shift+Tab keep the focus inside the
+  confirmation" failed. Added `lib/focus.js` `keepFocusInside` (also needed by SHR-CQ-004). GREEN 15/15.
+- SHR-CQ-004 (c33e5a0): RED `AppShell.test.js` "Tab and Shift+Tab keep the focus inside the open
+  mobile drawer" failed. Trap applies only while `(max-width: 960px)` matches (desktop test). GREEN 19/19.
+- SHR-CQ-003 (8be1d9b): RED `Feedback.test.js` "navigating to another page discards an open
+  confirmation and its action" failed (dialog still rendered). Fix: `setDialog(null)` on pathname
+  change (same pattern as AppShell drawer). GREEN 20/20.
+- SHR-CQ-006: coverage only (no defect, so no RED). Tests: `lib/validation.test.js` (8fbe432),
+  `components/forms/useDemoForm.test.js` (1e64ed8 + first-invalid-field focus test in the SHR-CQ-006
+  commit), `components/feedback/Feedback.test.js` (720451e, 8be1d9b), `components/layout/AppShell.test.js`
+  (c33e5a0). GREEN 21/21.
+- ACCT-CQ-001 (d38f9b1): RED `components/auth/AuthForms.test.js` (page boundary: render page, then
+  rerender with new searchParams, as App Router reconciles query-only navigation) failed for login
+  and recovery. Fix: `key` by preview state in both pages. GREEN 23/23.
+- ACCT-CQ-002 (commit after d38f9b1, message "ACCT-CQ-002: ..."): RED "recovery confirmation shows
+  the submitted email, not a later edit of the field" failed. Fix: keep `sentTo` from `onSuccess`
+  values; preview uses `USER.email`. GREEN 24/24.
+- ACCT-CQ-003 (4014fa9): coverage only. `AuthForms.test.js` (login fail/success, signup validation
+  and destination, reset mismatch/success, recovery recipient, query previews) and
+  `configuracoes/SettingsForm.test.js` (profile-only save, new password needs current). GREEN 30/30.
+- CLST-CQ-003 (commit "CLST-CQ-003: ..."): RED `components/listas/Listas.test.js` invalid client
+  query (unknown, repeated) passed the required rule. Fix: `getClient(q.cliente)?.id ?? ''`. GREEN 33/33.
+- CLST-CQ-001 (67acf9a): RED 3 page-boundary tests (clients empty query, lists empty query, new-list
+  client reset) failed. Fix: `key` on ClientsTable, ListsTable, ListForm. GREEN 36/36.
+- CLST-CQ-002 (2481e34): RED `Clientes.test.js` "deleting the last list card updates the count, the
+  empty state and the client delete warning" failed (heading kept "· 1"). Fix: new `ClientDetail`
+  client component owns the lists (server profile passed as children, keyed by empty state);
+  `ListCards` is now controlled (`onDeleted`). GREEN 37/37, lint 0 errors.
+
+Working notes for the lead: tests mock `next/navigation` per file with `vi.hoisted`; pages are
+tested by awaiting `Page({ searchParams: Promise.resolve(q) })` and rendering the element; wrap in
+`FeedbackProvider` (mock `usePathname`) when confirmations must open. All round 1 Important fixes
+are committed. Next: full checks, re-review per area (include the SHOP-CQ-004 challenge), round 2.
+- CLST-CQ-004 (999d86d): coverage only. `Clientes.test.js` (accent-insensitive search, no-results,
+  confirmed/cancelled delete, detail list ownership, empty query) and `Listas.test.js` (status +
+  search filters, form validation, client preselection/reset, dashboard normal/empty). GREEN 42/42.
+- SHOP-CQ-002 (24b9b75): RED `produtos/ProductForm.test.js` invalid room query (unknown, repeated)
+  passed. Fix: `ROOM_NAMES.includes(ambiente) ? ambiente : ''`. GREEN 45/45.
+- SHOP-CQ-001 (8568b2d): RED "the new product form resets its room and draft when only the query
+  changes" failed. Fix: `key={room}` on ProductForm. GREEN 46/46.
+- SHOP-CQ-003 (17f8111): RED `lista/ShoppingList.test.js` "removing the last product shows the empty
+  list state in both modes" failed. Fix: use `stats.n` instead of `rooms.length`. GREEN 47/47.
+- SHOP-CQ-005 (c468260): RED `validation.test.js` "min rejects numbers below the minimum" and
+  `ProductForm.test.js` "submitting with Enter rejects the quantity" ('0', '-2', '') failed. Fix:
+  shared `min` rule; `qtd: { required: true, min: 1 }`; error and aria on the stepper. GREEN 51/51.
+- SHOP-CQ-006 (01233f5): RED "the image picker rejects a GIF / a PNG over 5 MB" failed (FileReader
+  called). Fix: `IMAGE_TYPES` + `MAX_IMAGE_BYTES` checks, `accept` limited to JPG/PNG. GREEN 54/54.
+- SHOP-CQ-007 (3496274): RED "the two-step remove button names the product and the pending
+  confirmation" failed (name "Remover item"). Fix: dynamic `aria-label` (`Remover X` /
+  `Confirmar remoção de X`). GREEN 55/55.
+- SHOP-CQ-008 (60d26c3): coverage only. `ShoppingList.test.js` (summary counts/totals, bought toggle,
+  quantity edit, filters, armed-remove timeout, read-only client view) and `ProductForm.test.js`
+  (name required, valid save). GREEN 61/61.
+- CFG-CQ-003 (55d9b81): browser check with Playwright on `next dev`. RED at 568x320 with the drawer
+  open: `.side` overflowY visible, scrollHeight 393 > 320, scrollTop stuck at 0, "Sair" bottom 393.
+  Fix: `overflow-y:auto; overscroll-behavior:contain` on `.side`. GREEN: overflowY auto, "Sair"
+  scrolled into view (bottom 320). Desktop 1280x800: no scrollbar. No automated test (jsdom has no
+  layout; Playwright was not approved as a test framework).
+- CFG-CQ-002 (3f4f6c8): `npm test` exits 0 with 11 files / 66 tests. `app/routes.test.js` adds root
+  redirect, not-found page and unknown client/list/product ids reaching `notFound`.
+- Round 1 full checks after fixes (HEAD 3f4f6c8): lint 0 errors / 2 known `no-img-element`
+  warnings; `npm test` 11 files, 66 tests, exit 0; `next build` 250/250 pages, exit 0 (same
+  workspace-root warning, CFG-CQ-005). Type-check N/A.
+- Note: untracked `api/PLANO-BACKEND.md` (user file, not part of this work) and `.playwright-mcp/`
+  (browser tool output) are left unstaged.
