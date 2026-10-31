@@ -30,6 +30,16 @@ test('marking an item as bought and changing a quantity update the summary', () 
   expect(summary(container)).toMatch(/Estimado R\$\s50,00/);
 });
 
+test.each([['blur'], ['Enter']])('an inline quantity below 1 is corrected to 1 on %s', (how) => {
+  const { container } = renderFull();
+  const qty = screen.getAllByLabelText('Quantidade')[0];
+  fireEvent.change(qty, { target: { value: '0.5' } });
+  if (how === 'blur') fireEvent.blur(qty);
+  else { qty.focus(); fireEvent.keyDown(qty, { key: 'Enter' }); }
+  expect(qty.value).toBe('1');
+  expect(summary(container)).toMatch(/Estimado R\$\s30,00/);
+});
+
 test('the filters show only bought or only pending items', () => {
   renderFull();
   fireEvent.click(screen.getByRole('button', { name: /^Comprados/ }));

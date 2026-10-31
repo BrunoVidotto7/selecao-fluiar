@@ -35,7 +35,7 @@ function ItemRow({ item, listBase, onToggle, onQty, onRemove }) {
   const [armed, setArmed] = useState(false); // remoção em dois toques, como na página original
   useEffect(() => { if (!armed) return; const t = setTimeout(() => setArmed(false), 2500); return () => clearTimeout(t); }, [armed]);
   const editHref = `${listBase}/produtos/${item.id}/editar`;
-  const commitQty = () => { const v = +qty > 0 ? +qty : 1; setQty(String(v)); if (v !== item.qty) onQty(item.id, v); };
+  const commitQty = () => { const v = +qty >= 1 ? +qty : 1; setQty(String(v)); if (v !== item.qty) onQty(item.id, v); };
 
   return (
     <tr className={item.bought ? 'done' : ''}>
