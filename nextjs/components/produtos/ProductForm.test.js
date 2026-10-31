@@ -72,6 +72,19 @@ test('the product form requires a name and saves a valid product', async () => {
   expect(push).toHaveBeenCalledWith('/listas/lista-da-casa');
 });
 
+test.each([
+  ['https://loja.com oferta', false],
+  ['https://loja.com/oferta', true],
+])('the purchase link %j is accepted: %s', async (link, saved) => {
+  vi.useFakeTimers();
+  render(await newProductPage({ ambiente: 'Cozinha' }));
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira' } });
+  fireEvent.change(screen.getByLabelText('Link da loja'), { target: { value: link } });
+  fireEvent.click(screen.getByRole('button', { name: 'Salvar produto' }));
+  act(() => vi.advanceTimersByTime(SERVER_DELAY_MS));
+  expect(push).toHaveBeenCalledTimes(saved ? 1 : 0);
+});
+
 const editProductPage = () => EditProductPage({ params: Promise.resolve({ id: 'lista-da-casa', produtoId: 'p4' }) });
 
 test('editing an existing product shows its values and saves back to the list', async () => {

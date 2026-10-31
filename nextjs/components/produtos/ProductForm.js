@@ -27,7 +27,7 @@ export default function ProductForm({ listId, product, rooms, defaultRoom = '' }
     initial: { nome: product?.name || '', amb: product?.room || defaultRoom, qtd: String(product?.qty || 1), preco: fmtPrice(product?.price), obs: product?.notes || '' },
     rules: { nome: { required: true }, amb: { required: 'Escolha o ambiente do produto.' }, qtd: { required: true, min: 1 } },
     onSuccess: (v, { go }) => {
-      const bad = links.find((l) => l.u && !/^https?:\/\/\S+\.\S+/.test(l.u));
+      const bad = links.find((l) => l.u && !/^https?:\/\/\S+\.\S+$/.test(l.u));
       if (bad) { toast('Cole o link completo, começando com https://', 'err'); return; }
       go(back, 'Produto salvo na lista.');
     },
