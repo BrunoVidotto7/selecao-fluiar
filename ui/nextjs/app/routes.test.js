@@ -6,6 +6,8 @@ import Home from './page';
 import NotFound from './not-found';
 import ClientPage from './(app)/clientes/[id]/page';
 import ListPage from './(app)/listas/[id]/page';
+import { generateMetadata as listMetadata } from './(app)/listas/[id]/page';
+import ListsPage from './(app)/listas/page';
 import EditProductPage from './(app)/listas/[id]/produtos/[produtoId]/editar/page';
 import PrivateLayout from './(app)/layout';
 import RootLayout from './layout';
@@ -13,7 +15,7 @@ import LoginPage from './(auth)/login/page';
 import SignupPage from './(auth)/cadastro/page';
 import InvitationPage from './(auth)/convite/page';
 import RootError from './error';
-import { ME } from '@/test-support/fixtures';
+import { CLIENT, LIST, ME, OFFICE } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
@@ -161,4 +163,48 @@ test('the invitation route stays in the public auth layout with a revoked browse
   expect(cookieStore.set).not.toHaveBeenCalled();
   expect(cookieStore.delete).not.toHaveBeenCalled();
   expect(redirect).not.toHaveBeenCalled();
+});
+
+test('list metadata uses the same authoritative list read as the page', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify(LIST)));
+  expect(await listMetadata(props({ id: LIST.id }))).toEqual({ title: 'Casa nova' });
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/lists/' + LIST.id]);
+});
+
+test('the list page starts list and office reads in parallel and displays only API identity and rooms', async () => {
+  const releases = new Map();
+  fetchMock.mockImplementation((url) => new Promise((resolve) => { releases.set(url, resolve); }));
+  const loading = ListPage({ ...props({ id: LIST.id }), searchParams: Promise.resolve({ estado: 'vazio' }) })
+    .catch((error) => error);
+  await vi.waitFor(() => expect(fetchMock.mock.calls.map(([url]) => url).sort()).toEqual([
+    'http://localhost:8080/api/lists/' + LIST.id, 'http://localhost:8080/api/office',
+  ].sort()));
+  const office = { ...OFFICE, name: 'Ateliê Horizonte', members: [
+    ...OFFICE.members, { id: '88888888-8888-4888-8888-888888885555', name: 'Beatriz Silva', email: 'beatriz@example.com' },
+  ] };
+  releases.get('http://localhost:8080/api/lists/' + LIST.id)(new Response(JSON.stringify(LIST)));
+  releases.get('http://localhost:8080/api/office')(new Response(JSON.stringify(office)));
+  render(await loading);
+  expect(screen.getByRole('heading', { name: LIST.name })).toBeTruthy();
+  expect(screen.getByRole('checkbox', { name: 'Comprado: Batedeira' })).toBeTruthy();
+  expect(screen.getAllByRole('link', { name: CLIENT.name }).map((link) => link.getAttribute('href')))
+    .toEqual(['/clientes/' + CLIENT.id, '/clientes/' + CLIENT.id]);
+  expect(screen.getByText('Ateliê Horizonte')).toBeTruthy();
+  expect(screen.getByText('Ana Lima')).toBeTruthy();
+  expect(screen.getByText('Beatriz Silva')).toBeTruthy();
+  expect(screen.queryByText(/Paula Hooper|Isabela Machado|@fluiar|olafluiar@gmail/)).toBeNull();
+});
+
+test('a cross-office list 404 becomes notFound rather than a synthetic list', async () => {
+  fetchMock.mockImplementation(async (url) => url.endsWith('/api/office')
+    ? new Response(JSON.stringify(OFFICE))
+    : new Response(JSON.stringify({ detail: 'Não encontramos o que você procurava.' }), { status: 404 }));
+  await expect(ListPage(props({ id: LIST.id }))).rejects.toThrow('NEXT_NOT_FOUND');
+});
+
+test('a lists read outage is not swallowed as a successful empty page', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: 'Tente novamente.' }), { status: 503 }));
+  await expect(ListsPage({ searchParams: Promise.resolve({}) })).rejects.toMatchObject({
+    status: 503, detail: 'Tente novamente.',
+  });
 });

@@ -3,21 +3,22 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
-import { brl } from '@/lib/format';
+import { brl, imageSource } from '@/lib/format';
 import ItemLinks from './ItemLinks';
 
-const priceText = (it) => (it.price == null ? 'Sem preço' : (it.qty || 1) > 1 ? `${it.qty} × ${brl(it.price)}` : brl(it.price));
+const REMOVE_CONFIRMATION_MS = 2500;
+const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity > 1 ? `${it.quantity} × ${brl(it.unitPrice)}` : brl(it.unitPrice));
 
-export default function RoomTable({ room, items, showAdd, listBase, onToggle, onQty, onRemove }) {
-  const done = room.items.filter((i) => i.bought).length;
+export default function RoomTable({ room, products, showAdd, listBase, onToggle, onQty, onRemove }) {
+  const done = room.products.filter((i) => i.bought).length;
   return (
     <>
-      <div className="roomhead"><h2>{room.name}</h2><span>{done} de {room.items.length} comprados</span></div>
+      <div className="roomhead"><h2>{room.name}</h2><span>{done} de {room.products.length} comprados</span></div>
       <div className="tbl">
         <table>
           <thead><tr><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
           <tbody>
-            {items.map((it) => <ItemRow key={it.id} item={it} listBase={listBase} onToggle={onToggle} onQty={onQty} onRemove={onRemove} />)}
+            {products.map((it) => <ItemRow key={it.id} item={it} listBase={listBase} onToggle={onToggle} onQty={onQty} onRemove={onRemove} />)}
             {showAdd && (
               <tr className="new"><td className="ck" /><td colSpan={3}>
                 <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${encodeURIComponent(room.name)}`}><Icon name="plus" />novo item em {room.name}</Link>
@@ -31,11 +32,11 @@ export default function RoomTable({ room, items, showAdd, listBase, onToggle, on
 }
 
 function ItemRow({ item, listBase, onToggle, onQty, onRemove }) {
-  const [qty, setQty] = useState(String(item.qty || ''));
+  const [qty, setQty] = useState(String(item.quantity));
   const [armed, setArmed] = useState(false); // remoção em dois toques, como na página original
-  useEffect(() => { if (!armed) return; const t = setTimeout(() => setArmed(false), 2500); return () => clearTimeout(t); }, [armed]);
+  useEffect(() => { if (!armed) return; const t = setTimeout(() => setArmed(false), REMOVE_CONFIRMATION_MS); return () => clearTimeout(t); }, [armed]);
   const editHref = `${listBase}/produtos/${item.id}/editar`;
-  const commitQty = () => { const v = +qty >= 1 ? +qty : 1; setQty(String(v)); if (v !== item.qty) onQty(item.id, v); };
+  const commitQty = () => { const v = +qty >= 1 ? +qty : 1; setQty(String(v)); if (v !== item.quantity) onQty(item.id, v); };
 
   return (
     <tr className={item.bought ? 'done' : ''}>
@@ -46,7 +47,7 @@ function ItemRow({ item, listBase, onToggle, onQty, onRemove }) {
       </td>
       <td className="it">
         <div className="itm">
-          <span className="thumb">{item.image ? <img src={item.image} alt="" /> : <Icon name="bag" />}</span>
+          <span className="thumb">{item.imageUrl ? <img src={imageSource(item.imageUrl)} alt="" /> : <Icon name="bag" />}</span>
           <div className="txt">
             <div className="nmw">
               <Link className="nm-link" href={editHref}>{item.name}</Link>

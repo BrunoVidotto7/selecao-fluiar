@@ -46,10 +46,11 @@ export const Progress = ({ total, done, style }) => (
   <div className="progress" style={style}><i style={{ width: `${pct(total, done)}%` }} /></div>
 );
 
-export function StatusBadge({ total, done }) {
-  return done === total
+/** @param {{ total: number, done: number, completed: boolean }} props */
+export function StatusBadge({ total, done, completed }) {
+  return completed
     ? <span className="badge badge-done">Concluída</span>
-    : <span className="badge badge-pend">{total - done} pendentes</span>;
+    : <span className="badge badge-pend">{total === 0 ? 'Sem produtos' : `${total - done} pendentes`}</span>;
 }
 
 export function StatCard({ href, label, value, detail, highlight }) {

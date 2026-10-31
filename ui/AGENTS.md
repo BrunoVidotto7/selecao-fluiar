@@ -8,8 +8,9 @@ This file covers `ui/` only. For files under `ui/`, it wins over the repo root `
 - `html/`: a static HTML/CSS/JS copy of the same screens, for quick design review. Not built, not
   tested, and it already differs from `nextjs/`. Edit it only when the task asks for it.
 
-Authentication and the private layout use the REST API in `../api/`. Other feature screens still
-use prototype data from `nextjs/lib/data.js`.
+Authentication, the private layout, office administration and shopping-list pages use the REST API
+in `../api/`. Client screens and product/room writes still use prototype workflows. Private inline
+product controls remain local until their persistence migration.
 
 ## Commands
 
@@ -169,3 +170,5 @@ For async forms, hold actions and success callbacks with deferred promises and r
 For malformed-input tables, wrap each argument in a row so an empty array is tested as the body, not expanded into no arguments. Recovery/reset still use `useDemoForm` until their migration.
 
 Retry failed Server Component reads with `router.refresh()` and boundary reset in one transition; reset alone reuses the rejected server payload.
+
+List preselection uses the API client's actual UUID value, matching case-insensitively; key edit forms by list ID so navigation cannot retain another list's fields.

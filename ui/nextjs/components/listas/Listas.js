@@ -1,40 +1,73 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { unstable_rethrow, useRouter } from 'next/navigation';
 import Button, { IconButton } from '../ui/Button';
 import { EmptyState, Progress, StatusBadge } from '../ui/Display';
 import { SearchInput, Segmented, TextInput, Textarea, Select } from '../ui/Fields';
 import { useConfirm, useToast, flash } from '../feedback/Feedback';
-import useDemoForm from '../forms/useDemoForm';
-import { splitTitle, plural } from '@/lib/format';
+import useApiForm from '../forms/useApiForm';
+import { brl, formatUpdatedAt, splitTitle, plural } from '@/lib/format';
+import { saveList, deleteList } from './actions';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
 
 export function useDeleteList() {
   const confirm = useConfirm();
-  return (list, onDone) => confirm({
-    title: `Excluir “${list.name}”?`,
-    text: `Os ${list.total} produtos desta lista também serão excluídos. Essa ação não pode ser desfeita.`,
-    confirmLabel: 'Excluir lista', onConfirm: onDone,
-  });
+  const toast = useToast();
+  const router = useRouter();
+  const pending = useRef(false);
+  const mounted = useRef(true);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+
+  return (list, onDone) => {
+    if (pending.current) return;
+    confirm({
+      title: `Excluir “${list.name}”?`,
+      text: `Os ${list.totalProducts ?? list.stats.totalProducts} produtos desta lista também serão excluídos. Essa ação não pode ser desfeita.`,
+      confirmLabel: 'Excluir lista',
+      onConfirm: async () => {
+        if (pending.current) return;
+        pending.current = true;
+        try {
+          const result = await deleteList(list.id);
+          if (!mounted.current) return;
+          if (!result.ok) {
+            toast(result.detail, 'err');
+            return;
+          }
+          await onDone?.();
+          if (!mounted.current) return;
+          toast('Lista excluída.');
+          router.refresh();
+        } catch (error) {
+          unstable_rethrow(error);
+          if (mounted.current) toast(DELETE_FAILED_DETAIL, 'err');
+        } finally {
+          pending.current = false;
+        }
+      },
+    });
+  };
 }
 
-// lists: [{ ...lista, clientName }]
+/** @param {{ lists: import('./queries.server').ListSummaryResponse[] }} props */
 export function ListsTable({ lists }) {
-  const [rows, setRows] = useState(lists);
   const [q, setQ] = useState('');
   const [status, setStatus] = useState('all');
-  const toast = useToast();
   const del = useDeleteList();
-  const shown = useMemo(() => rows.filter((l) => {
-    const done = l.bought === l.total;
-    if (status === 'open' && done) return false;
-    if (status === 'done' && !done) return false;
+  const shown = useMemo(() => lists.filter((l) => {
+    if (status === 'open' && l.completed) return false;
+    if (status === 'done' && !l.completed) return false;
     return norm(`${l.name} ${l.clientName}`).includes(norm(q.trim()));
-  }), [rows, q, status]);
+  }), [lists, q, status]);
 
-  if (!rows.length) return <EmptyLists />;
+  if (!lists.length) return <EmptyLists />;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
       <p className="meta" style={{ margin: 0 }}>{plural(shown.length, 'lista', 'listas')}</p>
@@ -50,13 +83,13 @@ export function ListsTable({ lists }) {
             {shown.map((l) => (
               <tr key={l.id}>
                 <td className="main"><div className="who"><div><Link href={`/listas/${l.id}`}>{l.name}</Link><span className="sub">{l.clientName}</span></div></div></td>
-                <td data-label="Progresso"><div style={{ display: 'grid', gap: 5, minWidth: 120 }}><span className="num" style={{ fontSize: 13 }}>{l.bought} de {l.total} comprados</span><Progress total={l.total} done={l.bought} /></div></td>
-                <td data-label="Situação"><StatusBadge total={l.total} done={l.bought} /></td>
-                <td data-label="Atualizada">{l.updated}</td>
+                <td data-label="Progresso"><div style={{ display: 'grid', gap: 5, minWidth: 120 }}><span className="num" style={{ fontSize: 13 }}>{l.boughtProducts} de {l.totalProducts} comprados</span><Progress total={l.totalProducts} done={l.boughtProducts} /></div></td>
+                <td data-label="Situação"><StatusBadge total={l.totalProducts} done={l.boughtProducts} completed={l.completed} /></td>
+                <td data-label="Atualizada">{formatUpdatedAt(l.updatedAt)}</td>
                 <td className="actions-cell"><div className="actions">
                   <IconButton href={`/listas/${l.id}`} icon="eye" label={`Abrir ${l.name}`} />
                   <IconButton href={`/listas/${l.id}/editar`} icon="edit" label={`Editar ${l.name}`} />
-                  <IconButton danger icon="trash" label={`Excluir ${l.name}`} onClick={() => del(l, () => { setRows((r) => r.filter((x) => x.id !== l.id)); toast('Lista excluída.'); })} />
+                  <IconButton danger icon="trash" label={`Excluir ${l.name}`} onClick={() => del(l)} />
                 </div></td>
               </tr>
             ))}
@@ -82,8 +115,8 @@ export function EmptyLists({ clientName, newHref = '/listas/nova' }) {
 
 const updatedText = (u) => (/^\d/.test(u) ? `em ${u}` : u.toLowerCase());
 
+/** @param {{ lists: import('./queries.server').ListSummaryResponse[], onDeleted?: (id: string) => void }} props */
 export function ListCards({ lists, onDeleted }) {
-  const toast = useToast();
   const del = useDeleteList();
   return (
     <div className="lists">
@@ -93,17 +126,17 @@ export function ListCards({ lists, onDeleted }) {
             <h3><Link href={`/listas/${l.id}`}>{l.name}</Link></h3>
             <div className="actions">
               <IconButton href={`/listas/${l.id}/editar`} icon="edit" label={`Editar ${l.name}`} />
-              <IconButton danger icon="trash" label={`Excluir ${l.name}`} onClick={() => del(l, () => { onDeleted(l.id); toast('Lista excluída.'); })} />
+              <IconButton danger icon="trash" label={`Excluir ${l.name}`} onClick={() => del(l, () => onDeleted?.(l.id))} />
             </div>
           </div>
           <p>{l.description}</p>
           <div style={{ display: 'grid', gap: 6 }}>
-            <Progress total={l.total} done={l.bought} />
-            <div className="nums"><span>{l.bought} de {l.total} comprados</span><span>{l.amount}</span></div>
+            <Progress total={l.totalProducts} done={l.boughtProducts} />
+            <div className="nums"><span>{l.boughtProducts} de {l.totalProducts} comprados</span><span>{brl(l.estimatedTotal)}</span></div>
           </div>
           <div className="foot">
-            <span className="meta">Atualizada {updatedText(l.updated)}</span>
-            {l.bought === l.total ? <span className="badge badge-done">Concluída</span> : <Button href={`/listas/${l.id}`} variant="ghost" size="sm">Abrir lista</Button>}
+            <span className="meta">Atualizada {updatedText(formatUpdatedAt(l.updatedAt))}</span>
+            {l.completed ? <StatusBadge total={l.totalProducts} done={l.boughtProducts} completed={l.completed} /> : <Button href={`/listas/${l.id}`} variant="ghost" size="sm">Abrir lista</Button>}
           </div>
         </article>
       ))}
@@ -114,10 +147,12 @@ export function ListCards({ lists, onDeleted }) {
 export function ListForm({ list, clients, defaultClientId = '' }) {
   const router = useRouter();
   const del = useDeleteList();
-  const f = useDemoForm({
+  const f = useApiForm({
     initial: { nome: list?.name || '', desc: list?.description || '', cli: list?.clientId || defaultClientId },
     rules: { nome: { required: true }, cli: { required: 'Escolha o cliente desta lista.' } },
-    onSuccess: (v, { go }) => go(`/listas/${list?.id || 'lista-da-casa'}`, 'Lista salva.'),
+    action: (v) => saveList(list?.id ?? null, { name: v.nome, description: v.desc.trim() || null, clientId: v.cli }),
+    fieldMap: { name: 'nome', description: 'desc', clientId: 'cli' },
+    onSuccess: (saved, values, { go }) => go(`/listas/${saved.id}`, 'Lista salva.'),
   });
   const [a, b] = splitTitle(f.values.nome.trim() || 'Lista de compras da casa');
   return (
@@ -129,7 +164,7 @@ export function ListForm({ list, clients, defaultClientId = '' }) {
       </div>
       <Textarea label="Descrição" optional placeholder="Ex.: Itens para a casa nova, separados por ambiente." {...f.field('desc')} />
       <Select label="Cliente" placeholder="Selecione um cliente" options={clients.map((c) => ({ value: c.id, label: c.name }))}
-        hint={<>Cliente novo? <Link href="/clientes/novo">Cadastre aqui</Link>.</>} {...f.field('cli')} />
+        hint={clients.length ? <>Cliente novo? <Link href="/clientes/novo">Cadastre aqui</Link>.</> : <Link href="/clientes/novo">Cadastre um cliente</Link>} {...f.field('cli')} />
       <div className="formfoot">
         {list && <Button variant="text-danger" icon="trash" className="left" onClick={() => del(list, () => { flash('Lista excluída.'); router.push(`/clientes/${list.clientId}`); })}>Excluir lista</Button>}
         <Button variant="ghost" href={list ? `/listas/${list.id}` : '/listas'}>Cancelar</Button>

@@ -12,8 +12,11 @@ import RoomTable from './RoomTable';
 import ClientView from './ClientView';
 import { ListNote, ListSignature } from './ListFooter';
 
-export default function ShoppingList({ list, client, rooms: initialRooms, empty = false }) {
-  const [rooms, setRooms] = useState(empty ? [] : initialRooms);
+/** @param {{ list: import('../listas/queries.server').ListDetailResponse, signature: { officeName: string, architectNames: string[] } }} props */
+export default function ShoppingList({ list, signature }) {
+  // Local product edits remain temporary until inline persistence is connected.
+  const [localRooms, setLocalRooms] = useState(null);
+  const rooms = localRooms ?? list.rooms;
   const [mode, setMode] = useState('edit'); // 'edit' | 'view' (visão do cliente)
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
   const toast = useToast();
@@ -21,25 +24,26 @@ export default function ShoppingList({ list, client, rooms: initialRooms, empty 
   const base = `/listas/${list.id}`;
 
   const stats = useMemo(() => {
-    const items = rooms.flatMap((r) => r.items);
-    const done = items.filter((i) => i.bought).length;
+    if (!localRooms) return list.stats;
+    const products = localRooms.flatMap((r) => r.products);
+    const done = products.filter((i) => i.bought).length;
     let total = 0, rest = 0;
-    items.forEach((i) => { const v = (i.price || 0) * (i.qty || 1); total += v; if (!i.bought) rest += v; });
-    return { n: items.length, done, pend: items.length - done, total, rest };
-  }, [rooms]);
+    products.forEach((i) => { const v = (i.unitPrice ?? 0) * i.quantity; total += v; if (!i.bought) rest += v; });
+    return { totalProducts: products.length, boughtProducts: done, pendingProducts: products.length - done, estimatedTotal: total, remainingTotal: rest };
+  }, [localRooms, list.stats]);
 
-  const updateItem = (roomIdx, id, patch) => setRooms((rs) => rs.map((r, i) => (i !== roomIdx ? r : { ...r, items: r.items.map((it) => (it.id === id ? { ...it, ...patch } : it)) })));
-  const removeItem = (roomIdx, id) => { setRooms((rs) => rs.map((r, i) => (i !== roomIdx ? r : { ...r, items: r.items.filter((it) => it.id !== id) }))); toast('Item removido'); };
+  const updateItem = (roomIdx, id, patch) => setLocalRooms((rs) => (rs ?? list.rooms).map((r, i) => (i !== roomIdx ? r : { ...r, products: r.products.map((it) => (it.id === id ? { ...it, ...patch } : it)) })));
+  const removeItem = (roomIdx, id) => { setLocalRooms((rs) => (rs ?? list.rooms).map((r, i) => (i !== roomIdx ? r : { ...r, products: r.products.filter((it) => it.id !== id) }))); toast('Item removido'); };
 
-  const visibleRooms = rooms.map((r, idx) => ({ ...r, idx, shown: r.items.filter((it) => filter === 'all' || (filter === 'done') === it.bought) }))
+  const visibleRooms = rooms.map((r, idx) => ({ ...r, idx, shown: r.products.filter((it) => filter === 'all' || (filter === 'done') === it.bought) }))
     .filter((r) => filter === 'all' || r.shown.length);
 
   return (
     <div className="listdoc">
-      <Crumbs items={[{ href: '/clientes', label: 'Clientes' }, { href: `/clientes/${client.id}`, label: client.name }, { label: list.name }]} />
+      <Crumbs items={[{ href: '/clientes', label: 'Clientes' }, { href: `/clientes/${list.clientId}`, label: list.clientName }, { label: list.name }]} />
       <header style={{ paddingTop: 18 }}>
         <h1>{t1}{t2 && <> <em>{t2}</em></>}</h1>
-        <p className="client">Cliente · <Link href={`/clientes/${client.id}`}><b>{client.name}</b></Link></p>
+        <p className="client">Cliente · <Link href={`/clientes/${list.clientId}`}><b>{list.clientName}</b></Link></p>
         <div className="meta">Separamos opções para cada item da sua casa. Clique para abrir a loja e veja nossas observações ao lado.</div>
         <div className="modebar">
           <span><b>{mode === 'edit' ? 'Modo edição' : 'Visão do cliente'}</b> · {mode === 'edit' ? 'só quem tem permissão de editar vê esta tela' : 'é assim que seu cliente vê a lista'}</span>
@@ -47,26 +51,26 @@ export default function ShoppingList({ list, client, rooms: initialRooms, empty 
         </div>
       </header>
 
-      {mode === 'edit' && stats.n > 0 && (
+      {mode === 'edit' && stats.totalProducts > 0 && (
         <div>
           <div className="listbar">
             <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
-              options={[{ value: 'all', label: 'Todos', count: stats.n }, { value: 'pend', label: 'Pendentes', count: stats.pend }, { value: 'done', label: 'Comprados', count: stats.done }]} />
+              options={[{ value: 'all', label: 'Todos', count: stats.totalProducts }, { value: 'pend', label: 'Pendentes', count: stats.pendingProducts }, { value: 'done', label: 'Comprados', count: stats.boughtProducts }]} />
             <div className="btns">
               <Button href={`${base}/editar`} variant="ghost" size="sm" icon="edit">Editar lista</Button>
               <Button href={`${base}/produtos/novo`} size="sm" icon="plus">Adicionar produto</Button>
             </div>
           </div>
           <div className="summary">
-            <div><span className="k">Itens</span><span className="v">{stats.n}</span></div>
-            <div><span className="k">Comprados</span><span className="v">{stats.done}</span></div>
-            <div><span className="k">Pendentes</span><span className="v">{stats.pend}</span></div>
-            <div className="bar"><span>Estimado {brl(stats.total)} · faltam {brl(stats.rest)}</span><span className="progress"><i style={{ width: `${stats.n ? Math.round((100 * stats.done) / stats.n) : 0}%` }} /></span></div>
+            <div><span className="k">Itens</span><span className="v">{stats.totalProducts}</span></div>
+            <div><span className="k">Comprados</span><span className="v">{stats.boughtProducts}</span></div>
+            <div><span className="k">Pendentes</span><span className="v">{stats.pendingProducts}</span></div>
+            <div className="bar"><span>Estimado {brl(stats.estimatedTotal)} · faltam {brl(stats.remainingTotal)}</span><span className="progress"><i style={{ width: `${stats.totalProducts ? Math.round((100 * stats.boughtProducts) / stats.totalProducts) : 0}%` }} /></span></div>
           </div>
         </div>
       )}
 
-      {!stats.n ? (
+      {!stats.totalProducts ? (
         <div style={{ marginTop: 24 }}>
           <EmptyState icon="bag" title="Esta lista ainda não tem produtos" text="Adicione os produtos por ambiente, com os links das lojas e as suas observações.">
             <Button href={`${base}/produtos/novo`} icon="plus">Adicionar primeiro produto</Button>
@@ -76,9 +80,9 @@ export default function ShoppingList({ list, client, rooms: initialRooms, empty 
         <ClientView rooms={rooms} />
       ) : visibleRooms.length ? (
         visibleRooms.map((r) => (
-          <RoomTable key={r.name} room={r} items={r.shown} showAdd={filter === 'all'} listBase={base}
+          <RoomTable key={r.id} room={r} products={r.shown} showAdd={filter === 'all'} listBase={base}
             onToggle={(id, v) => { updateItem(r.idx, id, { bought: v }); toast(v ? 'Marcado como comprado' : 'Voltou para pendentes'); }}
-            onQty={(id, q) => { updateItem(r.idx, id, { qty: q }); toast('Salvo'); }}
+            onQty={(id, q) => { updateItem(r.idx, id, { quantity: q }); toast('Salvo'); }}
             onRemove={(id) => removeItem(r.idx, id)} />
         ))
       ) : (
@@ -86,7 +90,7 @@ export default function ShoppingList({ list, client, rooms: initialRooms, empty 
       )}
 
       <ListNote />
-      <ListSignature />
+      <ListSignature signature={signature} />
     </div>
   );
 }

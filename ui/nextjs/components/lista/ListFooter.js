@@ -9,14 +9,14 @@ export function ListNote() {
   );
 }
 
-export function ListSignature() {
+/** @param {{ signature: { officeName: string, architectNames: string[] } }} props */
+export function ListSignature({ signature }) {
   return (
     <div className="sign">
       <div className="sg">
-        <span className="logo">FLUIAR</span>
-        <span className="arqs"><span>Arq. Paula Hooper</span><span>Arq. Isabela Machado</span></span>
+        <span className="logo">{signature.officeName}</span>
+        <span className="arqs">{signature.architectNames.map((name, index) => <span key={index}>{name}</span>)}</span>
       </div>
-      <span className="ct">olafluiar@gmail.com | @fluiar</span>
     </div>
   );
 }
