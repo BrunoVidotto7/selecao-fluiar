@@ -1,15 +1,18 @@
-# Seleção Fluiar — telas do sistema de listas de compras
+# Seleção Fluiar — clientes e listas de compras
 
-Protótipo visual (sem backend) do sistema para arquitetas e designers de interiores gerenciarem clientes e listas de compras. Todas as telas seguem a identidade da página original "Seleção Fluiar".
+Interface para arquitetas e designers de interiores gerenciarem clientes e listas
+de compras por ambiente. A aplicação Next.js usa a API REST em `../api/` para
+autenticação e persistência, mantendo a identidade da página original "Seleção Fluiar".
 
-Este pacote tem duas versões das mesmas telas:
+Este pacote tem duas versões:
 
 | Pasta | O que é | Para quem |
 |---|---|---|
 | `html/` | HTML + CSS + JavaScript puro. Abra `html/index.html` no navegador. | Avaliar o design rapidamente, sem instalar nada. |
-| `nextjs/` | Next.js 15 (App Router) com React 19, dividido em componentes. | Base para o desenvolvedor implementar o sistema. |
+| `nextjs/` | Next.js 15 (App Router) com React 19, integrado à API. | Usar e desenvolver o sistema persistente. |
 
-Os dados são fictícios e nada é salvo. Botões e formulários funcionam só como protótipo (validação visual, avisos, confirmações).
+Somente a versão HTML continua sendo um protótipo com dados fictícios. A versão
+Next.js não usa dados de demonstração nem simula salvamentos.
 
 ---
 
@@ -43,6 +46,7 @@ npm run dev        # abre em http://localhost:3000
 ```
 
 Para produção: `npm run build` e `npm start`.
+Pare o servidor de desenvolvimento antes do build: ambos gravam em `.next/`.
 
 ### Configuração da API
 
@@ -62,6 +66,45 @@ O JWT fica somente no cookie httpOnly `fluiar_session`, nunca no armazenamento d
 navegador ou nas respostas das ações. O cookie de sessão não tem prazo persistente;
 ao escolher lembrar o acesso, ele usa o `expiresAt` enviado pela API. Apenas ações
 do servidor podem gravar ou apagar esse cookie, não a renderização de páginas.
+
+### Fluxos persistentes
+
+- Cadastro e login abrem a área privada do escritório. Recuperação de senha usa
+  o link `/nova-senha?token=...` enviado por e-mail; envio e reenvio aguardam a API.
+- Clientes têm suas próprias listas. Crie uma lista, abra **Gerenciar ambientes**
+  e adicione, renomeie ou reordene os ambientes antes de cadastrar produtos.
+- Clientes, listas, ambientes e produtos usam UUIDs da API. A pré-seleção de
+  ambiente usa `?ambiente=<UUID>`; a de cliente usa `?cliente=<UUID>`.
+- Produtos guardam quantidade, preço opcional, observações internas e links de
+  loja com suas notas. O formulário salva o produto antes de enviar/remover a
+  imagem. Se a imagem falhar, o produto já salvo permanece e a tentativa seguinte
+  reutiliza seu UUID, sem duplicá-lo.
+- Quantidade e marcação de compra aguardam a gravação. Um rascunho de quantidade
+  inválido não vira uma compra. Produtos e totais exibidos vêm das leituras
+  atualizadas da API, não de cálculos otimistas.
+- **Configurações** salva perfil e senha separadamente. Alterar a senha substitui
+  o cookie pelo novo token antes de anunciar sucesso. Sair limpa a sessão.
+- Formulários usam `useApiForm`, ações do servidor e mensagens da API. Falhas
+  mostram `detail` no aviso e `errors[field]` junto ao campo. Duplicatas ficam
+  bloqueadas durante o envio; sair da tela descarta avisos e navegação tardios.
+
+### Compartilhar com o cliente
+
+1. Na lista, mesmo vazia, clique em **Copiar link**. Isso copia o endereço público
+   `/l/<token>` na origem do frontend, sem gerar outro token.
+2. Quem abrir o endereço não precisa entrar. A página mostra nome e descrição da
+   lista, ambientes com produtos, quantidades, compras, links e notas das lojas,
+   além do nome do escritório e de seus membros.
+3. A página pública não mostra preços, imagens, IDs, observações internas ou dados
+   de contato do cliente. Não tem edição, navegação privada nem envia a sessão à
+   API. Cada leitura é sem cache; token inexistente, inválido ou antigo retorna 404.
+4. **Gerar novo link** pede confirmação: o endereço anterior deixará de funcionar.
+   Só após a API confirmar a alteração o novo token passa a ser mostrado e copiado.
+   Envie o novo endereço ao cliente. Uma falha mantém o link anterior.
+5. Se a área de transferência for negada ou indisponível, selecione o campo
+   **Link público** e copie manualmente. O aplicativo não anuncia uma cópia que falhou.
+6. Se a leitura da API falhar, **Tentar novamente** solicita uma nova leitura no
+   servidor e reinicia a tela de erro.
 
 ### Convites pelo Mailpit
 
@@ -97,51 +140,81 @@ nextjs/
 │   ├── styles/app.css             Design system (tokens de cor, tipografia, componentes)
 │   ├── styles/lista.css           Regras da página original da lista
 │   ├── (auth)/                    Telas de acesso (layout com painel da marca)
-│   │   ├── login/  cadastro/  recuperar-senha/  nova-senha/
+│   │   ├── login/  cadastro/  recuperar-senha/  nova-senha/  convite/
+│   ├── l/[shareToken]/            Lista pública somente para leitura
 │   └── (app)/                     Telas internas (layout com menu lateral)
 │       ├── dashboard/
 │       ├── clientes/              lista · novo/ · [id]/ · [id]/editar/
 │       ├── listas/                lista · nova/ · [id]/ · [id]/editar/
+│       │   ├── [id]/ambientes/    Gerenciamento de ambientes
 │       │   └── [id]/produtos/     novo/ · [produtoId]/editar/
-│       └── configuracoes/
+│       ├── configuracoes/
+│       └── escritorio/
 ├── components/
 │   ├── ui/            Icon, Button, Fields (inputs, senha, segmentado, busca), Display (cabeçalho, estado vazio, selos…)
-│   ├── layout/        AppShell (menu desktop + gaveta mobile), AuthLayout, ProtoNav
+│   ├── layout/        AppShell (menu desktop + gaveta mobile), AuthLayout
 │   ├── feedback/      FeedbackProvider: avisos (toast) e confirmação de exclusão
-│   ├── forms/         useDemoForm: estado e validação dos formulários
+│   ├── forms/         useApiForm: formulários assíncronos e erros por campo
 │   ├── auth/          Formulários de login, cadastro e senha
 │   ├── clientes/      Tabela, formulário e exclusão de clientes
 │   ├── listas/        Tabela, cartões e formulário de listas
-│   ├── lista/         Página da lista de compras (ShoppingList, RoomTable, ClientView…)
+│   ├── ambientes/     Criação, nomes e ordem dos ambientes
+│   ├── lista/         Lista privada, exibição pública e controles de compartilhamento
 │   ├── produtos/      Formulário de produto
 │   └── configuracoes/ Formulário de configurações
-└── lib/
-    ├── data.js        Dados fictícios — trocar pelas chamadas reais à API
-    ├── format.js      Moeda, iniciais, máscara de telefone…
-    └── validation.js  Regras de validação dos formulários
+├── lib/
+│   ├── api.server.js      Chamadas HTTP na origem fixa da API e erros esperados
+│   ├── session.server.js  Cookie de sessão httpOnly
+│   ├── route-input.js     Validação completa de UUIDs e tokens opacos
+│   ├── format.js          Moeda, iniciais, máscara de telefone…
+│   └── validation.js      Regras de validação dos formulários
+└── test-support/fixtures.js  Dados com o formato da API, somente para testes
 ```
 
 ### Rotas
 
 | Tela | Rota |
 |---|---|
-| Login | `/login` (erro: `/login?estado=erro`) |
+| Login | `/login` |
 | Cadastro | `/cadastro` |
-| Recuperar senha | `/recuperar-senha` (enviado: `?estado=enviado`) |
-| Nova senha | `/nova-senha` |
+| Recuperar senha | `/recuperar-senha` |
+| Nova senha | `/nova-senha?token=...` |
+| Convite | `/convite?token=...` |
 | Dashboard | `/dashboard` |
 | Clientes | `/clientes` · `/clientes/novo` · `/clientes/[id]` · `/clientes/[id]/editar` |
 | Listas | `/listas` · `/listas/nova` · `/listas/[id]` · `/listas/[id]/editar` |
+| Ambientes | `/listas/[id]/ambientes` |
 | Produtos | `/listas/[id]/produtos/novo` · `/listas/[id]/produtos/[produtoId]/editar` |
+| Lista pública | `/l/[shareToken]` |
 | Configurações | `/configuracoes` |
+| Escritório e convites | `/escritorio` |
 
-Acrescente `?estado=vazio` ao dashboard, clientes, detalhe do cliente, listas e lista para ver os estados vazios.
+Estados vazios e erros vêm da API. Os antigos parâmetros `?estado=` não controlam
+a aplicação Next.js.
 
-### Para implementar de verdade
+### Testes e verificações
 
-- Troque os dados de `lib/data.js` por chamadas à API ou ao banco de dados.
-- Em `components/forms/useDemoForm.js`, o `setTimeout` simula o servidor; troque pela requisição real no `onSuccess`.
-- Exclusões e marcações de "comprado" hoje só mudam o estado da tela; ligue-as à API.
-- Todas as listas usam os mesmos produtos de exemplo (`SAMPLE_ROOMS`).
-- Remova o `ProtoNav` (botão "Telas") do `app/layout.js` antes de publicar.
-- Autenticação não está implementada: as telas de acesso apenas redirecionam.
+Execute em `ui/nextjs/` a partir da raiz do repositório, ou em `nextjs/` a partir
+desta pasta:
+
+```bash
+npx vitest run components/lista/ShareControls.test.js  # teste afetado durante a implementação
+npx vitest run components/forms/useApiForm.test.js    # envios assíncronos e erros
+npm run lint
+npm test
+npm run build                                        # após parar o servidor de desenvolvimento
+```
+
+Os testes usam Vitest, Testing Library e jsdom, com DTOs completos em
+`test-support/fixtures.js`. Não há testes automatizados de ponta a ponta; verificar
+o fluxo real e o layout no navegador continua necessário. Na execução dividida
+por tarefas, o controlador reúne as verificações finais completas.
+
+Leia [`AGENTS.md`](AGENTS.md) antes de editar. Não adicione ou atualize dependências
+nem ferramentas sem aprovação; quando aprovado, use versões exatas publicadas há
+pelo menos 7 dias. Não grave segredos ou edite arquivos gerados. Preserve o
+histórico de revisão em `nextjs/docs/quality-ledger.md`.
+
+Avisos conhecidos e aceitos: duas ocorrências de `no-img-element` no lint
+(`RoomTable.js` e `ProductForm.js`), inferência da raiz do workspace no build
+e o aviso de PostCSS dentro do Next 15. Não os corrija como efeito colateral.

@@ -533,7 +533,7 @@ Assert a name-only or case/whitespace-normalized unchanged-email update sends no
 - Produces: `rotateShareToken(listId) -> Promise<ActionResult<ShareTokenResponse>>`; `ShareControls({listId,shareToken})`.
 - Produces: public `/l/[shareToken]` rendering only `PublicListResponse` fields: `{name,description,rooms:[{name,products:[{name,quantity,bought,links}]}],signature:{officeName,architectNames}}`.
 
-- [ ] **Step 1: Write failing share/public/privacy tests.**
+- [x] **Step 1: Write failing share/public/privacy tests.**
 
 ```js
 test('copying does not rotate an existing share token', async () => {
@@ -556,11 +556,11 @@ test('an old rotated token is not served from a Next cache', async () => {
 ```
 
 Assert rotation requires explicit confirmation warning that the old link stops working, sends one POST, and updates the displayed/copied token only after success; a failed POST keeps the old link. Clipboard denial/insecure context leaves a read-only selectable link field and useful error rather than announcing a copy. Empty public list has no editor CTA or private navigation; public GET carries no Bearer header even with a stale cookie. Test missing/malformed token 404, resource 404, transport failure retry boundary, API office/member signature and object-shaped links. Final route tests use API UUID fixtures and include clients, lists, rooms, nested products and public tokens.
-- [ ] **Step 2: Run RED.** `npx vitest run components/lista/actions.test.js components/lista/ShareControls.test.js components/lista/ShoppingList.test.js app/l/'[shareToken]'/page.test.js app/routes.test.js`.
-- [ ] **Step 3: Implement public sharing.** Public page lives outside `(app)`, fetches only `/api/public/lists/{token}` with public/no-store policy and generic metadata (no token in title). Reuse `ClientView`/`ListSignature`, not the authenticated `ShoppingList` component. Never pass private `ListDetailResponse` or a session JWT into this route. `ShareControls` derives its absolute frontend URL in a browser event; first render must not depend on `window`. Show controls for lists with or without products. After rotation keep the returned opaque share token locally until refreshed props agree, then copy/display that value; ordinary copy never rotates.
-- [ ] **Step 4: Retire demo-only modules and document the real workflow.** Search all UI app/component/lib/test imports for `lib/data`, `useDemoForm`, `ProtoNav`, fake person IDs and `estado`; migrate remaining tests to `test-support/fixtures.js` and remove only the now-unused modules named above. Remove `?estado=` support, not ordinary route query inputs. Update README and UI rules to describe async forms/server calls, real auth, room IDs, environment setup and current test commands; preserve unrelated boundaries/warnings. No dependency or lockfile churn is needed.
-- [ ] **Step 5: Run GREEN.** Repeat Step 2 plus `npx vitest run components/forms/useApiForm.test.js`; all pass.
-- [ ] **Step 6: Review and commit.** `git commit -m "Add public list sharing and retire demo data."`
+- [x] **Step 2: Run RED.** `npx vitest run components/lista/actions.test.js components/lista/ShareControls.test.js components/lista/ShoppingList.test.js app/l/'[shareToken]'/page.test.js app/routes.test.js`.
+- [x] **Step 3: Implement public sharing.** Public page lives outside `(app)`, fetches only `/api/public/lists/{token}` with public/no-store policy and generic metadata (no token in title). Reuse `ClientView`/`ListSignature`, not the authenticated `ShoppingList` component. Never pass private `ListDetailResponse` or a session JWT into this route. `ShareControls` derives its absolute frontend URL in a browser event; first render must not depend on `window`. Show controls for lists with or without products. After rotation keep the returned opaque share token locally until refreshed props agree, then copy/display that value; ordinary copy never rotates.
+- [x] **Step 4: Retire demo-only modules and document the real workflow.** Search all UI app/component/lib/test imports for `lib/data`, `useDemoForm`, `ProtoNav`, fake person IDs and `estado`; migrate remaining tests to `test-support/fixtures.js` and remove only the now-unused modules named above. Remove `?estado=` support, not ordinary route query inputs. Update README and UI rules to describe async forms/server calls, real auth, room IDs, environment setup and current test commands; preserve unrelated boundaries/warnings. No dependency or lockfile churn is needed.
+- [x] **Step 5: Run GREEN.** Repeat Step 2 plus `npx vitest run components/forms/useApiForm.test.js`; all pass.
+- [x] **Step 6: Review and commit.** `git commit -m "Add public list sharing and retire demo data."`
 
 ## Final Integration Gate (Both Plans)
 

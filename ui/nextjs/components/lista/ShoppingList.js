@@ -11,6 +11,7 @@ import { useToast } from '../feedback/Feedback';
 import { brl, splitTitle } from '@/lib/format';
 import RoomTable from './RoomTable';
 import ClientView from './ClientView';
+import ShareControls from './ShareControls';
 import { ListNote, ListSignature } from './ListFooter';
 import { patchProduct, deleteProduct } from '../produtos/actions';
 
@@ -84,6 +85,8 @@ function ShoppingListContent({ list, signature }) {
           <button type="button" className="btn btn-sm" onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}>{mode === 'edit' ? 'Ver como cliente' : 'Voltar a editar'}</button>
         </div>
       </header>
+
+      <ShareControls listId={list.id} shareToken={list.shareToken} />
 
       {mode === 'edit' && (
         <div>

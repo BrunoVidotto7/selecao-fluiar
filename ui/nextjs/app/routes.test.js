@@ -21,7 +21,9 @@ import SignupPage from './(auth)/cadastro/page';
 import InvitationPage from './(auth)/convite/page';
 import RootError from './error';
 import PrivateError from './(app)/error';
-import { CLIENT, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
+import PublicListPage from './l/[shareToken]/page';
+import RoomsPage from './(app)/listas/[id]/ambientes/page';
+import { CLIENT, LIST, ME, OFFICE, PRODUCT, PUBLIC_LIST, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
@@ -38,6 +40,10 @@ vi.mock('@/components/convite/actions', () => ({ acceptInvitation: vi.fn() }));
 vi.mock('@/components/configuracoes/actions', () => ({ updateProfile: vi.fn(), changePassword: vi.fn() }));
 vi.mock('@/components/produtos/actions', () => ({
   saveProduct: vi.fn(), patchProduct: vi.fn(), deleteProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(),
+}));
+vi.mock('@/components/lista/actions', () => ({ rotateShareToken: vi.fn() }));
+vi.mock('@/components/ambientes/actions', () => ({
+  createRoom: vi.fn(), renameRoom: vi.fn(), deleteRoom: vi.fn(), reorderRooms: vi.fn(),
 }));
 
 const props = (params) => ({ params: Promise.resolve(params), searchParams: Promise.resolve({}) });
@@ -66,9 +72,34 @@ test('the not-found page explains the problem and links to the dashboard', () =>
 test.each([
   ['client', ClientPage, { id: 'inexistente' }],
   ['list', ListPage, { id: 'inexistente' }],
-  ['product', EditProductPage, { id: 'lista-da-casa', produtoId: 'inexistente' }],
+  ['room list', RoomsPage, { id: 'inexistente' }],
+  ['product', EditProductPage, { id: LIST.id, produtoId: 'inexistente' }],
+  ['public token', PublicListPage, { shareToken: 'inexistente' }],
 ])('an unknown %s id shows the not-found page', async (_, Page, params) => {
   await expect(Page(props(params))).rejects.toThrow('NEXT_NOT_FOUND');
+});
+
+test('the public token route displays the read-only API DTO without entering the private layout', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify(PUBLIC_LIST)));
+  render(await PublicListPage(props({ shareToken: LIST.shareToken })));
+  expect(screen.queryByRole('heading', { name: LIST.name })).not.toBeNull();
+  expect(screen.queryByRole('checkbox')).toBeNull();
+  expect(screen.queryByRole('link', { name: /Editar/ })).toBeNull();
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/public/lists/' + LIST.shareToken]);
+  expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBeNull();
+  expect(cookieStore.get).not.toHaveBeenCalled();
+});
+
+test('room management uses list and room UUIDs from the private DTO', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify(LIST)));
+  render(await RoomsPage(props({ id: LIST.id })));
+  expect(screen.getByRole('heading', { name: 'Gerenciar ambientes' })).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Renomear' }));
+  const name = screen.getByRole('textbox', { name: 'Nome do ambiente de Cozinha' });
+  expect(name.value).toBe('Cozinha');
+  expect(name.id).toBe('nome-ambiente-' + ROOM.id);
+  expect(screen.getByRole('link', { name: /Voltar/ }).getAttribute('href')).toBe('/listas/' + LIST.id);
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/lists/' + LIST.id]);
 });
 
 test('a mismatched nested product URL is not found even when its UUID exists elsewhere', async () => {

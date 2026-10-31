@@ -13,6 +13,7 @@ vi.mock('next/navigation', () => ({
   unstable_rethrow: vi.fn(),
 }));
 vi.mock('../produtos/actions', () => ({ patchProduct: vi.fn(), deleteProduct: vi.fn() }));
+vi.mock('./actions', () => ({ rotateShareToken: vi.fn() }));
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -41,6 +42,15 @@ const viewOf = (list) => <FeedbackProvider><ShoppingList list={list} signature={
 const renderFull = () => render(viewOf(fullList));
 const summary = (container) => container.querySelector('.summary')?.textContent || '';
 const EMPTY = 'Esta lista ainda não tem produtos';
+
+test.each([LIST, { ...LIST, rooms: [], stats: {
+  totalProducts: 0, boughtProducts: 0, pendingProducts: 0, estimatedTotal: 0, remainingTotal: 0,
+} }])('sharing controls are available regardless of products', (list) => {
+  render(viewOf(list));
+  expect(screen.queryByRole('button', { name: 'Copiar link' })).not.toBeNull();
+  expect(screen.queryByRole('button', { name: 'Gerar novo link' })).not.toBeNull();
+  expect(screen.getByRole('textbox', { name: 'Link público' }).value).toContain(LIST.shareToken);
+});
 
 test('the API room products render quantities and the persisted estimated and remaining totals', () => {
   const { container } = renderFull();

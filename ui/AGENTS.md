@@ -12,7 +12,9 @@ Authentication, the private layout, office administration, clients, dashboard, s
 and separate room management use the REST API in `../api/`. Settings save profile and password
 independently; password changes replace the httpOnly cookie before success. Product forms save JSON
 before image upload/removal and retain the saved UUID for retries. Inline product controls await API
-writes; refreshed list props own products and totals.
+writes; refreshed list props own products and totals. Public `/l/[shareToken]` lists are read-only
+and use the public API without a session. Copying a link never rotates it; rotation requires
+confirmation because the old link stops working.
 
 ## Commands
 
@@ -40,14 +42,18 @@ Only what the file names do not tell you (paths relative to `ui/nextjs/`):
 ```
 app/(auth)/                    login, cadastro, recuperar-senha, nova-senha (layout with brand panel)
 app/(app)/                     internal screens (layout = AppShell: side menu, mobile drawer)
+app/l/[shareToken]/            public read-only list, outside the authenticated layout
 app/styles/app.css             design tokens (CSS variables) and every shared class
 app/styles/lista.css           rules copied from the original list page, scoped to .listdoc
 components/ui/                 Button, Fields (TextInput, Select, ...), Display (PageHeader, EmptyState, ...), Icon
 components/feedback/Feedback.js  useToast, useConfirm (delete confirmation), flash
-components/forms/useDemoForm.js  form state and validation; a setTimeout fakes the server
-components/forms/useApiForm.js   async forms and API field errors; authentication uses this hook
-lib/data.js                    all fake data; replacing it with API calls is the main pending work
+components/forms/useApiForm.js   async forms, validation, pending guards and API field errors
+components/lista/ShareControls.js  copy links and explicitly rotate opaque share tokens
+lib/api.server.js              fixed-origin server requests, no-store reads and ActionResult
+lib/session.server.js          the httpOnly fluiar_session cookie; only actions write/clear it
+lib/route-input.js             complete UUID and opaque link-token validation
 lib/validation.js              validation rules and their messages
+test-support/fixtures.js       deterministic API-shaped data, imported only by tests
 docs/quality-ledger.md         record of a finished code review; history, not instructions
 ```
 
@@ -56,17 +62,19 @@ docs/quality-ledger.md         record of a finished code review; history, not in
 - Pages in `app/` are Server Components. They read data and pass it as props to the client
   components in `components/` (files that start with `'use client'`). Keep data loading in pages.
 - `params` and `searchParams` are Promises in Next 15. Await them. An unknown id calls `notFound()`.
-- `?estado=` switches remaining demo states such as `vazio` (empty state). Authentication ignores
-  retired demo queries. Pages render the client component with `key={empty ? 'vazio' : 'cheio'}` so its state
-  resets when only the query changes. Do the same on new screens with an empty state.
-- Forms use `useDemoForm` with the inputs from `components/ui/Fields.js`. Copy `ClientForm` in
+- Empty/error states come from API results, not retired `?estado=` switches. Keep ordinary query
+  inputs such as `cliente`, `ambiente` and `token`. Clients, lists, rooms and products use API UUIDs,
+  never names or slugs as identifiers. Key private list owners by UUID, not `updatedAt`.
+- Forms use `useApiForm` with the inputs from `components/ui/Fields.js`. Copy `ClientForm` in
   `components/clientes/Clientes.js`:
 
   ```js
-  const f = useDemoForm({
-    initial: { nome: client?.name || '' },
-    rules: { nome: { required: true } },
-    onSuccess: (values, { go }) => go('/clientes', 'Cliente cadastrado.'),
+  const f = useApiForm({
+    initial: { nome: client?.name || '', email: client?.email || '', tel: client?.phone || '' },
+    rules: { nome: { required: true }, email: { required: true, email: true }, tel: { required: true, phone: true } },
+    fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
+    action: (values) => saveClient(client?.id ?? null, { name: values.nome, email: values.email, phone: values.tel }),
+    onSuccess: (saved, values, { go }) => go('/clientes', 'Cliente cadastrado.'),
   });
   // <form onSubmit={f.submit} noValidate> <TextInput label="Nome completo" {...f.field('nome')} />
   ```
@@ -74,7 +82,8 @@ docs/quality-ledger.md         record of a finished code review; history, not in
   The field key is also the input `id`, and submit focuses the first invalid field by `id`. Keep
   keys unique on the page. Put new rules and messages in `lib/validation.js`, not in components.
 - `go(url, message)` saves the message with `flash()` and navigates; the next screen shows it as a
-  toast. Use `useToast()` for messages on the same screen.
+  toast. Use `useToast()` for messages on the same screen. Await API writes before success feedback;
+  keep duplicate-submit guards and suppress late feedback/navigation after unmount.
 - Deleting a client or a list asks first with `useConfirm()`. Removing an item row in the shopping
   list uses the original page's two-tap button instead (`components/lista/RoomTable.js`).
 - `Button` renders a `next/link` when it has `href`, otherwise a `<button type="button">`. Pick a
@@ -114,19 +123,26 @@ docs/quality-ledger.md         record of a finished code review; history, not in
 
 - Render a page by awaiting it:
   `render(await Page({ params: Promise.resolve({ id }), searchParams: Promise.resolve({}) }))`.
-- A form submit waits 650 ms for the fake server. Call `vi.useFakeTimers()`, click submit, then
-  `act(() => vi.advanceTimersByTime(650))`. Call `vi.useRealTimers()` in `afterEach`.
+- Mock HTTP/session/navigation seams for server pages and actions, with complete API DTO fixtures.
+  Use deferred action promises resolved inside `act()` for pending and unmount tests, not fake server
+  delays. Fake timers are only for real timed behavior such as the two-tap removal confirmation.
 - Wrap the component in `<FeedbackProvider>` when it shows a toast or a confirmation.
 - There are no end-to-end tests. Check layout-only changes in the browser (`npm run dev`) at desktop
   and phone widths.
 
 ## Connecting to the API
 
-Follow "Contrato da API", "Formato de erro" and "Impacto no frontend" in `../api/PLANO-BACKEND.md`.
-Its paths use the old layout: `nextjs/` there is `ui/nextjs/` here. The fixed points:
+Implemented controllers and DTOs under `../api/src/main/java/` are authoritative. Local service
+setup is documented in `../api/README.md`. The fixed points:
 
-- Base URL from `NEXT_PUBLIC_API_URL`. Send `Authorization: Bearer <token>` on every call except
-  `/api/auth/**`. Any 401 sends the user to `/login`.
+- Configure `nextjs/.env.local` with `NEXT_PUBLIC_API_URL=http://localhost:8080`, without `/api`.
+  `apiRequest` keeps requests on that fixed origin, disables caching and redirects protected 401s
+  to `/login`. Protected reads get the JWT from the httpOnly cookie, never browser storage.
+- Pages keep user reads request-scoped. Server Actions expose fixed operations with validated
+  UUID/token arguments and whitelisted bodies; `actionResult` wraps only expected `ApiError`s.
+- Auth, invitation/reset and public share reads do not read or forward the JWT, even with a stale
+  cookie. Public pages use `/api/public/lists/{token}` and only `PublicListResponse` fields:
+  no private IDs, prices, images, internal notes or client contact details.
 - Errors are `ProblemDetail`: show `detail` in a toast and each `errors[field]` under its field.
   API fields are English (`name`, `phone`) and form keys are Portuguese (`nome`, `tel`): map them.
 - The UI and the API show the same validation messages. If you change the wording in
@@ -143,8 +159,8 @@ Ask first:
 Never:
 
 - Edit `node_modules/` or `.next/`.
-- Commit `node_modules/`, `.next/` or `ui/.playwright-mcp/` (browser tool output). There is no root
-  `.gitignore`, so check `git status` before `git add`.
+- Commit `node_modules/`, `.next/` or `ui/.playwright-mcp/` (browser tool output).
+  Check `git status` before `git add`.
 - Fix the Minor findings in `nextjs/docs/quality-ledger.md` or the known warnings below as a side effect
   of another task.
 
@@ -162,6 +178,10 @@ Never:
 3. `npm test`: all tests pass.
 4. If you changed routes, layouts or config: `npm run build` passes.
 5. New behavior has a test. Do not commit unless asked.
+
+For a controller-assigned integration task with an explicit focused-check contract, run its focused
+tests and targeted lint only. The controller owns the final full lint/test/build gate and independent
+review; do not claim either from a task-local result.
 
 If something in `ui/` took more than one attempt to get right, add one line about it to this file.
 
@@ -186,3 +206,5 @@ Product image retries must retain the saved UUID and pending file/removal; mobil
 Inline row guards must survive filtering and be registered before dispatch; key list owners by UUID (not updatedAt) so refresh preserves filters.
 
 Browser email inputs strip surrounding whitespace; test normalized comparisons without assuming the submitted value retains it.
+
+Share controls retain a returned token until refreshed props acknowledge it; pending refreshes must not announce rotation early.

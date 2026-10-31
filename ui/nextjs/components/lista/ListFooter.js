@@ -1,4 +1,4 @@
-// Nota e assinatura do rodapé da lista (texto da página original)
+// Nota da página original e assinatura recebida da API.
 export function ListNote() {
   return (
     <aside className="disc">
