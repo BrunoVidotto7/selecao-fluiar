@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Recuperar senha · Seleção Fluiar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Questrial&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body class="auth">
+<aside class="auth-art"><a class="logo" href="./">FLUIAR<small>Seleção</small></a><div><blockquote>Cada item <em>no seu lugar.</em></blockquote><p class="cap">Organize as listas de compras dos seus clientes por ambiente, com links das lojas, observações e o que já foi comprado.</p></div><div class="ticket" aria-hidden="true"><div><span class="tick on"></span><s>Capacho de sisal</s></div><div><span class="tick on"></span><s>Espremedor de laranja elétrico</s></div><div><span class="tick"></span>Batedeira · 3 opções</div><div><span class="tick"></span>2 cadeiras giratórias</div></div></aside><main class="auth-main" id="main"><div class="auth-box"><div data-when="!enviado" class="auth-box"><header><a class="crumbs" href="login.html"><svg class="ic" aria-hidden="true"><use href="#i-back"/></svg> Voltar para o login</a><h1>Recupere <em>sua senha</em></h1><p class="meta">Informe o e-mail da sua conta. Enviaremos um link para você criar uma senha nova.</p></header><form class="form" data-demo data-step-to="enviado" novalidate><div class="field"><label for="email">E-mail</label><input class="input" id="email" type="email" autocomplete="email" required placeholder="nome@escritorio.com.br"></div><button class="btn btn-block" type="submit" data-busy="Enviando…">Enviar link de recuperação</button></form></div><div data-when="enviado" class="sent" role="status"><span class="art"><svg class="ic" aria-hidden="true"><use href="#i-send"/></svg></span><p class="eyebrow">E-mail enviado</p><h1>Confira sua <em>caixa de entrada</em></h1><p>Enviamos um link para <b id="sent-to">paula.hooper@fluiar.com.br</b>. Ele vale por 1 hora.</p><p class="meta">Não chegou? Veja a pasta de spam ou envie de novo.</p><div class="quick"><a class="btn" href="login.html">Voltar para o login</a><button class="btn btn-ghost" type="button" onclick="toast('Enviamos o link de novo.')">Reenviar e-mail</button></div><p class="demo" style="margin-top:8px">Protótipo: <a href="nova-senha.html">abrir o link do e-mail</a> para ver a tela de nova senha.</p></div></div></main>
+<script src="assets/app.js"></script>
+<script>document.getElementById("email").addEventListener("input",function(e){var v=e.target.value.trim();if(v)document.getElementById("sent-to").textContent=v});</script>
+</body>
+</html>

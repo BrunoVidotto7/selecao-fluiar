@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Configurações · Seleção Fluiar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Questrial&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body data-nav="config">
+<main class="main" id="main"><div class="wrap narrow"><div class="pagehead"><div><p class="eyebrow">Configurações</p><h1>Sua <em>conta</em></h1><p class="meta" style="margin:0">Dados que aparecem para os seus clientes e acesso ao sistema.</p></div></div><form class="settings" data-demo data-success="Alterações salvas." novalidate><section class="card setsec"><div class="about"><h2 class="sec">Perfil</h2><p>Seu nome aparece na assinatura das listas enviadas aos clientes.</p></div><div class="form"><div class="field"><label for="nome">Nome completo</label><input class="input" id="nome" required value="Paula Hooper" autocomplete="name"></div><div class="field"><label for="email">E-mail</label><input class="input" id="email" type="email" required value="paula.hooper@fluiar.com.br" autocomplete="email"><p class="hint" style="margin:0">Se mudar o e-mail, enviaremos um link de confirmação para o endereço novo.</p></div></div></section><section class="card setsec"><div class="about"><h2 class="sec">Senha</h2><p>Deixe em branco para manter a senha atual.</p></div><div class="form"><div class="field"><label for="atual">Senha atual</label><div class="affix"><input class="input" id="atual" name="atual" type="password" autocomplete="current-password" data-required-if="nova" placeholder=""><button class="pw"></button></div></div><div class="row2"><div class="field"><label for="nova">Nova senha</label><div class="affix"><input class="input" id="nova" name="nova" type="password" minlength="8" autocomplete="new-password" data-strength="nova-s" placeholder="Mínimo de 8 caracteres"><button class="pw"></button></div><div class="strength" id="nova-s" aria-hidden="true"><i></i><i></i><i></i></div><p class="hint" id="nova-s-t" style="margin:0">Use pelo menos 8 caracteres, com letras e números.</p></div><div class="field"><label for="nova2">Confirme a nova senha</label><div class="affix"><input class="input" id="nova2" name="nova2" type="password" data-match="nova" autocomplete="new-password" placeholder=""><button class="pw"></button></div></div></div></div></section><div class="savebar"><a class="btn btn-ghost" href="dashboard.html">Cancelar</a><button class="btn" type="submit">Salvar alterações</button></div></form></div></main>
+<script src="assets/app.js"></script>
+</body>
+</html>

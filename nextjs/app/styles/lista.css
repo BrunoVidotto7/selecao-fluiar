@@ -1,0 +1,82 @@
+/* Lista de compras — regras da página original "Seleção Fluiar", mantidas como estão
+   (escopo .listdoc para não interferir nas outras telas). Acréscimos do sistema marcados com "novo". */
+.listdoc header{display:grid;gap:0}
+.listdoc .client{font-family:var(--display);font-weight:500;font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--brass);margin:8px 0 14px}
+.listdoc .client b{font-weight:600;color:var(--sage)}
+.listdoc .client a{color:var(--sage);text-decoration:none}
+.listdoc .client a:hover{text-decoration:underline}
+.listdoc h2{font-family:var(--display);font-weight:600;font-size:14px;letter-spacing:.16em;text-transform:uppercase;margin:40px 0 12px;color:var(--sage);text-wrap:balance}
+.listdoc .tbl table{min-width:520px}
+.listdoc .tbl td{padding:10px 14px;vertical-align:top}
+.listdoc .tbl tbody tr:hover{background:transparent}
+.listdoc th.ck,.listdoc td.ck{width:44px;padding-right:0;text-align:center}
+.listdoc td.ck{padding-top:12px}
+.listdoc th.it{width:38%}
+.listdoc th.qt,.listdoc td.qt{width:64px;text-align:center;padding-left:6px;padding-right:6px}
+.listdoc td.qt{padding-top:7px}
+.listdoc td.it{padding-top:7px;transition:color .25s}
+.qty{width:44px;font:inherit;font-family:var(--display);font-size:13px;font-weight:500;text-align:center;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 2px;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.qty::-webkit-outer-spin-button,.qty::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.qty:hover{border-color:var(--line)}
+.qty:focus{outline:none;border-color:var(--brass)}
+.ro-qty{display:block;padding-top:4px;font-family:var(--display);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+.nmw{display:flex;align-items:center;gap:4px}
+.del{flex:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:3px 6px;border-radius:6px;opacity:0;transition:opacity .2s}
+.listdoc tr:hover .del,.del:focus-visible,.del.armed{opacity:1}
+.del:hover,.del:focus-visible{color:var(--ink);background:var(--line);outline:none}
+.del.armed{font-family:var(--display);font-size:11px;color:var(--paper);background:var(--brass)}
+@media (hover:none){.del{opacity:.6}}
+.listdoc tr.new td{background:var(--bg)}
+.links{display:flex;flex-direction:column;gap:6px;min-width:0}
+.lk{display:flex;align-items:center;gap:8px;min-width:0}
+.lk .chip{flex:none;max-width:55%}
+.listdoc .chip{padding:2px 10px}
+.ro-name{display:block;padding-top:4px;font-weight:500}
+.listdoc tr.done .ro-name,.listdoc tr.done .nm-link{color:var(--done);text-decoration:line-through;text-decoration-color:var(--brass)}
+.ro-note{font-size:13px;color:var(--muted)}
+.ro-none{font-size:13px;color:var(--muted);font-style:italic;padding-top:4px;display:block}
+.mark{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:5px;margin-top:3px}
+.mark.on{background:var(--sage)}
+.mark.on::after{content:"";width:5px;height:9px;border:solid var(--paper);border-width:0 2px 2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.mark.off{border:1.5px solid var(--line)}
+.modebar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:18px;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:var(--head);font-size:13px;color:var(--sage)}
+.modebar b{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.sign{margin-top:28px;padding-top:18px;border-top:1px solid var(--line);display:flex;justify-content:space-between;align-items:baseline;gap:6px 20px;flex-wrap:wrap;font-size:12.5px;color:var(--ink)}
+.sign .logo{font-size:14px}
+.sign .ct{color:var(--muted)}
+.sign .sg{display:flex;flex-direction:column;gap:4px}
+.sign .arqs{font-family:var(--display);font-weight:600;font-size:11.5px;letter-spacing:.04em;display:flex;gap:4px 16px;flex-wrap:wrap}
+.sign .arqs span{white-space:nowrap}
+.listdoc .disc{margin-top:44px}
+
+/* novo: integração com o sistema */
+.listbar{display:flex;align-items:center;justify-content:space-between;gap:12px 16px;flex-wrap:wrap;margin-top:18px}
+.listbar .btns{display:flex;gap:8px;flex-wrap:wrap}
+.summary{display:grid;grid-template-columns:repeat(3,auto) 1fr;gap:4px 28px;align-items:end;margin-top:14px;padding:14px 16px;border:1px solid var(--line);border-radius:10px;background:var(--paper)}
+.summary div{display:grid;gap:2px}
+.summary .k{font-family:var(--display);font-size:10.5px;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.summary .v{font-family:var(--display);font-size:18px;font-weight:500;color:var(--sage);font-variant-numeric:tabular-nums}
+.summary .bar{align-self:center;display:grid;gap:6px;justify-items:end;font-size:12.5px;color:var(--muted)}
+.summary .bar .progress{width:100%;height:5px}
+@media (max-width:620px){.summary{grid-template-columns:repeat(3,minmax(0,1fr))}.summary .bar{grid-column:1/-1;justify-items:start}.summary .v{font-size:16px}}
+.itm{display:flex;gap:10px;align-items:flex-start;min-width:0}
+.itm .thumb{width:36px;height:36px;margin-top:1px}
+.itm .thumb .ic{width:15px;height:15px}
+.itm .txt{flex:1;min-width:0}
+.nm-link{display:block;padding-top:3px;font-weight:500;color:var(--ink);text-decoration:none}
+.nm-link:hover{color:var(--sage);text-decoration:underline}
+.price{display:block;font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.ed{flex:none;color:var(--muted);opacity:0;transition:opacity .2s;display:inline-grid;place-items:center;width:26px;height:24px;border-radius:6px}
+.ed .ic{width:15px;height:15px}
+.listdoc tr:hover .ed,.ed:focus-visible{opacity:1}
+.ed:hover{color:var(--ink);background:var(--line)}
+@media (hover:none){.ed{opacity:.6}}
+.newlink{display:inline-flex;align-items:center;gap:6px;font-size:14px;color:var(--sage);text-decoration:none;opacity:.85}
+.newlink:hover{opacity:1;text-decoration:underline;color:var(--sage)}
+.newlink .ic{width:15px;height:15px}
+.roomhead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:40px 0 12px}
+.roomhead h2{margin:0}
+.roomhead span{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.filtered-empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;margin-top:24px}
+
+.nmw .nm-link{flex:1;min-width:0}

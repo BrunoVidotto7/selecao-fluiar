@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cliente · Seleção Fluiar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Questrial&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body data-nav="clientes">
+<main class="main" id="main"><div class="wrap narrow"><div data-when="!editar"><div class="pagehead"><div><nav class="crumbs" aria-label="Caminho"><a href="clientes.html">Clientes</a> <span aria-hidden="true">/</span> <span aria-current="page">Novo cliente</span></nav><h1>Novo <em>cliente</em></h1><p class="meta" style="margin:0">Depois de salvar, você já pode criar a primeira lista de compras.</p></div></div></div><div data-when="editar"><div class="pagehead"><div><nav class="crumbs" aria-label="Caminho"><a href="clientes.html">Clientes</a> <span aria-hidden="true">/</span> <a href="cliente.html">Sérgio Hooper</a> <span aria-hidden="true">/</span> <span aria-current="page">Editar</span></nav><h1>Editar <em>cliente</em></h1></div></div></div><form class="card card-pad form" data-demo data-next="cliente.html" data-success="Cliente salvo." novalidate><div class="field"><label for="nome">Nome completo</label><input class="input" id="nome" required autocomplete="off" placeholder="Ex.: Marina Duarte" data-edit-value="Sérgio Hooper"></div><div class="row2"><div class="field"><label for="email">E-mail</label><input class="input" id="email" type="email" required placeholder="nome@email.com" data-edit-value="sergio.hooper@gmail.com"><p class="hint" style="margin:0">Usado para enviar o link da lista ao cliente.</p></div><div class="field"><label for="tel">Telefone</label><input class="input" id="tel" type="tel" inputmode="tel" data-mask="tel" required placeholder="(31) 99999-9999" data-edit-value="(31) 98842-1170"></div></div><div class="formfoot"><button type="button" class="btn btn-text danger left" data-when="editar" data-confirm="Excluir Sérgio Hooper?" data-confirm-text="As 2 listas de compras dele também serão excluídas. Essa ação não pode ser desfeita." data-confirm-ok="Excluir cliente" data-next="clientes.html" data-done="Cliente excluído."><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Excluir cliente</button><a class="btn btn-ghost" href="clientes.html">Cancelar</a><button class="btn" type="submit">Salvar cliente</button></div></form></div></main>
+<script src="assets/app.js"></script>
+</body>
+</html>

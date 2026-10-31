@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Produto · Seleção Fluiar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Questrial&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+</head>
+<body data-nav="listas">
+<main class="main" id="main"><div class="wrap narrow"><div data-when="!editar"><div class="pagehead"><div><nav class="crumbs" aria-label="Caminho"><a href="listas.html">Listas</a> <span aria-hidden="true">/</span> <a href="lista.html">Lista de compras da casa</a> <span aria-hidden="true">/</span> <span aria-current="page">Novo produto</span></nav><h1>Novo <em>produto</em></h1><p class="meta" style="margin:0">Lista de compras da casa · Sérgio Hooper</p></div></div></div><div data-when="editar"><div class="pagehead"><div><nav class="crumbs" aria-label="Caminho"><a href="listas.html">Listas</a> <span aria-hidden="true">/</span> <a href="lista.html">Lista de compras da casa</a> <span aria-hidden="true">/</span> <span aria-current="page">Editar produto</span></nav><h1>Editar <em>produto</em></h1><p class="meta" style="margin:0">Lista de compras da casa · Sérgio Hooper</p></div></div></div><form class="card card-pad form" data-demo data-next="lista.html" data-success="Produto salvo na lista." novalidate><div class="row2"><div class="field"><label for="nome">Nome do produto</label><input class="input" id="nome" required placeholder="Ex.: Batedeira planetária" data-edit-value="Batedeira"></div><div class="field"><label for="amb">Ambiente</label><select class="select" id="amb" required data-msg="Escolha o ambiente do produto." data-edit-value="Cozinha"><option value="">Selecione</option><option>Cozinha</option><option>Lavanderia</option><option>Churrasqueira</option><option>Suíte master</option><option>Banho master</option><option>Sala / jantar</option><option>Escritório</option><option>Banho escritório</option></select></div></div><div class="field"><span class="lbl">Imagem do produto <span class="opt">(opcional)</span></span><label class="drop" id="drop"><span class="thumb" id="previmg"><svg class="ic" aria-hidden="true"><use href="#i-image"/></svg></span><span><b>Escolher imagem</b><span>ou arraste o arquivo para cá. JPG ou PNG, até 5 MB.</span></span><input type="file" id="img" accept="image/*"></label></div><div class="row2"><div class="field"><label for="qtd">Quantidade</label><div class="stepper"><button type="button" data-step="-1" aria-label="Diminuir">−</button><input id="qtd" type="number" min="1" value="1" inputmode="numeric" data-edit-value="1"><button type="button" data-step="1" aria-label="Aumentar">+</button></div></div><div class="field"><label for="preco">Preço unitário</label><div class="affix"><span class="pre">R$</span><input class="input num" id="preco" inputmode="decimal" placeholder="0,00" data-edit-value="459,00"></div></div></div><div class="total"><span>Total do item</span><b id="tot">R$ 0,00</b></div><div class="field"><span class="lbl">Link de compra</span><div id="links" style="display:grid;gap:8px"></div><button type="button" class="btn btn-text btn-sm" id="addlink" style="justify-self:start"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Adicionar outra opção de loja</button></div><div class="field"><label for="obs">Observações <span class="opt">(opcional)</span></label><textarea class="textarea" id="obs" placeholder="Ex.: preferir a versão com bowl de inox" data-edit-value="Para massas pesadas, escolher a opção 3."></textarea></div><div class="field"><span class="lbl" id="st-l">Status</span><div class="seg" role="radiogroup" aria-labelledby="st-l"><input type="radio" name="st" id="st1" checked><label for="st1">Pendente</label><input type="radio" name="st" id="st2"><label for="st2">Comprado</label></div></div><div class="formfoot"><button type="button" class="btn btn-text danger left" data-when="editar" data-confirm="Excluir “Batedeira”?" data-confirm-text="O produto sai da lista do cliente. Essa ação não pode ser desfeita." data-confirm-ok="Excluir produto" data-next="lista.html" data-done="Produto excluído."><svg class="ic" aria-hidden="true"><use href="#i-trash"/></svg>Excluir produto</button><a class="btn btn-ghost" href="lista.html">Cancelar</a><button class="btn" type="submit">Salvar produto</button></div></form></div></main>
+<script src="assets/app.js"></script>
+<script>(function(){
+var q=document.getElementById("qtd"),p=document.getElementById("preco"),t=document.getElementById("tot");
+var brl=function(n){return n.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})};
+function calc(){var v=parseFloat((p.value||"0").replace(/\./g,"").replace(",","."))||0;t.textContent=brl(v*Math.max(1,+q.value||1))}
+document.querySelectorAll("[data-step]").forEach(function(b){b.addEventListener("click",function(){q.value=Math.max(1,(+q.value||1)+(+b.dataset.step));calc()})});
+q.addEventListener("input",calc);p.addEventListener("input",calc);p.addEventListener("blur",function(){var v=parseFloat(p.value.replace(/\./g,"").replace(",","."));if(v)p.value=v.toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});calc()});
+var box=document.getElementById("links"),n=0;
+function row(u,o){n++;var d=document.createElement("div");d.className="linkrow";
+d.innerHTML='<input class="input" type="url" id="lk'+n+'" placeholder="Cole o link da loja" aria-label="Link da loja">'
++'<input class="input" id="ob'+n+'" placeholder="Observação deste link" aria-label="Observação do link">'
++'<button type="button" class="iconbtn danger" aria-label="Remover link">'+FluiarIcon("x")+'</button>';
+d.querySelector("[type=url]").value=u||"";d.querySelector("[id^=ob]").value=o||"";
+d.querySelector("button").addEventListener("click",function(){if(box.children.length>1)d.remove();else{d.querySelectorAll("input").forEach(function(i){i.value=""})}});
+box.appendChild(d);return d}
+function fill(h){box.innerHTML="";if(h==="editar"){row("https://meli.la/1sNwTbN","Massas mais leves");row("https://meli.la/2az7TXp","Bowl de inox (durabilidade e limpeza)");row("https://meli.la/1PbRQaa","Capacidade p/ massas pesadas (pão e pizza)")}else row()}
+fill(location.hash.slice(1));document.addEventListener("statechange",function(e){fill(e.detail);calc()});
+document.getElementById("addlink").addEventListener("click",function(){row().querySelector("input").focus()});
+var f=document.getElementById("img"),pv=document.getElementById("previmg"),dr=document.getElementById("drop");
+function show(file){if(!file||!/^image\//.test(file.type)){toast("Escolha um arquivo de imagem (JPG ou PNG).","err");return}var r=new FileReader();r.onload=function(){pv.innerHTML='<img alt="Prévia do produto">';pv.querySelector("img").src=r.result;dr.querySelector("b").textContent="Trocar imagem"};r.readAsDataURL(file)}
+f.addEventListener("change",function(){show(f.files[0])});
+["dragover","dragenter"].forEach(function(ev){dr.addEventListener(ev,function(e){e.preventDefault();dr.classList.add("over")})});
+["dragleave","drop"].forEach(function(ev){dr.addEventListener(ev,function(e){e.preventDefault();dr.classList.remove("over")})});
+dr.addEventListener("drop",function(e){show(e.dataTransfer.files[0])});
+if(location.hash==="#editar")setTimeout(calc,0);calc();
+})();</script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lista de compras da casa · Seleção Fluiar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600&family=Questrial&display=swap">
+<link rel="stylesheet" href="assets/app.css">
+<link rel="stylesheet" href="assets/lista.css">
+<style>.nmw .nm-link{flex:1;min-width:0}</style>
+</head>
+<body data-nav="listas">
+<main class="main" id="main"><div class="wrap doc"><div class="listdoc"><nav class="crumbs" aria-label="Caminho"><a href="clientes.html">Clientes</a> <span aria-hidden="true">/</span> <a href="cliente.html">Sérgio Hooper</a> <span aria-hidden="true">/</span> <span aria-current="page">Lista de compras da casa</span></nav><header style="padding-top:18px"><h1>Lista de compras <em>da casa</em></h1><p class="client">Cliente · <a href="cliente.html"><b>Sérgio Hooper</b></a></p><div class="meta">Separamos opções para cada item da sua casa. Clique para abrir a loja e veja nossas observações ao lado.</div><div class="modebar" id="modebar"></div></header><div id="admin"><div class="listbar"><div class="seg" id="filtro" role="group" aria-label="Mostrar itens"><button type="button" aria-pressed="true" data-f="all">Todos <span class="n" id="f-all"></span></button><button type="button" aria-pressed="false" data-f="pend">Pendentes <span class="n" id="f-pend"></span></button><button type="button" aria-pressed="false" data-f="done">Comprados <span class="n" id="f-done"></span></button></div><div class="btns"><a class="btn btn-ghost btn-sm" href="lista-form.html#editar"><svg class="ic" aria-hidden="true"><use href="#i-edit"/></svg>Editar lista</a><a class="btn btn-sm" href="produto-form.html"><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Adicionar produto</a></div></div><div class="summary"><div><span class="k">Itens</span><span class="v" id="s-n"></span></div><div><span class="k">Comprados</span><span class="v" id="s-d"></span></div><div><span class="k">Pendentes</span><span class="v" id="s-p"></span></div><div class="bar"><span id="s-tot"></span><span class="progress"><i id="s-bar"></i></span></div></div></div><div id="rooms"></div><aside class="disc"><b>Nota</b><p>As opções desta lista foram selecionadas pela Fluiar com todo cuidado, considerando o projeto, a qualidade e a procedência de cada loja. Ainda assim, como as compras são feitas diretamente com os vendedores, podem ocorrer intercorrências.</p><p>A Fluiar não realiza vendas nem se responsabiliza pelas transações. Se algo acontecer, estamos à disposição para orientar sobre os seus direitos como consumidor junto à loja.</p></aside><div class="sign"><div class="sg"><span class="logo">FLUIAR</span><span class="arqs"><span>Arq. Paula Hooper</span><span>Arq. Isabela Machado</span></span></div><span class="ct">olafluiar@gmail.com | @fluiar</span></div></div></div></main>
+<script src="assets/app.js"></script>
+<script type="application/json" id="state">{"rooms":[
+{"name":"Cozinha","items":[
+ ["Liquidificador multiprocessador",[],false,"1",389.90],
+ ["Extensão",[["https://meli.la/1TZX842","10 metros ( tem a opção de 5m também)"]],false,"1",79.90],
+ ["Espremedor de laranja elétrico",[["https://meli.la/2hvsHvh",""],["https://meli.la/1GLu4DA",""]],true,"1",149.00],
+ ["Batedeira",[["https://meli.la/1sNwTbN","Massas mais leves"],["https://meli.la/2az7TXp","Bow de inox (durabilidade e limpeza)"],["https://meli.la/1PbRQaa","Capacidade p/ massas pesadas (pão e pizza)"]],false,"1",459.00],
+ ["Forma para bolo",[["https://s.shopee.com.br/2gC2fextMk?share_channel_code=1","Básico"],["https://s.shopee.com.br/4VdgrA0skI?share_channel_code=1","pão e cupcake de silicone"]],true,"2",39.90],
+ ["Jogo de peneira",[["https://s.shopee.com.br/9Kiwd888yO?share_channel_code=1",""],["https://meli.la/2eMP9Sw","Malha grossa"]],false,"1",54.90],
+ ["Organizadores de geladeira",[["https://meli.la/1kJ2urk","Porta frutas"],["https://meli.la/1o5KGan","Porta folhas"],["https://meli.la/1bMuCMs","Frios"],["https://meli.la/2AbAra6","Frios (opção 2)"]],false,"4",42.50]]},
+{"name":"Lavanderia","items":[
+ ["Pregador",[["https://meli.la/2UvUtk8",""],["https://meli.la/2g9SQ1c",""]],true,"2",24.90],
+ ["Porta-detergente com bucha e rodinho",[["https://meli.la/19TWaJP",""]],false,"1",69.90],
+ ["Caixa organizadora transparente",[],false,"3",null]]},
+{"name":"Sala / jantar","items":[
+ ["Capacho",[["https://levaoficina.com/products/capacho-chroma-sisal","Opção 1"],["https://levaoficina.com/products/capacho-ada","Opção 2"]],false,"1",189.00],
+ ["Almofada destaque",[],false,"1",null],
+ ["Tapete",[],false,"1",null]]},
+{"name":"Escritório","items":[
+ ["Cadeiras giratórias",[],false,"2",1290.00]]},
+{"name":"Banho escritório","items":[
+ ["Tapete e toalha de rosto nude",[],true,"1",119.90],
+ ["Porta-sabonete madeira ou nude",[],false,"1",59.90],
+ ["Encomendar espelho",[],true,"1",680.00]]}
+]}</script>
+<script>
+(function(){
+  var S=JSON.parse(document.getElementById('state').textContent);
+  var mode='edit',filter='all',empty=false;
+  var esc=function(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})};
+  var host=function(u){try{return new URL(u).hostname.replace(/^www\./,'')}catch(e){return 'link'}};
+  var brl=function(n){return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'})};
+  var ic=window.FluiarIcon;
+  var rooms=document.getElementById('rooms'),admin=document.getElementById('admin'),bar=document.getElementById('modebar');
+  function all(){var a=[];S.rooms.forEach(function(r){r.items.forEach(function(it){a.push(it)})});return a}
+  function stats(){
+    var a=empty?[]:all(),d=a.filter(function(i){return i[2]}).length,tot=0,rest=0;
+    a.forEach(function(i){var v=(i[4]||0)*(+i[3]||1);tot+=v;if(!i[2])rest+=v});
+    document.getElementById('s-n').textContent=a.length;document.getElementById('s-d').textContent=d;document.getElementById('s-p').textContent=a.length-d;
+    document.getElementById('s-bar').style.width=(a.length?Math.round(100*d/a.length):0)+'%';
+    document.getElementById('s-tot').textContent='Estimado '+brl(tot)+' · faltam '+brl(rest);
+    document.getElementById('f-all').textContent=a.length;document.getElementById('f-pend').textContent=a.length-d;document.getElementById('f-done').textContent=d;
+  }
+  function links(it,ro){
+    if(!it[1].length)return '<span class="ro-none">'+(ro?'Opções em breve':'Sem links ainda')+'</span>';
+    return it[1].map(function(l){return '<div class="lk"><span class="chip"><a href="'+esc(l[0])+'" target="_blank" rel="noopener" title="'+esc(l[0])+'">'+esc(host(l[0]))+' ↗</a></span>'+(l[1]?'<span class="ro-note">'+esc(l[1])+'</span>':'')+'</div>'}).join('');
+  }
+  function priceTxt(it){if(it[4]==null)return 'Sem preço';var q=+it[3]||1;return q>1?q+' × '+brl(it[4]):brl(it[4])}
+  function viewHTML(){ // visão do cliente: igual à página original
+    return S.rooms.filter(function(r){return r.items.length}).map(function(r){
+      return '<h2>'+esc(r.name)+'</h2><div class="tbl view"><table><thead><tr><th class="ck" aria-label="Comprado">✓</th><th class="qt">Qtd.</th><th class="it">Item</th><th>Opções e observações</th></tr></thead><tbody>'
+      +r.items.map(function(it){return '<tr class="'+(it[2]?'done':'')+'"><td class="ck"><span class="mark '+(it[2]?'on':'off')+'" role="img" aria-label="'+(it[2]?'Comprado':'Ainda não comprado')+'"></span></td><td class="qt"><span class="ro-qty">'+esc(it[3]||'1')+'</span></td><td class="it"><span class="ro-name">'+esc(it[0])+'</span></td><td><div class="links">'+links(it,true)+'</div></td></tr>'}).join('')
+      +'</tbody></table></div>'}).join('');
+  }
+  function editHTML(){
+    var shown=0;
+    var html=S.rooms.map(function(r,ri){
+      var items=r.items.map(function(it,k){return [it,k]}).filter(function(x){return filter==='all'||(filter==='done')===x[0][2]});
+      if(filter!=='all'&&!items.length)return '';
+      shown+=items.length;
+      var d=r.items.filter(function(i){return i[2]}).length;
+      return '<div class="roomhead"><h2>'+esc(r.name)+'</h2><span>'+d+' de '+r.items.length+' comprados</span></div><div class="tbl"><table><thead><tr><th class="ck" aria-label="Comprado">✓</th><th class="qt">Qtd.</th><th class="it">Item</th><th>Links e observações</th></tr></thead><tbody>'
+      +items.map(function(x){var it=x[0],k=x[1];return '<tr class="'+(it[2]?'done':'')+'"><td class="ck"><input type="checkbox" class="check" id="c-'+ri+'-'+k+'" data-r="'+ri+'" data-k="'+k+'" '+(it[2]?'checked':'')+' aria-label="Comprado: '+esc(it[0])+'"></td>'
+        +'<td class="qt"><input type="number" min="1" inputmode="numeric" class="qty" id="q-'+ri+'-'+k+'" data-r="'+ri+'" data-k="'+k+'" value="'+esc(it[3])+'" placeholder="1" aria-label="Quantidade"></td>'
+        +'<td class="it"><div class="itm"><span class="thumb">'+ic('bag')+'</span><div class="txt"><div class="nmw"><a class="nm-link" href="produto-form.html#editar">'+esc(it[0])+'</a><a class="ed" href="produto-form.html#editar" aria-label="Editar '+esc(it[0])+'">'+ic('edit')+'</a><button type="button" class="del" data-r="'+ri+'" data-k="'+k+'" aria-label="Remover item">×</button></div><span class="price">'+priceTxt(it)+'</span></div></div></td>'
+        +'<td><div class="links">'+links(it,false)+'</div></td></tr>'}).join('')
+      +(filter==='all'?'<tr class="new"><td class="ck"></td><td colspan="3"><a class="newlink" href="produto-form.html">'+ic('plus')+'novo item em '+esc(r.name)+'</a></td></tr>':'')
+      +'</tbody></table></div>';
+    }).join('');
+    if(!shown)html='<p class="filtered-empty">'+(filter==='done'?'Nenhum item comprado ainda.':'Todos os itens já foram comprados.')+'</p>';
+    return html;
+  }
+  function render(){
+    var y=scrollY;
+    bar.innerHTML='<span><b>'+(mode==='edit'?'Modo edição':'Visão do cliente')+'</b> · '+(mode==='edit'?'só quem tem permissão de editar vê esta tela':'é assim que seu cliente vê a lista')+'</span><button type="button" class="btn btn-sm" id="modebtn">'+(mode==='edit'?'Ver como cliente':'Voltar a editar')+'</button>';
+    admin.hidden=mode!=='edit'||empty;
+    if(empty){rooms.innerHTML='<div class="empty" style="margin-top:24px"><span class="art">'+ic('bag')+'</span><h3>Esta lista ainda não tem produtos</h3><p>Adicione os produtos por ambiente, com os links das lojas e as suas observações.</p><a class="btn" href="produto-form.html">'+ic('plus')+'Adicionar primeiro produto</a></div>'}
+    else rooms.innerHTML=mode==='edit'?editHTML():viewHTML();
+    stats();scrollTo(0,y);
+  }
+  bar.addEventListener('click',function(e){if(e.target.id==='modebtn'){mode=mode==='edit'?'view':'edit';render()}});
+  document.querySelectorAll('#filtro [data-f]').forEach(function(b){b.addEventListener('click',function(){filter=b.dataset.f;document.querySelectorAll('#filtro [data-f]').forEach(function(x){x.setAttribute('aria-pressed',x===b)});render()})});
+  rooms.addEventListener('change',function(e){
+    var t=e.target,it=S.rooms[+t.dataset.r]&&S.rooms[+t.dataset.r].items[+t.dataset.k];if(!it)return;
+    if(t.type==='checkbox'){it[2]=t.checked;t.closest('tr').classList.toggle('done',t.checked);toast(t.checked?'Marcado como comprado':'Voltou para pendentes');setTimeout(render,filter==='all'?0:400);return}
+    if(t.classList.contains('qty')){var v=t.value.trim();if(v&&!(+v>0))v='';t.value=v;it[3]=v;render();toast('Salvo')}
+  });
+  rooms.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.classList.contains('qty')){e.preventDefault();e.target.blur()}});
+  rooms.addEventListener('click',function(e){ // remover em dois toques, como na página original
+    var d=e.target.closest('.del');if(!d)return;
+    if(!d.classList.contains('armed')){d.classList.add('armed');d.textContent='remover?';setTimeout(function(){if(d.isConnected){d.classList.remove('armed');d.textContent='×'}},2500);return}
+    S.rooms[+d.dataset.r].items.splice(+d.dataset.k,1);render();toast('Item removido');
+  });
+  document.addEventListener('statechange',function(e){empty=e.detail==='vazio';render()});
+  empty=location.hash==='#vazio';render();
+})();
+</script>
+</body>
+</html>
