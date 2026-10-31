@@ -53,6 +53,23 @@ test('the image picker accepts a JPG up to 5 MB', async () => {
   expect(read).toHaveBeenCalledTimes(1);
 });
 
+test('the product form requires a name and saves a valid product', async () => {
+  vi.useFakeTimers();
+  render(await newProductPage({ ambiente: 'Cozinha' }));
+  const save = () => {
+    fireEvent.click(screen.getByRole('button', { name: 'Salvar produto' }));
+    act(() => vi.advanceTimersByTime(SERVER_DELAY_MS));
+  };
+
+  save();
+  expect(screen.getByText('Preencha este campo.')).toBeTruthy();
+  expect(push).not.toHaveBeenCalled();
+
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira' } });
+  save();
+  expect(push).toHaveBeenCalledWith('/listas/lista-da-casa');
+});
+
 test('a known room in the query is preselected', async () => {
   render(await newProductPage({ ambiente: 'Cozinha' }));
   expect(screen.getByLabelText('Ambiente').value).toBe('Cozinha');
