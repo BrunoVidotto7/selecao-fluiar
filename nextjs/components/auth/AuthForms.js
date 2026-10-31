@@ -6,6 +6,7 @@ import Button from '../ui/Button';
 import { Alert } from '../ui/Display';
 import { TextInput, PasswordInput } from '../ui/Fields';
 import useDemoForm from '../forms/useDemoForm';
+import { USER } from '@/lib/data';
 
 export function LoginForm({ showError = false }) {
   const [failed, setFailed] = useState(showError);
@@ -53,16 +54,16 @@ export function SignupForm() {
   );
 }
 
-export function ForgotPasswordForm({ sent: initialSent = false }) {
-  const [sent, setSent] = useState(initialSent);
-  const f = useDemoForm({ rules: { email: { required: true, email: true } }, onSuccess: () => setSent(true) });
-  if (sent) {
+export function ForgotPasswordForm({ sent = false }) {
+  const [sentTo, setSentTo] = useState(sent ? USER.email : '');
+  const f = useDemoForm({ rules: { email: { required: true, email: true } }, onSuccess: (v) => setSentTo(v.email) });
+  if (sentTo) {
     return (
       <div className="sent" role="status">
         <span className="art"><Icon name="send" /></span>
         <p className="eyebrow">E-mail enviado</p>
         <h1>Confira sua <em>caixa de entrada</em></h1>
-        <p>Enviamos um link para <b>{f.values.email || 'paula.hooper@fluiar.com.br'}</b>. Ele vale por 1 hora.</p>
+        <p>Enviamos um link para <b>{sentTo}</b>. Ele vale por 1 hora.</p>
         <p className="meta">Não chegou? Veja a pasta de spam ou envie de novo.</p>
         <div className="quick">
           <Button href="/login">Voltar para o login</Button>
