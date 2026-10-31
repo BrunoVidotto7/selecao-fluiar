@@ -51,7 +51,7 @@ function ItemRow({ item, listBase, onToggle, onQty, onRemove }) {
             <div className="nmw">
               <Link className="nm-link" href={editHref}>{item.name}</Link>
               <Link className="ed" href={editHref} aria-label={`Editar ${item.name}`}><Icon name="edit" /></Link>
-              <button type="button" className={'del' + (armed ? ' armed' : '')} aria-label="Remover item"
+              <button type="button" className={'del' + (armed ? ' armed' : '')} aria-label={armed ? `Confirmar remoção de ${item.name}` : `Remover ${item.name}`}
                 onClick={() => (armed ? onRemove(item.id) : setArmed(true))}>{armed ? 'remover?' : '×'}</button>
             </div>
             <span className="price">{priceText(item)}</span>
