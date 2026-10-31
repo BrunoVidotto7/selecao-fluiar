@@ -8,6 +8,8 @@ import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useDemoForm from '../forms/useDemoForm';
 import { brl, parseBRL } from '@/lib/format';
 
+const IMAGE_TYPES = ['image/jpeg', 'image/png'];
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const fmtPrice = (n) => (n == null ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
 export default function ProductForm({ listId, product, rooms, defaultRoom = '' }) {
@@ -35,7 +37,8 @@ export default function ProductForm({ listId, product, rooms, defaultRoom = '' }
   const setQty = (n) => f.setValue('qtd', String(Math.max(1, n)));
 
   const pickImage = (file) => {
-    if (!file || !/^image\//.test(file.type)) { toast('Escolha um arquivo de imagem (JPG ou PNG).', 'err'); return; }
+    if (!file || !IMAGE_TYPES.includes(file.type)) { toast('Escolha um arquivo de imagem (JPG ou PNG).', 'err'); return; }
+    if (file.size > MAX_IMAGE_BYTES) { toast('A imagem deve ter até 5 MB.', 'err'); return; }
     const r = new FileReader(); r.onload = () => setImage(r.result); r.readAsDataURL(file);
   };
 
@@ -59,7 +62,7 @@ export default function ProductForm({ listId, product, rooms, defaultRoom = '' }
           onDrop={(e) => { e.preventDefault(); setOver(false); pickImage(e.dataTransfer.files[0]); }}>
           <span className="thumb">{image ? <img src={image} alt="Prévia do produto" /> : <Icon name="image" />}</span>
           <span><b>{image ? 'Trocar imagem' : 'Escolher imagem'}</b><span>ou arraste o arquivo para cá. JPG ou PNG, até 5 MB.</span></span>
-          <input type="file" id="img" accept="image/*" onChange={(e) => pickImage(e.target.files[0])} />
+          <input type="file" id="img" accept={IMAGE_TYPES.join(',')} onChange={(e) => pickImage(e.target.files[0])} />
         </label>
       </Field>
 

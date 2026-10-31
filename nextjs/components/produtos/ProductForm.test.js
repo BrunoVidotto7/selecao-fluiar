@@ -9,7 +9,7 @@ const SERVER_DELAY_MS = 650;
 const CHOOSE_ROOM = 'Escolha o ambiente do produto.';
 const newProductPage = (query) => NewProductPage({ params: Promise.resolve({ id: 'lista-da-casa' }), searchParams: Promise.resolve(query) });
 
-afterEach(() => { vi.useRealTimers(); push.mockClear(); });
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); push.mockClear(); });
 
 test('the new product form resets its room and draft when only the query changes', async () => {
   const view = render(await newProductPage({ ambiente: 'Cozinha' }));
@@ -30,6 +30,27 @@ test.each([['0'], ['-2'], ['']])('submitting with Enter rejects the quantity %j'
 
   expect(screen.getByLabelText('Quantidade').getAttribute('aria-invalid')).toBe('true');
   expect(push).not.toHaveBeenCalled();
+});
+
+const FIVE_MB = 5 * 1024 * 1024;
+const pickFile = async (file) => {
+  const read = vi.spyOn(FileReader.prototype, 'readAsDataURL').mockImplementation(() => {});
+  render(await newProductPage({}));
+  fireEvent.change(screen.getByLabelText(/Escolher imagem/), { target: { files: [file] } });
+  return read;
+};
+
+test.each([
+  ['a GIF', new File(['x'], 'foto.gif', { type: 'image/gif' })],
+  ['a PNG over 5 MB', new File([new Uint8Array(FIVE_MB + 1)], 'foto.png', { type: 'image/png' })],
+])('the image picker rejects %s', async (_, file) => {
+  const read = await pickFile(file);
+  expect(read).not.toHaveBeenCalled();
+});
+
+test('the image picker accepts a JPG up to 5 MB', async () => {
+  const read = await pickFile(new File([new Uint8Array(FIVE_MB)], 'foto.jpg', { type: 'image/jpeg' }));
+  expect(read).toHaveBeenCalledTimes(1);
 });
 
 test('a known room in the query is preselected', async () => {
