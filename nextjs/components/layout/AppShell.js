@@ -7,6 +7,10 @@ import Icon from '../ui/Icon';
 import { USER } from '@/lib/data';
 import { flash } from '../feedback/Feedback';
 import { initials } from '@/lib/format';
+import { keepFocusInside } from '@/lib/focus';
+
+// Mesmo ponto de quebra do CSS em que o menu vira gaveta sobre a página.
+const DRAWER_MEDIA = '(max-width: 960px)';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: 'grid' },
@@ -20,12 +24,16 @@ export default function AppShell({ children }) {
   const [open, setOpen] = useState(false);
   const openBtn = useRef(null);
   const firstLink = useRef(null);
+  const sideRef = useRef(null);
 
   useEffect(() => { setOpen(false); }, [pathname]);
   useEffect(() => {
     if (!open) return;
     firstLink.current?.focus();
-    const onKey = (e) => { if (e.key === 'Escape') { setOpen(false); openBtn.current?.focus(); } };
+    const onKey = (e) => {
+      if (e.key === 'Escape') { setOpen(false); openBtn.current?.focus(); }
+      if (window.matchMedia(DRAWER_MEDIA).matches) keepFocusInside(e, sideRef.current);
+    };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [open]);
@@ -41,7 +49,7 @@ export default function AppShell({ children }) {
           <Icon name="menu" />
         </button>
       </header>
-      <aside className={'side' + (open ? ' open' : '')} id="side" aria-label="Menu principal">
+      <aside ref={sideRef} className={'side' + (open ? ' open' : '')} id="side" aria-label="Menu principal">
         <button className="iconbtn close" aria-label="Fechar menu" onClick={() => { setOpen(false); openBtn.current?.focus(); }}><Icon name="x" /></button>
         <Link className="logo" href="/dashboard">FLUIAR<small>Seleção</small></Link>
         <nav className="nav">
