@@ -11,6 +11,7 @@ import EditClientPage from './(app)/clientes/[id]/editar/page';
 import ListPage from './(app)/listas/[id]/page';
 import { generateMetadata as listMetadata } from './(app)/listas/[id]/page';
 import ListsPage from './(app)/listas/page';
+import SettingsPage from './(app)/configuracoes/page';
 import EditProductPage from './(app)/listas/[id]/produtos/[produtoId]/editar/page';
 import NewProductPage from './(app)/listas/[id]/produtos/novo/page';
 import PrivateLayout from './(app)/layout';
@@ -34,6 +35,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('@/components/auth/actions', () => ({ login: vi.fn(), signup: vi.fn(), logout: vi.fn() }));
 vi.mock('@/components/convite/actions', () => ({ acceptInvitation: vi.fn() }));
+vi.mock('@/components/configuracoes/actions', () => ({ updateProfile: vi.fn(), changePassword: vi.fn() }));
 vi.mock('@/components/produtos/actions', () => ({
   saveProduct: vi.fn(), patchProduct: vi.fn(), deleteProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(),
 }));
@@ -115,6 +117,34 @@ test('the private layout loads the current user with the cookie and passes the r
   expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer jwt');
   expect(cookieStore.set).not.toHaveBeenCalled();
   expect(cookieStore.delete).not.toHaveBeenCalled();
+});
+
+test('settings page awaits current API identity without writing a session during render', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ ...ME, name: 'Ana Reis', email: 'saved@example.com' })));
+  render(await SettingsPage());
+  expect(screen.getByLabelText('Nome completo').value).toBe('Ana Reis');
+  expect(screen.getByLabelText('E-mail').value).toBe('saved@example.com');
+  expect(fetchMock).toHaveBeenCalledExactlyOnceWith('http://localhost:8080/api/me', expect.objectContaining({
+    method: 'GET', cache: 'no-store',
+  }));
+  expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer jwt');
+  expect(cookieStore.set).not.toHaveBeenCalled();
+  expect(cookieStore.delete).not.toHaveBeenCalled();
+});
+
+test.each([undefined, { value: 'revoked-jwt' }])('settings page preserves protected navigation for session %j', async (session) => {
+  cookieStore.get.mockReturnValue(session);
+  fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
+  await expect(Promise.resolve().then(() => SettingsPage())).rejects.toThrow('NEXT_REDIRECT');
+  expect(redirect).toHaveBeenCalledExactlyOnceWith('/login');
+  expect(cookieStore.set).not.toHaveBeenCalled();
+});
+
+test('settings read failure propagates to the private error boundary without fake identity', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: 'Muitas tentativas. Tente novamente em alguns minutos.' }), { status: 429 }));
+  await expect(Promise.resolve().then(() => SettingsPage())).rejects.toMatchObject({
+    status: 429, detail: 'Muitas tentativas. Tente novamente em alguns minutos.',
+  });
 });
 
 test('the private layout without a cookie redirects before requesting or rendering private data', async () => {

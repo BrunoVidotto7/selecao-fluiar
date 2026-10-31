@@ -9,9 +9,10 @@ This file covers `ui/` only. For files under `ui/`, it wins over the repo root `
   tested, and it already differs from `nextjs/`. Edit it only when the task asks for it.
 
 Authentication, the private layout, office administration, clients, dashboard, shopping-list pages
-and separate room management use the REST API in `../api/`. Product forms save JSON before image
-upload/removal and retain the saved UUID for retries. Inline product controls await API writes;
-refreshed list props own products and totals.
+and separate room management use the REST API in `../api/`. Settings save profile and password
+independently; password changes replace the httpOnly cookie before success. Product forms save JSON
+before image upload/removal and retain the saved UUID for retries. Inline product controls await API
+writes; refreshed list props own products and totals.
 
 ## Commands
 
@@ -183,3 +184,5 @@ Room order arrays must reject sparse entries before writing; array iteration can
 Product image retries must retain the saved UUID and pending file/removal; mobile link errors wrap the inputs without changing their two-row layout.
 
 Inline row guards must survive filtering and be registered before dispatch; key list owners by UUID (not updatedAt) so refresh preserves filters.
+
+Browser email inputs strip surrounding whitespace; test normalized comparisons without assuming the submitted value retains it.

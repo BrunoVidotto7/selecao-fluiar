@@ -499,7 +499,7 @@ Assert 202/204 empty-body success; missing/array/malformed tokens never fetch; v
 - Produces: `updateProfile({name,email,currentPassword?}) -> Promise<ActionResult<MeResponse>>`, `changePassword({currentPassword,newPassword}) -> Promise<ActionResult<MeResponse>>`.
 - Produces: `SettingsForm({user:MeResponse})` with two independent forms/buttons: "Salvar perfil" and "Alterar senha".
 
-- [ ] **Step 1: Write failing settings/action tests.**
+- [x] **Step 1: Write failing settings/action tests.**
 
 ```js
 test('changing email requires the current password only for the profile request', async () => {
@@ -516,10 +516,10 @@ test('changing password replaces the cookie before returning a sanitized user', 
 ```
 
 Assert a name-only or case/whitespace-normalized unchanged-email update sends no currentPassword; server `currentPassword` errors appear under `senhaEmail` for profile and `atual` for password; wrong current password and 429 preserve edits. No password request is sent when only profile is saved. After password success, fields clear and the next protected fetch uses the new cookie. No password/JWT appears in action output. Test profile success followed by password failure as two separate submissions: the saved profile remains visible, with no claim of an atomic combined update.
-- [ ] **Step 2: Run RED.** `npx vitest run components/configuracoes/actions.test.js components/configuracoes/SettingsForm.test.js`.
-- [ ] **Step 3: Implement independent profile/password forms.** Keep the existing two card sections, but remove the ambiguous combined save. IDs remain unique: `nome/email/senhaEmail` versus `atual/nova/nova2`. Profile submits only its three API fields; password submits `currentPassword/newPassword` and replaces the cookie with the backend's new 12-hour token as a session cookie (`persistent:false`). Do not preserve a fabricated 30-day lifetime after password change. Refresh `/(app)` layout and affected list signatures after profile success; profile reads come from `/api/me`, never `USER`.
-- [ ] **Step 4: Run GREEN.** Repeat Step 2; all pass.
-- [ ] **Step 5: Review and commit.** `git commit -m "Save profile changes and replace password sessions."`
+- [x] **Step 2: Run RED.** `npx vitest run components/configuracoes/actions.test.js components/configuracoes/SettingsForm.test.js`.
+- [x] **Step 3: Implement independent profile/password forms.** Keep the existing two card sections, but remove the ambiguous combined save. IDs remain unique: `nome/email/senhaEmail` versus `atual/nova/nova2`. Profile submits only its three API fields; password submits `currentPassword/newPassword` and replaces the cookie with the backend's new 12-hour token as a session cookie (`persistent:false`). Do not preserve a fabricated 30-day lifetime after password change. Refresh `/(app)` layout and affected list signatures after profile success; profile reads come from `/api/me`, never `USER`.
+- [x] **Step 4: Run GREEN.** Repeat Step 2; all pass.
+- [x] **Step 5: Review and commit.** `git commit -m "Save profile changes and replace password sessions."`
 
 ### Task 11: Public Sharing And Removal Of The Last Demo Paths
 
