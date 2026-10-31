@@ -11,7 +11,7 @@ export default async function Page({ searchParams }) {
   return (
     <div className="wrap">
       <PageHeader eyebrow="Listas de compras" title={<>Todas as <em>listas</em></>} actions={<Button href="/listas/nova" icon="plus">Criar lista</Button>} />
-      <ListsTable lists={lists} />
+      <ListsTable key={empty ? 'vazio' : 'cheio'} lists={lists} />
     </div>
   );
 }

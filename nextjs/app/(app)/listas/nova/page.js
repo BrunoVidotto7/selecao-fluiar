@@ -9,7 +9,7 @@ export default async function Page({ searchParams }) {
     <div className="wrap narrow">
       <PageHeader crumbs={[{ href: '/listas', label: 'Listas de compras' }, { label: 'Nova lista' }]} title={<>Nova <em>lista</em></>}
         meta="Depois de salvar, adicione os produtos por ambiente." />
-      <ListForm clients={CLIENTS} defaultClientId={cliente} />
+      <ListForm key={cliente} clients={CLIENTS} defaultClientId={cliente} />
     </div>
   );
 }

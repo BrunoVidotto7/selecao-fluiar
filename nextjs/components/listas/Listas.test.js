@@ -1,6 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import NewListPage from '@/app/(app)/listas/nova/page';
+import ListsPage from '@/app/(app)/listas/page';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push }) }));
@@ -16,6 +17,23 @@ function submitList(name) {
   fireEvent.click(screen.getByRole('button', { name: 'Salvar lista' }));
   act(() => vi.advanceTimersByTime(SERVER_DELAY_MS));
 }
+
+test('the lists page follows the empty-state query when only the query changes', async () => {
+  const view = render(await page(ListsPage, {}));
+  expect(screen.getByRole('link', { name: 'Home office' })).toBeTruthy();
+
+  view.rerender(await page(ListsPage, { estado: 'vazio' }));
+  expect(screen.getByText('Nenhuma lista criada')).toBeTruthy();
+
+  view.rerender(await page(ListsPage, {}));
+  expect(screen.queryByText('Nenhuma lista criada')).toBeNull();
+});
+
+test('the new list form resets its client when only the query changes', async () => {
+  const view = render(await page(NewListPage, { cliente: 'sergio-hooper' }));
+  view.rerender(await page(NewListPage, {}));
+  expect(screen.getByLabelText('Cliente').value).toBe('');
+});
 
 test('a known client in the query is preselected in the new list form', async () => {
   render(await page(NewListPage, { cliente: 'sergio-hooper' }));
