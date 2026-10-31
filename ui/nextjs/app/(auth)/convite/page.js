@@ -9,7 +9,7 @@ const INVALID_LINK_DETAIL = 'Este link expirou ou já foi usado. Peça um novo.'
 const INVALID_RESPONSE_DETAIL = 'A API retornou uma resposta inválida.';
 const INVITATION_FIELDS = ['email', 'officeName', 'invitedByName'];
 
-export const metadata = { title: 'Aceitar convite — Seleção Fluiar' };
+export const metadata = { title: 'Aceitar convite' };
 
 function InvalidInvitation() {
   return (

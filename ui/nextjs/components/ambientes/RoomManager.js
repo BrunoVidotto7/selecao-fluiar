@@ -13,6 +13,7 @@ const HTTP_BAD_REQUEST = 400;
 const HTTP_CONFLICT = 409;
 const PENDING_DETAIL = 'Aguarde a operação em andamento.';
 const WRITE_FAILED_DETAIL = 'Não conseguimos salvar agora. Tente novamente.';
+const moveButtonId = (roomId, direction) => `mover-${roomId}-${direction}`;
 
 function RoomNameForm({ listId, room, write, onSaved, onCancel }) {
   const nameField = `nome-ambiente-${room?.id ?? listId}`;
@@ -56,8 +57,8 @@ function RoomRow({ room, first, last, write, refresh, onMove, onDelete }) {
       ) : (
         <div className="room-actions">
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>Renomear</Button>
-          <Button variant="ghost" size="sm" disabled={first} aria-label={`Mover ${room.name} para cima`} onClick={() => onMove(-1)}>Mover para cima</Button>
-          <Button variant="ghost" size="sm" disabled={last} aria-label={`Mover ${room.name} para baixo`} onClick={() => onMove(1)}>Mover para baixo</Button>
+          <Button variant="ghost" size="sm" id={moveButtonId(room.id, -1)} disabled={first} aria-label={`Mover ${room.name} para cima`} onClick={() => onMove(-1)}>Mover para cima</Button>
+          <Button variant="ghost" size="sm" id={moveButtonId(room.id, 1)} disabled={last} aria-label={`Mover ${room.name} para baixo`} onClick={() => onMove(1)}>Mover para baixo</Button>
           <Button variant="text-danger" size="sm" onClick={onDelete}>Excluir ambiente</Button>
         </div>
       )}
@@ -73,11 +74,21 @@ export default function RoomManager({ listId, rooms }) {
   const pending = useRef(false);
   const mounted = useRef(true);
   const [busy, setBusy] = useState(false);
+  const [moved, setMoved] = useState(null);
 
   useEffect(() => {
     mounted.current = true;
     return () => { mounted.current = false; };
   }, []);
+
+  // Depois que a nova ordem chega, devolve o foco ao ambiente movido.
+  useEffect(() => {
+    if (!moved || rooms === moved.rooms) return;
+    setMoved(null);
+    const button = document.getElementById(moveButtonId(moved.id, moved.direction));
+    if (button && !button.disabled) button.focus();
+    else document.getElementById(moveButtonId(moved.id, -moved.direction))?.focus();
+  }, [moved, rooms]);
 
   const refresh = () => { if (mounted.current) router.refresh(); };
   const write = async (command) => {
@@ -106,6 +117,7 @@ export default function RoomManager({ listId, rooms }) {
         return;
       }
       toast('Ordem dos ambientes salva.');
+      setMoved({ id: rooms[index].id, direction, rooms });
       refresh();
     } catch (error) {
       unstable_rethrow(error);

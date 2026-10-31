@@ -85,6 +85,7 @@ function RevokeInvitationButton({ invitation }) {
     action: () => revokeInvitation(invitation.id),
     onSuccess: (data, values, { toast }) => {
       toast('Convite revogado.');
+      document.getElementById('emailConvite')?.focus();
       router.refresh();
     },
   });

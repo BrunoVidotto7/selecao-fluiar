@@ -397,3 +397,11 @@ test('successful revoke waits for DELETE and leaves collection ownership with re
   view.rerender(manager({ invitations: [] }));
   expect(screen.queryByText('new@example.com')).toBeNull();
 });
+
+test('successful revoke moves focus to the invitation email input', async () => {
+  const view = setup();
+  const dialog = openRevoke();
+  await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Revogar convite' })); });
+  view.rerender(manager({ invitations: [] }));
+  expect(document.activeElement).toBe(screen.getByLabelText('E-mail do convite'));
+});

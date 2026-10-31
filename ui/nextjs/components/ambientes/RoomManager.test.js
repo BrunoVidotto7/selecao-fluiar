@@ -46,6 +46,19 @@ test('moving a room sends every UUID once in the new order without locally reord
   expect(rowNames()).toEqual(['Sala', 'Cozinha']);
 });
 
+test.each([
+  ['keeps the same direction', 'Mover Quarto para cima', 'Mover Quarto para cima'],
+  ['switches direction at an edge', 'Mover Sala para baixo', 'Mover Sala para cima'],
+])('a successful move %s on the moved room once the new order renders', async (_, clicked, focused) => {
+  const third = { ...ROOM, id: '33333333-3333-4333-8333-333333336666', name: 'Quarto', position: 2, products: [] };
+  const view = renderManager([ROOM, SECOND_ROOM, third]);
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: clicked })); });
+  const [, ids] = reorderRooms.mock.calls[0];
+  const byId = { [ROOM.id]: ROOM, [SECOND_ROOM.id]: SECOND_ROOM, [third.id]: third };
+  view.rerender(<FeedbackProvider><RoomManager listId={LIST.id} rooms={ids.map((id) => byId[id])} /></FeedbackProvider>);
+  expect(document.activeElement).toBe(screen.getByRole('button', { name: focused }));
+});
+
 test('first and last rooms cannot move past their boundaries', () => {
   renderManager();
   expect(screen.getByRole('button', { name: 'Mover Cozinha para cima' }).disabled).toBe(true);
