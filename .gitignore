@@ -2,7 +2,9 @@
 **/.next/
 **/out/
 api/target/
-ui/.playwright-mcp/
+**/.playwright-mcp/
+.DS_Store
+.idea/
 .env
 .env.*
 **/.env
