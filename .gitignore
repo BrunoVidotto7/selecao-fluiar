@@ -1,14 +1,1 @@
-**/node_modules/
-**/.next/
-**/out/
-api/target/
-**/.playwright-mcp/
-.DS_Store
-.idea/
-.opencode/
-.env
-.env.*
-**/.env
-**/.env.*
-!.env.example
-!**/.env.example
+.worktrees/
