@@ -1,6 +1,6 @@
 # Acesso de clientes às listas de compras
 
-Data: 2026-11-04. Estado: proposta para aprovação; implementação não iniciada.
+Data: 2026-11-04. Estado: aprovado pelo usuário, incluindo a correção de nomes em inglês; implementação não iniciada.
 
 ## Intenção
 
@@ -17,7 +17,7 @@ Transformar a lista hoje apenas visualizada pelo cliente em uma área privada de
 - Manter a identidade visual existente; não criar mockups.
 - Usar inglês em todo código desta mudança, incluindo rotas, arquivos, componentes, funções, variáveis, comentários, testes e contratos. Somente os textos exibidos ao usuário na UI ficam em português.
 
-As decisões técnicas e os detalhes de comportamento abaixo são propostas do responsável pelo desenho, submetidas à aprovação deste documento.
+As decisões técnicas e os detalhes de comportamento abaixo foram propostos pelo responsável pelo desenho e aprovados pelo usuário com este documento.
 
 ## Estado atual e restrições
 
