@@ -15,6 +15,7 @@ Transformar a lista hoje apenas visualizada pelo cliente em uma área privada de
 - Permitir ao admin consultar todas as listas de seus clientes e alterar compras e observações.
 - Impedir consulta e edição de listas de outros clientes, inclusive por acesso direto à API.
 - Manter a identidade visual existente; não criar mockups.
+- Usar inglês em todo código desta mudança, incluindo rotas, arquivos, componentes, funções, variáveis, comentários, testes e contratos. Somente os textos exibidos ao usuário na UI ficam em português.
 
 As decisões técnicas e os detalhes de comportamento abaixo são propostas do responsável pelo desenho, submetidas à aprovação deste documento.
 
@@ -26,7 +27,7 @@ Já existem envio de e-mails, convites para membros do escritório, recuperaçã
 
 O caminho `/l/[shareToken]` e a API `/api/public/lists/{shareToken}` atualmente permitem consulta sem login. Imagens em `/api/images/{imageId}` também são públicas. Esses acessos precisam ser protegidos como parte da privacidade solicitada.
 
-Usar Java, Spring Security, PostgreSQL, Flyway, Next.js e os componentes atuais. Não adicionar dependências. Criar novas migrações, sem alterar as existentes. Manter português na interface, inglês nos contratos e `ProblemDetail` nos erros.
+Usar Java, Spring Security, PostgreSQL, Flyway, Next.js e os componentes atuais. Não adicionar dependências. Criar novas migrações, sem alterar as existentes. Todo código novo ou alterado deve usar inglês; somente os textos exibidos na UI ficam em português, incluindo mensagens de validação e erros destinados à interface. Manter `ProblemDetail` nos erros. A instrução do usuário prevalece sobre a convenção antiga de nomes de rotas e comentários em português na UI. A renomeação geral dos caminhos preexistentes não faz parte desta mudança.
 
 ## Abordagens consideradas
 
@@ -64,11 +65,11 @@ Reaproveitar a infraestrutura atual de convites, acrescentando o vínculo obriga
 
 ## Área do cliente
 
-- Usar o mesmo login. Encaminhar `ADMIN` ao dashboard e `CLIENT` a `/minhas-listas`, também após aceite do convite.
+- Usar o mesmo login. Encaminhar `ADMIN` ao dashboard e `CLIENT` a `/my-lists`, também após aceite do convite. O rótulo visível na UI é “Minhas listas”.
 - Reutilizar tipografia, cores, componentes, navegação responsiva, mensagens e estados vazios atuais.
 - Oferecer navegação para Minhas listas, Configurações da própria conta e Sair. Ocultar ações e páginas administrativas e bloqueá-las também no servidor.
 - Listar todas as listas do cliente autenticado, sem necessidade de publicar uma lista individualmente. Sem listas, mostrar um estado vazio; sem produtos, informar que a lista ainda está sendo preparada.
-- Ao abrir `/minhas-listas/[id]`, apresentar ambientes, produtos, quantidades e links, preservando o conteúdo da visão de cliente atual. Preços, imagens e notas internas continuam fora dessa visão.
+- Ao abrir `/my-lists/[id]`, apresentar ambientes, produtos, quantidades e links, preservando o conteúdo da visão de cliente atual. Preços, imagens e notas internas continuam fora dessa visão.
 - Permitir marcar e desmarcar comprado e salvar ou apagar a observação do cliente por produto. Não permitir alterar nome, quantidade, preço, links, notas internas, ambientes ou estrutura da lista.
 - Reutilizar filtros Todos, Pendentes e Comprados e contagens coerentes com os produtos salvos.
 - A observação é um texto atual, não uma conversa: um campo por produto, até 1.000 caracteres, com espaços externos normalizados e vazio representado por `null`. Exibir e tratar como texto, sem HTML.
