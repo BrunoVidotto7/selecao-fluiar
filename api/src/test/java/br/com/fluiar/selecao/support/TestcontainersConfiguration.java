@@ -3,6 +3,7 @@ package br.com.fluiar.selecao.support;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Bean;
+import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
@@ -14,6 +15,10 @@ public class TestcontainersConfiguration {
     @Bean
     @ServiceConnection
     PostgreSQLContainer postgresContainer() {
-        return new PostgreSQLContainer(DockerImageName.parse(POSTGRES_IMAGE));
+        PostgreSQLContainer container = new PostgreSQLContainer(DockerImageName.parse(POSTGRES_IMAGE));
+        // The default waiter only reads the container log. On Rancher Desktop the published port
+        // becomes reachable a moment later, so the first Flyway connection was refused.
+        container.waitingFor(Wait.forListeningPort());
+        return container;
     }
 }
