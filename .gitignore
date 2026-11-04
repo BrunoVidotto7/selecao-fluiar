@@ -5,6 +5,7 @@ api/target/
 **/.playwright-mcp/
 .DS_Store
 .idea/
+.opencode/
 .env
 .env.*
 **/.env
