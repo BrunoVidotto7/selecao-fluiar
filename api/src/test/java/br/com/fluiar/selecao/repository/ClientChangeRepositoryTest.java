@@ -19,11 +19,11 @@ class ClientChangeRepositoryTest extends ApiIntegrationTest {
             var room = createRoom(admin, list, "Sala");
             jdbc.update("update shopping_lists set client_change_revision=1 where id=?", list);
             jdbc.update("""
-                    insert into products(id, room_id, name, quantity, bought, created_at, updated_at,
+                    insert into products(id, room_id, category_id, name, quantity, bought, created_at, updated_at,
                         client_purchase_revision, client_purchase_changed_at, client_purchase_value)
-                    select gen_random_uuid(), ?, 'Produto', 1, true, now(), now(), 1, '2026-11-05T12:00:00Z', true
+                    select gen_random_uuid(), ?, ?, 'Produto', 1, true, now(), now(), 1, '2026-11-05T12:00:00Z', true
                     from generate_series(1, 100)
-                    """, room);
+                    """, room, categoryId(admin, "Outros"));
         }
         jdbc.execute("analyze products; analyze rooms; analyze shopping_lists; analyze clients");
         assertThat(changes.pendingListCount(admin.officeId(), admin.userId())).isEqualTo(40);

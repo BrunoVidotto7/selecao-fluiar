@@ -169,7 +169,7 @@ class PublicListControllerTest extends ApiIntegrationTest {
         var result = mvc.post().uri("/api/lists/{listId}/products", listId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("roomId", roomId, "name", MIXER, "quantity", 1,
+                .content(json(Map.of("roomId", roomId, "categoryId", categoryId(session, "Outros"), "name", MIXER, "quantity", 1,
                         "unitPrice", new BigDecimal(MIXER_PRICE), "notes", MIXER_NOTES, "links", List.of(
                                 Map.of("url", MIXER_LINK, "note", MIXER_LINK_NOTE),
                                 Map.of("url", OTHER_MIXER_LINK)))))

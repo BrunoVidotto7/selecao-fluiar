@@ -103,6 +103,9 @@ public abstract class ApiIntegrationTest {
     }
 
     @Autowired
+    private br.com.fluiar.selecao.repository.ProductCategoryRepository categoryRepository;
+
+    @Autowired
     private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
     protected TestSession createAdmin(String name, String email) {
@@ -188,11 +191,21 @@ public abstract class ApiIntegrationTest {
     }
 
     /** Creates a product with quantity 1, no price and no links in the room through the API, and returns its id. */
+    protected UUID categoryId(TestSession session, String name) {
+        return jdbc.queryForObject("select id from product_categories where office_id = ? and name = ?", UUID.class,
+                session.officeId(), name);
+    }
+
+    protected br.com.fluiar.selecao.model.ProductCategory defaultCategory(UUID officeId) {
+        return categoryRepository.findByOfficeIdAndNameKey(officeId, "outros").orElseThrow();
+    }
+
     protected UUID createProduct(TestSession session, UUID listId, UUID roomId, String name) {
         var result = mvc.post().uri("/api/lists/{listId}/products", listId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("roomId", roomId, "name", name, "quantity", PRODUCT_QUANTITY)))
+                .content(json(Map.of("roomId", roomId, "categoryId", categoryId(session, "Outros"), "name", name,
+                        "quantity", PRODUCT_QUANTITY)))
                 .exchange();
         assertThat(result).hasStatus(HttpStatus.CREATED);
 

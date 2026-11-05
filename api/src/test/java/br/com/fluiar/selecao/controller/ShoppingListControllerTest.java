@@ -214,11 +214,11 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         Room laundry = storeRoom(listId, LAUNDRY, 1);
         Room kitchen = storeRoom(listId, KITCHEN, 0);
-        Product mixer = productRepository.save(new Product(kitchen, null, MIXER, 1, new BigDecimal("459.00"), MIXER_NOTES,
+        Product mixer = productRepository.save(new Product(kitchen, defaultCategory(paula.officeId()), MIXER, 1, new BigDecimal("459.00"), MIXER_NOTES,
                 false, List.of(new ProductLink(MIXER_STORE_LINK, MIXER_STORE_NOTE),
                         new ProductLink(MIXER_OTHER_LINK, null))));
-        productRepository.save(new Product(kitchen, null, CAKE_PAN, 2, new BigDecimal("39.90"), null, true, List.of()));
-        productRepository.save(new Product(laundry, null, STORAGE_BOX, 3, null, null, false, List.of()));
+        productRepository.save(new Product(kitchen, defaultCategory(paula.officeId()), CAKE_PAN, 2, new BigDecimal("39.90"), null, true, List.of()));
+        productRepository.save(new Product(laundry, defaultCategory(paula.officeId()), STORAGE_BOX, 3, null, null, false, List.of()));
 
         var result = requestList(paula, listId);
 
@@ -257,7 +257,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         Product mixer = productRepository.save(
-                new Product(storeRoom(listId, KITCHEN, 0), null, MIXER, 1, null, null, false, List.of()));
+                new Product(storeRoom(listId, KITCHEN, 0), defaultCategory(paula.officeId()), MIXER, 1, null, null, false, List.of()));
         UUID imageId = productImageRepository.save(new ProductImage(mixer.getId(), IMAGE_CONTENT_TYPE, IMAGE_BYTES))
                 .getId();
 
@@ -274,13 +274,14 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID smallListId = createList(paula, clientId, LIST_NAME);
-        storeProductWithLink(storeRoom(smallListId, KITCHEN, 0), MIXER);
+        var category = defaultCategory(paula.officeId());
+        storeProductWithLink(storeRoom(smallListId, KITCHEN, 0), category, MIXER);
         UUID largeListId = createList(paula, clientId, NEW_LIST_NAME);
         Room kitchen = storeRoom(largeListId, KITCHEN, 0);
         Room laundry = storeRoom(largeListId, LAUNDRY, 1);
-        storeProductWithLink(kitchen, MIXER);
-        storeProductWithLink(kitchen, CAKE_PAN);
-        storeProductWithLink(laundry, STORAGE_BOX);
+        storeProductWithLink(kitchen, category, MIXER);
+        storeProductWithLink(kitchen, category, CAKE_PAN);
+        storeProductWithLink(laundry, category, STORAGE_BOX);
 
         long smallListStatements = statementsToGet(paula, smallListId);
         long largeListStatements = statementsToGet(paula, largeListId);
@@ -403,9 +404,9 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         return roomRepository.save(new Room(shoppingListRepository.findById(listId).orElseThrow(), name, position));
     }
 
-    private void storeProductWithLink(Room room, String name) {
+    private void storeProductWithLink(Room room, br.com.fluiar.selecao.model.ProductCategory category, String name) {
         productRepository.save(
-                new Product(room, null, name, 1, null, null, false, List.of(new ProductLink(STORE_LINK, null))));
+                new Product(room, category, name, 1, null, null, false, List.of(new ProductLink(STORE_LINK, null))));
     }
 
     /** Stores a known past update time, so any later write by Hibernate is certainly newer, without waiting. */

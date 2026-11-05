@@ -47,6 +47,9 @@ class ProductControllerTest extends ApiIntegrationTest {
     private static final String STORE_LINK_PREFIX = "https://loja.example/produto-";
     private static final int LINK_COUNT_OVER_LIMIT = 11;
     private static final String UNSAFE_LINK = "javascript:alert(1)";
+    private static final String STONES = "Pedras";
+    private static final String CATEGORY_REQUIRED = "Escolha uma categoria.";
+    private static final String CATEGORY_NOT_IN_OFFICE = "Escolha uma categoria do escritório.";
     private static final String ROOM_REQUIRED = "Escolha o ambiente do produto.";
     private static final String ROOM_NOT_IN_LIST = "Escolha um ambiente desta lista.";
     private static final String LINK_URL_INVALID = "Cole o link completo, começando com https://";
@@ -469,6 +472,124 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(list).bodyJson().extractingPath("$.stats.totalProducts").isEqualTo(0);
     }
 
+    @Test
+    void createRequiresCategory() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        var result = mvc.post().uri("/api/lists/{listId}/products", listId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(paula))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("roomId", kitchenId, "name", MIXER, "quantity", 1)))
+                .exchange();
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.categoryId").isEqualTo(CATEGORY_REQUIRED);
+    }
+
+    @Test
+    void createRejectsCategoryOfAnotherOffice() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        var body = new java.util.HashMap<>(mixer(kitchenId));
+        body.put("categoryId", categoryId(marina, "Outros"));
+
+        var result = requestCreate(paula, listId, body);
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.categoryId").isEqualTo(CATEGORY_NOT_IN_OFFICE);
+    }
+
+    @Test
+    void createRejectsDeletedCategory() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        var body = new java.util.HashMap<>(mixer(kitchenId));
+        UUID stones = categoryId(paula, STONES);
+        body.put("categoryId", stones);
+        deleteCategory(stones);
+
+        var result = requestCreate(paula, listId, body);
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.categoryId").isEqualTo(CATEGORY_NOT_IN_OFFICE);
+    }
+
+    @Test
+    void responseIncludesCategory() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        var body = new java.util.HashMap<>(mixer(kitchenId));
+        UUID stones = categoryId(paula, STONES);
+        body.put("categoryId", stones);
+
+        var result = requestCreate(paula, listId, body);
+
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        assertThat(result).bodyJson().extractingPath("$.category.id").isEqualTo(stones.toString());
+        assertThat(result).bodyJson().extractingPath("$.category.name").isEqualTo(STONES);
+        assertThat(result).bodyJson().extractingPath("$.category.deleted").isEqualTo(false);
+    }
+
+    @Test
+    void updateKeepingDeletedCategorySucceeds() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        UUID stones = categoryId(paula, STONES);
+        var body = new java.util.HashMap<>(mixer(kitchenId));
+        body.put("categoryId", stones);
+        UUID productId = UUID.fromString(readJson(requestCreate(paula, listId, body), "$.id"));
+        deleteCategory(stones);
+        body.put("name", STAND_MIXER);
+
+        var result = requestUpdate(paula, productId, body);
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.name").isEqualTo(STAND_MIXER);
+        assertThat(result).bodyJson().extractingPath("$.category.deleted").isEqualTo(true);
+    }
+
+    @Test
+    void updateMovingToDeletedCategoryFails() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        UUID productId = createMixer(paula, listId, kitchenId);
+        UUID stones = categoryId(paula, STONES);
+        deleteCategory(stones);
+        var body = new java.util.HashMap<>(mixer(kitchenId));
+        body.put("categoryId", stones);
+
+        var result = requestUpdate(paula, productId, body);
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.categoryId").isEqualTo(CATEGORY_NOT_IN_OFFICE);
+    }
+
+    @Test
+    void listDetailIncludesCategory() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        createMixer(paula, listId, kitchenId);
+
+        var list = requestList(paula, listId);
+
+        assertThat(list).hasStatus(HttpStatus.OK);
+        assertThat(list).bodyJson().extractingPath("$.rooms[0].products[0].category.name").isEqualTo("Outros");
+        assertThat(list).bodyJson().extractingPath("$.rooms[0].products[0].category.deleted").isEqualTo(false);
+    }
+
+    private void deleteCategory(UUID categoryId) {
+        jdbc.update("update product_categories set deleted_at = now() where id = ?", categoryId);
+    }
+
     /** The mixer for 459.00, with notes and two links; the second link has an empty note. */
     private Map<String, Object> mixer(UUID roomId) {
         return Map.of("roomId", roomId, "name", MIXER, "quantity", 1, "unitPrice", new BigDecimal(MIXER_PRICE),
@@ -500,8 +621,15 @@ class ProductControllerTest extends ApiIntegrationTest {
         return mvc.post().uri("/api/lists/{listId}/products", listId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(product))
+                .content(json(withCategory(session, product)))
                 .exchange();
+    }
+
+    /** Adds the office's "Outros" category when the body does not choose one. */
+    private Map<String, Object> withCategory(TestSession session, Map<String, ?> product) {
+        var body = new java.util.HashMap<String, Object>(product);
+        body.putIfAbsent("categoryId", categoryId(session, "Outros"));
+        return body;
     }
 
     private MvcTestResult requestProduct(TestSession session, UUID productId) {
@@ -514,7 +642,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         return mvc.put().uri("/api/products/{productId}", productId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(product))
+                .content(json(withCategory(session, product)))
                 .exchange();
     }
 

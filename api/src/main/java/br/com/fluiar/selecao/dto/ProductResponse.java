@@ -8,6 +8,7 @@ import java.util.UUID;
 public record ProductResponse(
         UUID id,
         UUID roomId,
+        ProductCategoryRef category,
         String name,
         int quantity,
         BigDecimal unitPrice,
@@ -18,7 +19,8 @@ public record ProductResponse(
         List<ProductLinkDto> links, ProductStoreSyncResponse storeSync) {
 
     public static ProductResponse of(Product product) {
-        return new ProductResponse(product.getId(), product.getRoom().getId(), product.getName(),
+        return new ProductResponse(product.getId(), product.getRoom().getId(),
+                ProductCategoryRef.of(product.getCategory()), product.getName(),
                 product.getQuantity(), product.getUnitPrice(), product.getNotes(), product.getClientNotes(), product.isBought(),
                 ImageUrls.of(product.getImageId()), product.getLinks().stream().map(ProductLinkDto::of).toList(), ProductStoreSyncResponse.of(product.getStoreSync()));
     }

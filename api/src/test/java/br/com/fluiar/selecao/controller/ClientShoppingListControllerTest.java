@@ -47,6 +47,15 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void clientListIncludesCategory() {
+        var result = read(owner, listId);
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].category.name").isEqualTo("Outros");
+        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].category.deleted").isEqualTo(false);
+    }
+
+    @Test
     void privateDetailsOmitInternalFieldsAndClientAccountsFromSignature() {
         jdbc.update("update products set notes = 'Internal', unit_price = 10 where id = ?", productId);
         var response = read(owner, listId);

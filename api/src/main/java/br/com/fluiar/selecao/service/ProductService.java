@@ -8,9 +8,11 @@ import br.com.fluiar.selecao.dto.ProductStatusRequest;
 import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.exception.ErrorMessages;
 import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductCategory;
 import br.com.fluiar.selecao.model.ProductLink;
 import br.com.fluiar.selecao.model.Room;
 import br.com.fluiar.selecao.model.ShoppingList;
+import br.com.fluiar.selecao.repository.ProductCategoryRepository;
 import br.com.fluiar.selecao.repository.ProductRepository;
 import br.com.fluiar.selecao.repository.RoomRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
@@ -34,13 +36,17 @@ public class ProductService {
     private jakarta.persistence.EntityManager entityManager;
 
     private static final String ROOM_ID_FIELD = "roomId";
+    private static final String CATEGORY_ID_FIELD = "categoryId";
 
     private final ProductRepository productRepository;
     private final RoomRepository roomRepository;
+    private final ProductCategoryRepository categoryRepository;
     private final ShoppingListRepository listRepository;
 
     public ProductService(
-            ProductRepository productRepository, RoomRepository roomRepository, ShoppingListRepository listRepository, ListActivityService activity, StoreBindingService bindings) {
+            ProductRepository productRepository, RoomRepository roomRepository, ShoppingListRepository listRepository, ListActivityService activity, StoreBindingService bindings,
+            ProductCategoryRepository categoryRepository) {
+        this.categoryRepository = categoryRepository;
         this.bindings = bindings;
         this.activity = activity;
         this.productRepository = productRepository;
@@ -56,7 +62,7 @@ public class ProductService {
         ShoppingList list = lockList(officeId, listId);
         Room room = roomOfList(request.roomId(), list);
 
-        Product product = productRepository.save(new Product(room, null, request.name(), request.quantity(),
+        Product product = productRepository.save(new Product(room, categoryFor(officeId, request.categoryId(), null), request.name(), request.quantity(),
                 request.unitPrice(), request.notes(), request.bought(), linksOf(request)));
         bindings.apply(product, request, confirmation, false);
         list.touch();
@@ -82,7 +88,7 @@ public class ProductService {
                 || !samePrice(product.getUnitPrice(), request.unitPrice());
         bindings.apply(product, request, confirmation, manualChange);
 
-        product.update(room, null, request.name(), request.quantity(), request.unitPrice(), request.notes(),
+        product.update(room, categoryFor(officeId, request.categoryId(), product), request.name(), request.quantity(), request.unitPrice(), request.notes(),
                 request.bought(), linksOf(request));
         list.touch();
         activity.record(list.getId());
@@ -152,6 +158,15 @@ public class ProductService {
         return roomRepository.findById(roomId)
                 .filter(room -> room.getList().getId().equals(list.getId()))
                 .orElseThrow(() -> ApiException.invalidField(ROOM_ID_FIELD, ErrorMessages.ROOM_NOT_IN_LIST));
+    }
+
+    /** Keeping the current category is always allowed, even deleted; choosing another needs an active one of the office. */
+    private ProductCategory categoryFor(UUID officeId, UUID categoryId, Product current) {
+        if (current != null && current.getCategory().getId().equals(categoryId)) {
+            return current.getCategory();
+        }
+        return categoryRepository.findByIdAndOfficeIdAndDeletedAtIsNull(categoryId, officeId)
+                .orElseThrow(() -> ApiException.invalidField(CATEGORY_ID_FIELD, ErrorMessages.CATEGORY_NOT_IN_OFFICE));
     }
 
     private static List<ProductLink> linksOf(ProductRequest request) {

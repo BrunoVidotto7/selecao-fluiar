@@ -17,10 +17,11 @@ public record ClientListDetailResponse(UUID id, String name, String description,
 
     public record Stats(int totalProducts, int boughtProducts, int pendingProducts) { }
     public record ClientRoom(UUID id, String name, int position, List<ClientProduct> products) { }
-    public record ClientProduct(UUID id, String name, int quantity, boolean bought, String clientNotes,
-            List<ProductLinkDto> links) {
+    public record ClientProduct(UUID id, String name, ProductCategoryRef category, int quantity, boolean bought,
+            String clientNotes, List<ProductLinkDto> links) {
         public static ClientProduct of(Product product) {
-            return new ClientProduct(product.getId(), product.getName(), product.getQuantity(), product.isBought(),
+            return new ClientProduct(product.getId(), product.getName(), ProductCategoryRef.of(product.getCategory()),
+                    product.getQuantity(), product.isBought(),
                     product.getClientNotes(), product.getLinks().stream().map(ProductLinkDto::of).toList());
         }
     }

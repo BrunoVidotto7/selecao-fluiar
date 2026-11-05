@@ -20,6 +20,7 @@ import java.util.UUID;
  */
 public record ProductRequest(
         @NotNull(message = ErrorMessages.ROOM_REQUIRED) UUID roomId,
+        @NotNull(message = ErrorMessages.CATEGORY_REQUIRED) UUID categoryId,
         @NotBlank @Size(max = Product.NAME_MAX_LENGTH) String name,
         @NotNull @Min(Product.MIN_QUANTITY) @Max(Product.MAX_QUANTITY) Integer quantity,
         @DecimalMin(Product.MIN_UNIT_PRICE)

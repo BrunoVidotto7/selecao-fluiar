@@ -8,6 +8,7 @@ import br.com.fluiar.selecao.dto.ListSummaryResponse;
 import br.com.fluiar.selecao.model.Client;
 import br.com.fluiar.selecao.model.Office;
 import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductCategory;
 import br.com.fluiar.selecao.model.ProductImage;
 import br.com.fluiar.selecao.model.ProductLink;
 import br.com.fluiar.selecao.model.Room;
@@ -60,6 +61,9 @@ class SummaryQueriesTest {
 
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private ProductCategoryRepository categoryRepository;
 
     @Autowired
     private ProductImageRepository productImageRepository;
@@ -247,7 +251,7 @@ class SummaryQueriesTest {
         UUID officeId = office();
         Client client = client(officeId, "Ana Souza");
         Room room = room(list(client, "Apartamento"), "Sala", 0);
-        Product product = productRepository.save(new Product(room, null, "Sofá", 1, null, null, false, List.of(
+        Product product = productRepository.save(new Product(room, categoryOf(room), "Sofá", 1, null, null, false, List.of(
                 new ProductLink("https://loja.example/sofa", "Cor cinza"),
                 new ProductLink("https://loja.example/sofa-azul", null))));
         productImageRepository.save(new ProductImage(product.getId(), "image/png", IMAGE_BYTES));
@@ -284,8 +288,13 @@ class SummaryQueriesTest {
         return roomRepository.save(new Room(list, name, position));
     }
 
+    private ProductCategory categoryOf(Room room) {
+        entityManager.flush();
+        return categoryRepository.findByOfficeIdAndNameKey(room.getList().getClient().getOfficeId(), "outros").orElseThrow();
+    }
+
     private Product product(Room room, int quantity, BigDecimal unitPrice, boolean bought) {
-        return productRepository.save(new Product(room, null, "Produto", quantity, unitPrice, null, bought, List.of()));
+        return productRepository.save(new Product(room, categoryOf(room), "Produto", quantity, unitPrice, null, bought, List.of()));
     }
 
     private void flushAndClear() {

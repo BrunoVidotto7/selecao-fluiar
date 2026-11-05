@@ -26,7 +26,7 @@ class ProductStoreSyncControllerTest extends ApiIntegrationTest {
         var admin=createAdmin("Ana","ana@test.com");
         var list=createList(admin,createClient(admin,"Cliente"),"Lista");
         var room=createRoom(admin,list,"Sala");
-        var body=new HashMap<String,Object>(Map.of("roomId",room,"name","Cadeira","quantity",1,"unitPrice",125,
+        var body=new HashMap<String,Object>(Map.of("roomId",room,"categoryId",categoryId(admin,"Outros"),"name","Cadeira","quantity",1,"unitPrice",125,
                 "storeSync",Map.of("sourceUrl",SOURCE)));
         var saved=mvc.post().uri("/api/lists/{id}/products",list).header(HttpHeaders.AUTHORIZATION,bearer(admin))
                 .contentType(MediaType.APPLICATION_JSON).content(json(body)).exchange();
@@ -45,7 +45,7 @@ class ProductStoreSyncControllerTest extends ApiIntegrationTest {
         var admin=createAdmin("Ana","ana@test.com");
         var list=createList(admin,createClient(admin,"Cliente"),"Lista");
         var room=createRoom(admin,list,"Sala");
-        var body=new HashMap<String,Object>(Map.of("roomId",room,"name","Cadeira","quantity",1,"unitPrice",125,
+        var body=new HashMap<String,Object>(Map.of("roomId",room,"categoryId",categoryId(admin,"Outros"),"name","Cadeira","quantity",1,"unitPrice",125,
                 "storeSync",Map.of("sourceUrl",SOURCE)));
         var saved=mvc.post().uri("/api/lists/{id}/products",list).header(HttpHeaders.AUTHORIZATION,bearer(admin))
                 .contentType(MediaType.APPLICATION_JSON).content(json(body)).exchange();
@@ -61,7 +61,7 @@ class ProductStoreSyncControllerTest extends ApiIntegrationTest {
         var list=createList(admin,createClient(admin,"Cliente"),"Lista");
         var room=createRoom(admin,list,"Sala");
         assertThat(mvc.post().uri("/api/lists/{id}/products",list).header(HttpHeaders.AUTHORIZATION,bearer(admin))
-                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("roomId",room,"name","Outro","quantity",1,
+                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("roomId",room,"categoryId",categoryId(admin,"Outros"),"name","Outro","quantity",1,
                 "unitPrice",125,"storeSync",Map.of("sourceUrl",SOURCE)))).exchange()).hasStatus(HttpStatus.BAD_REQUEST);
         verify(storeCollector,never()).downloadImage(anyString());
     }

@@ -32,6 +32,8 @@ public final class ErrorMessages {
     public static final String ROOM_NAME_IN_USE = "Já existe um ambiente com esse nome nesta lista.";
     public static final String ROOM_ORDER_INCOMPLETE = "Envie todos os ambientes da lista, sem repetir.";
     public static final String ROOM_REQUIRED = "Escolha o ambiente do produto.";
+    public static final String CATEGORY_REQUIRED = "Escolha uma categoria.";
+    public static final String CATEGORY_NOT_IN_OFFICE = "Escolha uma categoria do escritório.";
     public static final String ROOM_NOT_IN_LIST = "Escolha um ambiente desta lista.";
     public static final String LINK_URL_INVALID = "Cole o link completo, começando com https://";
     public static final String LINKS_TOO_MANY = "Adicione no máximo 10 links.";
