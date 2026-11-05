@@ -247,7 +247,7 @@ class SummaryQueriesTest {
         UUID officeId = office();
         Client client = client(officeId, "Ana Souza");
         Room room = room(list(client, "Apartamento"), "Sala", 0);
-        Product product = productRepository.save(new Product(room, "Sofá", 1, null, null, false, List.of(
+        Product product = productRepository.save(new Product(room, null, "Sofá", 1, null, null, false, List.of(
                 new ProductLink("https://loja.example/sofa", "Cor cinza"),
                 new ProductLink("https://loja.example/sofa-azul", null))));
         productImageRepository.save(new ProductImage(product.getId(), "image/png", IMAGE_BYTES));
@@ -285,7 +285,7 @@ class SummaryQueriesTest {
     }
 
     private Product product(Room room, int quantity, BigDecimal unitPrice, boolean bought) {
-        return productRepository.save(new Product(room, "Produto", quantity, unitPrice, null, bought, List.of()));
+        return productRepository.save(new Product(room, null, "Produto", quantity, unitPrice, null, bought, List.of()));
     }
 
     private void flushAndClear() {

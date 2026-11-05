@@ -43,6 +43,9 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY)
     private Room room;
 
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    private ProductCategory category;
+
     @jakarta.persistence.Embedded
     private ProductStoreSync storeSync = new ProductStoreSync();
 
@@ -79,9 +82,10 @@ public class Product {
     protected Product() {
     }
 
-    public Product(Room room, String name, int quantity, BigDecimal unitPrice, String notes, boolean bought,
+    public Product(Room room, ProductCategory category, String name, int quantity, BigDecimal unitPrice, String notes, boolean bought,
             List<ProductLink> links) {
         this.room = room;
+        this.category = category;
         this.name = name;
         this.quantity = quantity;
         this.unitPrice = unitPrice;
@@ -117,6 +121,10 @@ public class Product {
 
     public Room getRoom() {
         return room;
+    }
+
+    public ProductCategory getCategory() {
+        return category;
     }
 
     public String getName() {
@@ -155,9 +163,10 @@ public class Product {
         return imageId;
     }
 
-    public void update(Room room, String name, int quantity, BigDecimal unitPrice, String notes, boolean bought,
+    public void update(Room room, ProductCategory category, String name, int quantity, BigDecimal unitPrice, String notes, boolean bought,
             List<ProductLink> links) {
         this.room = room;
+        this.category = category;
         this.name = name;
         this.quantity = quantity;
         this.unitPrice = unitPrice;

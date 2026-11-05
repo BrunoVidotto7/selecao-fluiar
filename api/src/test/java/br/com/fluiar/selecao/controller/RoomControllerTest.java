@@ -165,7 +165,7 @@ class RoomControllerTest extends ApiIntegrationTest {
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = productRepository.save(new Product(
-                roomRepository.findById(kitchenId).orElseThrow(), MIXER, 1, null, null, false, List.of())).getId();
+                roomRepository.findById(kitchenId).orElseThrow(), null, MIXER, 1, null, null, false, List.of())).getId();
 
         var result = requestDeleteRoom(paula, kitchenId);
 

@@ -41,7 +41,7 @@ class ClientShoppingListServiceTest {
         ReflectionTestUtils.setField(list, "id", listId);
         var room = new Room(list, "Kitchen", 0);
         ReflectionTestUtils.setField(room, "id", UUID.randomUUID());
-        product = new Product(room, "Chair", 2, BigDecimal.TEN, "Internal instruction", false, List.of());
+        product = new Product(room, null, "Chair", 2, BigDecimal.TEN, "Internal instruction", false, List.of());
         ReflectionTestUtils.setField(product, "id", productId);
         list.getRooms().add(room);
         room.getProducts().add(product);

@@ -56,7 +56,7 @@ public class ProductService {
         ShoppingList list = lockList(officeId, listId);
         Room room = roomOfList(request.roomId(), list);
 
-        Product product = productRepository.save(new Product(room, request.name(), request.quantity(),
+        Product product = productRepository.save(new Product(room, null, request.name(), request.quantity(),
                 request.unitPrice(), request.notes(), request.bought(), linksOf(request)));
         bindings.apply(product, request, confirmation, false);
         list.touch();
@@ -82,7 +82,7 @@ public class ProductService {
                 || !samePrice(product.getUnitPrice(), request.unitPrice());
         bindings.apply(product, request, confirmation, manualChange);
 
-        product.update(room, request.name(), request.quantity(), request.unitPrice(), request.notes(),
+        product.update(room, null, request.name(), request.quantity(), request.unitPrice(), request.notes(),
                 request.bought(), linksOf(request));
         list.touch();
         activity.record(list.getId());
