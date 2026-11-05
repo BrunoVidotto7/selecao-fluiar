@@ -33,6 +33,9 @@ public final class ErrorMessages {
     public static final String ROOM_ORDER_INCOMPLETE = "Envie todos os ambientes da lista, sem repetir.";
     public static final String ROOM_REQUIRED = "Escolha o ambiente do produto.";
     public static final String CATEGORY_REQUIRED = "Escolha uma categoria.";
+    public static final String CATEGORY_NAME_REQUIRED = "Informe o nome da categoria.";
+    public static final String CATEGORY_NAME_TOO_LONG = "Use até 60 caracteres.";
+    public static final String CATEGORY_NAME_IN_USE = "Já existe uma categoria com esse nome.";
     public static final String CATEGORY_NOT_IN_OFFICE = "Escolha uma categoria do escritório.";
     public static final String ROOM_NOT_IN_LIST = "Escolha um ambiente desta lista.";
     public static final String LINK_URL_INVALID = "Cole o link completo, começando com https://";

@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 public interface ProductRepository extends JpaRepository<Product, UUID> {
 
     @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    long countByCategoryId(UUID categoryId);
+
     @Query("""
             select p from Product p where p.id=:id and p.room in
                 (select r from Room r where r.list.client.officeId=:officeId)
