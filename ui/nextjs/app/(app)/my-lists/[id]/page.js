@@ -1,3 +1,4 @@
+import ListActivity from '@/components/list-activity/ListActivity';
 import ClientShoppingList from '@/components/client-shopping/ClientShoppingList';
 import { getClientList } from '@/components/client-shopping/queries.server';
 export async function generateMetadata({ params }) {
@@ -6,5 +7,5 @@ export async function generateMetadata({ params }) {
 }
 export default async function Page({ params }) {
   const list = await getClientList((await params).id);
-  return <div className="wrap doc"><ClientShoppingList list={list} /></div>;
+  return <div className="wrap doc"><ListActivity listId={list.id} client /><ClientShoppingList list={list} /></div>;
 }

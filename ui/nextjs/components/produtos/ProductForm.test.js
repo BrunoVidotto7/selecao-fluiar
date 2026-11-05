@@ -5,7 +5,7 @@ import NewProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/novo/page';
 import EditProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/[produtoId]/editar/page';
 import { FeedbackProvider } from '../feedback/Feedback';
 import { LIST, ROOM, PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
-import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct } from './actions';
+import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
 import { getList } from '../listas/queries.server';
 
 const { push, refresh, createUrl, revokeUrl } = vi.hoisted(() => ({
@@ -18,6 +18,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./actions', () => ({
   saveProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(), deleteProduct: vi.fn(),
+  findProductImages: vi.fn(), uploadProductImageFromUrl: vi.fn(), previewStoreProduct: vi.fn(),
 }));
 vi.mock('../listas/queries.server', () => ({ getList: vi.fn() }));
 
@@ -45,6 +46,10 @@ const pick = (file = new File(['png'], 'foto.png', { type: 'image/png' })) => {
   fireEvent.change(screen.getByLabelText(/Escolher imagem|Trocar imagem/), { target: { files: [file] } });
   return file;
 };
+const searchImages = async (link = 'https://loja.com/produto') => {
+  fireEvent.change(screen.getByLabelText('Link da página do produto'), { target: { value: link } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar imagens' })); });
+};
 const mount = (props = {}) => render(<FeedbackProvider><ProductForm listId={LIST.id} rooms={[ROOM, SECOND_ROOM]} {...props} /></FeedbackProvider>);
 
 beforeEach(() => {
@@ -54,6 +59,8 @@ beforeEach(() => {
   uploadProductImage.mockReset().mockResolvedValue({ ok: true, data: { imageUrl: IMAGE_URL } });
   deleteProductImage.mockReset().mockResolvedValue({ ok: true, data: undefined });
   deleteProduct.mockReset().mockResolvedValue({ ok: true, data: undefined });
+  findProductImages.mockReset().mockResolvedValue({ ok: true, data: { images: [] } });
+  uploadProductImageFromUrl.mockReset().mockResolvedValue({ ok: true, data: { imageUrl: IMAGE_URL } });
   getList.mockReset().mockResolvedValue(LIST);
   createUrl.mockReset().mockReturnValue('blob:preview');
   vi.stubGlobal('URL', class extends URL {
@@ -394,6 +401,80 @@ test('leaving while an image is pending releases the preview and suppresses comp
   expect(sessionStorage.getItem('flash')).toBeNull();
 });
 
+test('a store link offers its images and the chosen one is uploaded after the product is saved', async () => {
+  mount();
+  fillNew();
+  findProductImages.mockResolvedValue({
+    ok: true, data: { images: ['https://cdn.loja.com/a.jpg', 'https://cdn.loja.com/b.jpg'] },
+  });
+  await searchImages();
+  expect(findProductImages).toHaveBeenCalledWith('https://loja.com/produto');
+  const choices = screen.getAllByRole('button', { name: /Usar imagem/ });
+  expect(choices).toHaveLength(2);
+  fireEvent.click(choices[1]);
+  expect(screen.getByRole('img', { name: 'Prévia do produto' }).getAttribute('src')).toBe('https://cdn.loja.com/b.jpg');
+  await submit();
+  expect(saveProduct).toHaveBeenCalledOnce();
+  expect(uploadProductImageFromUrl).toHaveBeenCalledWith(LIST.id, PRODUCT.id, 'https://cdn.loja.com/b.jpg');
+  expect(uploadProductImage).not.toHaveBeenCalled();
+  expect(push).toHaveBeenCalledExactlyOnceWith(`/listas/${LIST.id}`);
+});
+
+test('a store link without images explains it without blocking the rest of the form', async () => {
+  mount();
+  fillNew();
+  findProductImages.mockResolvedValue({ ok: true, data: { images: [] } });
+  await searchImages();
+  expect(screen.getByText('Nenhuma imagem encontrada nesse link.')).toBeTruthy();
+  await submit();
+  expect(saveProduct).toHaveBeenCalledOnce();
+  expect(uploadProductImageFromUrl).not.toHaveBeenCalled();
+});
+
+test('a failed image search shows why and can be retried', async () => {
+  mount();
+  findProductImages.mockResolvedValueOnce({
+    ok: false, status: 502, detail: 'Não conseguimos abrir esse link. Verifique se ele está completo.', errors: {},
+  });
+  await searchImages();
+  expect(screen.getByText('Não conseguimos abrir esse link. Verifique se ele está completo.')).toBeTruthy();
+  findProductImages.mockResolvedValueOnce({ ok: true, data: { images: ['https://cdn.loja.com/a.jpg'] } });
+  await searchImages();
+  expect(screen.getAllByRole('button', { name: /Usar imagem/ })).toHaveLength(1);
+  expect(screen.queryByText('Não conseguimos abrir esse link. Verifique se ele está completo.')).toBeNull();
+});
+
+test('an imported image failure keeps the choice for the next save without a second product POST', async () => {
+  mount();
+  fillNew();
+  findProductImages.mockResolvedValue({ ok: true, data: { images: ['https://cdn.loja.com/a.jpg'] } });
+  await searchImages();
+  fireEvent.click(screen.getByRole('button', { name: 'Usar imagem 1' }));
+  uploadProductImageFromUrl.mockResolvedValueOnce({ ok: false, status: 503, detail: 'Falha no envio.', errors: {} });
+  await submit();
+  expect(screen.getByText(PARTIAL_COPY)).toBeTruthy();
+  expect(screen.getByText('Falha no envio.')).toBeTruthy();
+  expect(screen.getByRole('img', { name: 'Prévia do produto' }).getAttribute('src')).toBe('https://cdn.loja.com/a.jpg');
+  expect(push).not.toHaveBeenCalled();
+  await submit();
+  expect(saveProduct.mock.calls[1][1]).toBe(PRODUCT.id);
+  expect(uploadProductImageFromUrl).toHaveBeenCalledTimes(2);
+  expect(push).toHaveBeenCalledOnce();
+  expect(screen.queryByText(PARTIAL_COPY)).toBeNull();
+});
+
+test('removing an imported image before saving skips the upload', async () => {
+  mount();
+  fillNew();
+  findProductImages.mockResolvedValue({ ok: true, data: { images: ['https://cdn.loja.com/a.jpg'] } });
+  await searchImages();
+  fireEvent.click(screen.getByRole('button', { name: 'Usar imagem 1' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Remover imagem' }));
+  expect(screen.queryByRole('img', { name: 'Prévia do produto' })).toBeNull();
+  await submit();
+  expect(uploadProductImageFromUrl).not.toHaveBeenCalled();
+});
+
 test('deleting a product waits for confirmation and API success; a failure stays on the form', async () => {
   mount({ product: PRODUCT });
   fireEvent.click(screen.getByRole('button', { name: 'Excluir produto' }));
@@ -411,4 +492,110 @@ test('deleting a product waits for confirmation and API success; a failure stays
   fireEvent.click(screen.getByRole('button', { name: 'Excluir produto' }));
   await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Excluir produto' })); });
   expect(push).toHaveBeenCalledWith(`/listas/${LIST.id}`);
+});
+
+const STORE_PREVIEW = { sourceUrl: 'https://moveca.com.br/products/chair', store: 'moveca', productId: 'chair', variantId: 'oak', variants: [], name: 'Cadeira', unitPrice: 1250, imageUrl: 'https://cdn.moveca.com.br/chair.png', resolution: 'resolved' };
+const searchProduct = async () => {
+  fireEvent.change(screen.getByLabelText('Link da página do produto'), { target: { value: STORE_PREVIEW.sourceUrl } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar produto' })); });
+};
+test('resolved product preview fills fields and saves an explicit binding without a second image write', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  expect(screen.getByLabelText('Nome do produto').value).toBe('Cadeira');
+  expect(screen.getByLabelText('Preço unitário').value).toBe('1.250,00');
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).toMatchObject({ name: 'Cadeira', unitPrice: 1250, storeSync: { sourceUrl: STORE_PREVIEW.sourceUrl, variantId: 'oak' } });
+  expect(uploadProductImageFromUrl).not.toHaveBeenCalled();
+});
+test('variant preview requires an explicit choice before binding', async () => {
+  previewStoreProduct.mockResolvedValueOnce({ ok: true, data: { ...STORE_PREVIEW, resolution: 'variant_required', variants: [{ id: 'oak', label: 'Carvalho' }] } }).mockResolvedValueOnce({ ok: true, data: STORE_PREVIEW });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  expect(screen.getByLabelText('Versão do produto').value).toBe('');
+  fireEvent.change(screen.getByLabelText('Versão do produto'), { target: { value: 'oak' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar produto' })); });
+  expect(previewStoreProduct).toHaveBeenLastCalledWith(STORE_PREVIEW.sourceUrl, 'oak');
+  await submit();
+  expect(saveProduct.mock.calls[0][2].storeSync.variantId).toBe('oak');
+});
+test('manual edits require confirmation and disable the whole binding', async () => {
+  mount({ product: { ...PRODUCT, storeSync: { ...STORE_PREVIEW, enabled: true, status: 'synced' } } });
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Meu nome' } });
+  await submit();
+  expect(saveProduct).not.toHaveBeenCalled();
+  const dialog = screen.getByRole('alertdialog');
+  expect(dialog.textContent).toContain('desliga a atualização automática');
+  await act(async () => { fireEvent.click(within(dialog).getByRole('button', { name: 'Salvar como manual' })); });
+  expect(saveProduct.mock.calls[0][2].storeSync).toBeNull();
+});
+test('preview mismatch can be cancelled without saving or losing the draft', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  fireEvent.change(screen.getByLabelText('Preço unitário'), { target: { value: '900,00' } });
+  await submit();
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Cancelar' }));
+  expect(saveProduct).not.toHaveBeenCalled();
+  expect(screen.getByLabelText('Preço unitário').value).toBe('900,00');
+});
+
+test('removing the preview photo requires manual-save confirmation', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  fireEvent.click(screen.getByRole('button', { name: 'Remover imagem' }));
+  await submit();
+  expect(saveProduct).not.toHaveBeenCalled();
+  await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salvar como manual' })); });
+  expect(saveProduct.mock.calls[0][2].storeSync).toBeNull();
+  expect(uploadProductImageFromUrl).not.toHaveBeenCalled();
+});
+test('editing the source URL invalidates an earlier preview binding', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  fireEvent.change(screen.getByLabelText('Link da página do produto'), { target: { value: 'https://moveca.com.br/products/other' } });
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).not.toHaveProperty('storeSync');
+});
+test('quantity changes preserve an existing binding without confirmation', async () => {
+  mount({ product: { ...PRODUCT, storeSync: { ...STORE_PREVIEW, enabled: true, status: 'ok' } } });
+  fireEvent.change(screen.getByLabelText('Quantidade'), { target: { value: '3' } });
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).not.toHaveProperty('storeSync');
+  expect(screen.queryByRole('alertdialog')).toBeNull();
+});
+test('a manual photo on a linked product disables its binding before upload', async () => {
+  mount({ product: { ...PRODUCT, storeSync: { ...STORE_PREVIEW, enabled: true, status: 'ok' } } });
+  pick();
+  await submit();
+  expect(saveProduct).not.toHaveBeenCalled();
+  await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salvar como manual' })); });
+  expect(saveProduct.mock.calls[0][2].storeSync).toBeNull();
+  expect(uploadProductImage).toHaveBeenCalledOnce();
+});
+test('failed store preview leaves manual entry and image search available', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: false, status: 502, detail: 'Loja indisponível.', errors: {} });
+  mount();
+  fillNew();
+  await searchProduct();
+  expect(screen.getByText('Loja indisponível.')).toBeTruthy();
+  expect(screen.getByRole('button', { name: 'Buscar imagens' }).disabled).toBe(false);
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).not.toHaveProperty('storeSync');
+});
+test('pending preview blocks save and unmount suppresses late results', async () => {
+  const pending = deferred();
+  previewStoreProduct.mockReturnValue(pending.promise);
+  const view = mount();
+  fillNew();
+  await searchProduct();
+  await act(async () => { fireEvent.submit(screen.getByRole('button', { name: 'Salvando…' }).closest('form')); });
+  expect(previewStoreProduct).toHaveBeenCalledTimes(1);
+  expect(saveProduct).not.toHaveBeenCalled();
+  view.unmount();
+  await act(async () => { pending.resolve({ ok: true, data: STORE_PREVIEW }); });
+  expect(push).not.toHaveBeenCalled();
 });

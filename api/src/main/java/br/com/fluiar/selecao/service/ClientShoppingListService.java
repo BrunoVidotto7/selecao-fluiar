@@ -15,13 +15,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class ClientShoppingListService {
+
+    private final ListActivityService activity;
     private final ShoppingListRepository lists;
     private final ProductRepository products;
     private final OfficeRepository offices;
     private final UserRepository users;
 
     public ClientShoppingListService(ShoppingListRepository lists, ProductRepository products,
-            OfficeRepository offices, UserRepository users) {
+            OfficeRepository offices, UserRepository users, ListActivityService activity) {
+        this.activity = activity;
         this.lists = lists;
         this.products = products;
         this.offices = offices;
@@ -45,6 +48,7 @@ public class ClientShoppingListService {
         Product product = productInList(officeId, listId, productId);
         product.markBought(request.bought());
         list.touch();
+        activity.record(list.getId());
         return ClientProduct.of(product);
     }
 
@@ -54,6 +58,7 @@ public class ClientShoppingListService {
         Product product = productInList(officeId, listId, productId);
         product.changeClientNotes(request.clientNotes());
         list.touch();
+        activity.record(list.getId());
         return ClientProduct.of(product);
     }
 
@@ -70,7 +75,7 @@ public class ClientShoppingListService {
     }
 
     private Product productInList(UUID officeId, UUID listId, UUID productId) {
-        return products.findInOffice(productId, officeId)
+        return products.findInOfficeForUpdate(productId, officeId)
                 .filter(product -> product.getRoom().getList().getId().equals(listId)).orElseThrow(ApiException::notFound);
     }
 }

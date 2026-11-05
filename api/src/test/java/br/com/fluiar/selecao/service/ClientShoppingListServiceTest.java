@@ -28,7 +28,7 @@ class ClientShoppingListServiceTest {
     private final ProductRepository products = mock(ProductRepository.class);
     private final OfficeRepository offices = mock(OfficeRepository.class);
     private final UserRepository users = mock(UserRepository.class);
-    private final ClientShoppingListService service = new ClientShoppingListService(lists, products, offices, users);
+    private final ClientShoppingListService service = new ClientShoppingListService(lists, products, offices, users, org.mockito.Mockito.mock(ListActivityService.class));
     private final JsonMapper mapper = JsonMapper.builder().build();
     private ShoppingList list;
     private Product product;
@@ -47,7 +47,7 @@ class ClientShoppingListServiceTest {
         room.getProducts().add(product);
         when(lists.findInOffice(listId, officeId)).thenReturn(Optional.of(list));
         when(lists.findInOfficeForUpdate(listId, officeId)).thenReturn(Optional.of(list));
-        when(products.findInOffice(productId, officeId)).thenReturn(Optional.of(product));
+        when(products.findInOfficeForUpdate(productId, officeId)).thenReturn(Optional.of(product));
         when(offices.findById(officeId)).thenReturn(Optional.of(new Office("Office")));
         when(users.findByOfficeIdAndRoleOrderByNameAsc(officeId, UserRole.ADMIN)).thenReturn(List.of());
     }

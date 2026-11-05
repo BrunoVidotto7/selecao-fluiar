@@ -20,12 +20,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ShoppingListService {
 
+    private final ListActivityService activity;
+
     private static final String CLIENT_ID_FIELD = "clientId";
 
     private final ShoppingListRepository listRepository;
     private final ClientRepository clientRepository;
 
-    public ShoppingListService(ShoppingListRepository listRepository, ClientRepository clientRepository) {
+    public ShoppingListService(ShoppingListRepository listRepository, ClientRepository clientRepository, ListActivityService activity) {
+        this.activity = activity;
         this.listRepository = listRepository;
         this.clientRepository = clientRepository;
     }
@@ -46,6 +49,7 @@ public class ShoppingListService {
         ShoppingList list = listRepository.saveAndFlush(
                 new ShoppingList(client, request.name(), request.description(), SecureTokens.generate()));
 
+        activity.record(list.getId());
         return ListDetailResponse.of(list);
     }
 
@@ -58,6 +62,7 @@ public class ShoppingListService {
         // Hibernate refreshes updatedAt only when the update runs; the response needs the new value.
         listRepository.flush();
 
+        activity.record(list.getId());
         return ListDetailResponse.of(list);
     }
 
@@ -78,6 +83,7 @@ public class ShoppingListService {
     public ShareTokenResponse rotateShareToken(UUID officeId, UUID listId) {
         ShoppingList list = lockList(officeId, listId);
         list.replaceShareToken(SecureTokens.generate());
+        activity.record(list.getId());
 
         return new ShareTokenResponse(list.getShareToken());
     }

@@ -23,10 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/lists")
 public class ShoppingListController {
+    private final br.com.fluiar.selecao.service.ListActivityService activity;
+
 
     private final ShoppingListService shoppingListService;
 
-    public ShoppingListController(ShoppingListService shoppingListService) {
+    public ShoppingListController(ShoppingListService shoppingListService, br.com.fluiar.selecao.service.ListActivityService activity) {
+        this.activity = activity;
         this.shoppingListService = shoppingListService;
     }
 
@@ -63,4 +66,10 @@ public class ShoppingListController {
     public ShareTokenResponse rotateShareToken(@CurrentOfficeId UUID officeId, @PathVariable UUID id) {
         return shoppingListService.rotateShareToken(officeId, id);
     }
+    @PostMapping("/{id}/activity")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void recordActivity(@CurrentOfficeId UUID officeId, @PathVariable UUID id) {
+        activity.open(officeId, null, id);
+    }
+
 }

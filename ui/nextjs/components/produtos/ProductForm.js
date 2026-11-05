@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { unstable_rethrow, useRouter } from 'next/navigation';
 import Button, { IconButton } from '../ui/Button';
 import Icon from '../ui/Icon';
@@ -8,13 +9,17 @@ import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useApiForm from '../forms/useApiForm';
 import { brl, imageSource, parseBRL } from '@/lib/format';
 import { PRODUCT_IMAGE_TYPES, validateField, validateProductImage } from '@/lib/validation';
-import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage } from './actions';
-import { toProductRequest, validateProductLinks, productFieldMap } from './product-values';
+import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
+import StoreSyncStatus from './StoreSyncStatus';
+import { toProductRequest, validateProductLinks, productFieldMap, storeSyncChange } from './product-values';
 
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 999;
 const PARTIAL_IMAGE_DETAIL = 'O produto foi salvo, mas a imagem não foi atualizada. Tente novamente.';
 const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
+const IMAGE_SEARCH_FAILED_DETAIL = 'Não conseguimos buscar imagens nesse link. Tente novamente.';
+const NO_IMAGES_DETAIL = 'Nenhuma imagem encontrada nesse link.';
+const LINK_REQUIRED_DETAIL = 'Cole o link da página do produto.';
 const PRODUCT_RULES = {
   nome: { required: true, maxLength: 120 },
   amb: { required: 'Escolha o ambiente do produto.' },
@@ -35,9 +40,19 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
   const linksRef = useRef(null);
   const mounted = useRef(true);
   const deletingRef = useRef(false);
+  const searchingImagesRef = useRef(false);
   const [deleting, setDeleting] = useState(false);
   const [file, setFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
+  const [importedImage, setImportedImage] = useState(null);
+  const [imageLink, setImageLink] = useState(product?.storeSync?.sourceUrl || '');
+  const [storePreview, setStorePreview] = useState(null);
+  const [variantId, setVariantId] = useState('');
+  const [searchingProduct, setSearchingProduct] = useState(false);
+  const searchingProductRef = useRef(false);
+  const [imageChoices, setImageChoices] = useState([]);
+  const [searchingImages, setSearchingImages] = useState(false);
+  const [imageChoiceError, setImageChoiceError] = useState('');
   const [persistedImageUrl, setPersistedImageUrl] = useState(product?.imageUrl ?? null);
   const [removeImage, setRemoveImage] = useState(false);
   const [partialImageFailure, setPartialImageFailure] = useState(false);
@@ -68,7 +83,10 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
     validate: validateProductLinks,
     fieldMap: productFieldMap,
     action: async (values) => {
-      const saved = await saveProduct(listId, savedId.current, toProductRequest(values));
+      const request = toProductRequest(values);
+      const binding = storeSyncChange(request, product, storePreview, { file, removeImage, importedImage });
+      if (binding !== undefined) request.storeSync = binding;
+      const saved = await saveProduct(listId, savedId.current, request);
       if (!saved.ok) return saved;
       savedId.current = saved.data.id;
       if (mounted.current) setPersistedImageUrl(saved.data.imageUrl);
@@ -78,6 +96,8 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
         const formData = new FormData();
         formData.append('file', file);
         imageResult = await uploadProductImage(listId, savedId.current, formData);
+      } else if (importedImage && !request.storeSync) {
+        imageResult = await uploadProductImageFromUrl(listId, savedId.current, importedImage);
       } else if (removeImage) {
         imageResult = await deleteProductImage(listId, savedId.current);
       }
@@ -87,8 +107,9 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
         return imageResult;
       }
       if (mounted.current) {
-        if (imageResult) setPersistedImageUrl(file ? imageResult.data.imageUrl : null);
+        if (imageResult) setPersistedImageUrl(file || importedImage ? imageResult.data.imageUrl : null);
         setFile(null);
+        setImportedImage(null);
         setRemoveImage(false);
         setPartialImageFailure(false);
       }
@@ -97,10 +118,10 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
     onSuccess: (_data, _values, { go }) => go(back, 'Produto salvo na lista.'),
   });
 
-  const busy = f.busy || deleting;
+  const busy = f.busy || deleting || searchingImages || searchingProduct;
   const qty = Number(f.values.qtd);
   const setQty = (n) => f.setValue('qtd', String(Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, n))));
-  const image = file ? previewUrl : removeImage ? null : imageSource(persistedImageUrl);
+  const image = file ? previewUrl : importedImage || (removeImage ? null : imageSource(persistedImageUrl));
   const links = f.values.links;
   const updateLink = (id, name, value) => f.setValue('links', links.map((link) => link.id === id ? { ...link, [name]: value } : link));
 
@@ -109,7 +130,75 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
     const error = validateProductImage(selected);
     if (error) { toast(error, 'err'); return; }
     setFile(selected);
+    setImportedImage(null);
     setRemoveImage(false);
+  };
+
+  const searchProduct = async () => {
+    if (busy || searchingProductRef.current) return;
+    if (!imageLink.trim()) { setImageChoiceError(LINK_REQUIRED_DETAIL); return; }
+    searchingProductRef.current = true;
+    setSearchingProduct(true);
+    setImageChoiceError('');
+    try {
+      const result = await previewStoreProduct(imageLink.trim(), variantId || undefined);
+      if (!mounted.current) return;
+      if (!result.ok) { setImageChoiceError(result.detail); return; }
+      const preview = result.data;
+      setStorePreview(preview);
+      if (preview.resolution !== 'resolved') {
+        setImageChoiceError(preview.resolution === 'variant_required' ? 'Escolha uma versão e busque o produto novamente.' : 'Não foi possível identificar o produto e o preço com segurança. Você pode cadastrar manualmente.');
+        return;
+      }
+      setVariantId(preview.variantId || '');
+      f.setValues((values) => ({ ...values, nome: preview.name, preco: fmtPrice(preview.unitPrice) }));
+      setImportedImage(preview.imageUrl);
+      setFile(null);
+      setRemoveImage(false);
+    } catch (error) {
+      unstable_rethrow(error);
+      if (mounted.current) setImageChoiceError('Não conseguimos buscar esse produto. Tente novamente ou cadastre manualmente.');
+    } finally {
+      searchingProductRef.current = false;
+      if (mounted.current) setSearchingProduct(false);
+    }
+  };
+
+  const submitProduct = (event) => {
+    if (deletingRef.current || searchingImagesRef.current || searchingProductRef.current || f.busy) { event.preventDefault(); return; }
+    const request = toProductRequest(f.values);
+    const binding = storeSyncChange(request, product, storePreview, { file, removeImage, importedImage });
+    if (binding !== null) { f.submit(event); return; }
+    event.preventDefault();
+    const form = event.currentTarget;
+    confirm({
+      title: 'Salvar como produto manual?',
+      text: 'Alterar nome, preço ou foto desliga a atualização automática de todo o produto.',
+      confirmLabel: 'Salvar como manual',
+      onConfirm: () => { if (mounted.current) f.submit({ preventDefault() {}, currentTarget: form }); },
+    });
+  };
+
+  const searchImages = async () => {
+    if (busy || searchingImagesRef.current) return;
+    if (!imageLink.trim()) { setImageChoiceError(LINK_REQUIRED_DETAIL); return; }
+    searchingImagesRef.current = true;
+    setSearchingImages(true);
+    setImageChoices([]);
+    setImageChoiceError('');
+    try {
+      const result = await findProductImages(imageLink.trim());
+      if (!mounted.current) return;
+      if (!result.ok) { setImageChoiceError(result.detail); return; }
+      setImageChoices(result.data.images);
+      if (!result.data.images.length) setImageChoiceError(NO_IMAGES_DETAIL);
+    } catch (error) {
+      unstable_rethrow(error);
+      if (mounted.current) setImageChoiceError(IMAGE_SEARCH_FAILED_DETAIL);
+    } finally {
+      searchingImagesRef.current = false;
+      if (mounted.current) setSearchingImages(false);
+    }
   };
 
   const removeProduct = () => confirm({
@@ -148,10 +237,7 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
   const preco = f.field('preco');
 
   return (
-    <form className="card card-pad form" onSubmit={(event) => {
-      if (deletingRef.current) event.preventDefault();
-      else f.submit(event);
-    }} noValidate>
+    <form className="card card-pad form" onSubmit={submitProduct} noValidate>
       <div className="row2">
         <TextInput label="Nome do produto" placeholder="Ex.: Batedeira planetária" {...f.field('nome')} />
         <Select label="Ambiente" placeholder="Selecione" options={rooms.map((room) => ({ value: room.id, label: room.name }))} {...f.field('amb')} />
@@ -168,8 +254,27 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
             event.target.value = '';
           }} />
         </label>
-        {(file || (!removeImage && persistedImageUrl)) && <Button variant="text-danger" size="sm" disabled={busy}
-          onClick={() => { setFile(null); setRemoveImage(Boolean(persistedImageUrl)); }}>Remover imagem</Button>}
+        {(file || importedImage || (!removeImage && persistedImageUrl)) && <Button variant="text-danger" size="sm" disabled={busy}
+          onClick={() => { setFile(null); setImportedImage(null); setRemoveImage(Boolean(persistedImageUrl)); }}>Remover imagem</Button>}
+        <TextInput id="image-link" label="Link da página do produto" type="url"
+          placeholder="Cole o link da loja para buscar fotos" value={imageLink} disabled={busy}
+          onChange={(event) => { setImageLink(event.target.value); setVariantId(''); setStorePreview(null); }} error={imageChoiceError} />
+        <Button variant="ghost" disabled={busy} onClick={searchProduct}>{searchingProduct ? 'Buscando produto…' : 'Buscar produto'}</Button>
+        {storePreview?.resolution === 'variant_required' && <Select id="store-variant" label="Versão do produto" placeholder="Selecione"
+          value={variantId} disabled={busy} onChange={(event) => setVariantId(event.target.value)}
+          options={storePreview.variants.map((variant) => ({ value: variant.id, label: variant.label }))} />}
+        <StoreSyncStatus sync={storePreview?.resolution === 'resolved' ? { ...storePreview, enabled: true, status: 'pending' } : product?.storeSync} />
+        {storePreview?.resolution === 'resolved' && <p role="status">Produto encontrado. Ao salvar sem alterar nome, preço ou foto, a atualização automática será ativada.</p>}
+        <Button variant="ghost" disabled={busy} onClick={searchImages}>
+          {searchingImages ? 'Buscando imagens…' : 'Buscar imagens'}
+        </Button>
+        {imageChoices.length > 0 && <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          {imageChoices.map((url, index) => <Button key={url} variant="ghost" disabled={busy}
+            aria-label={`Usar imagem ${index + 1}`} aria-pressed={importedImage === url}
+            onClick={() => { setImportedImage(url); setFile(null); setRemoveImage(false); }}>
+            <span className="thumb"><Image src={url} alt={`Imagem ${index + 1} encontrada`} width={84} height={84} unoptimized /></span>
+          </Button>)}
+        </div>}
         {partialImageFailure && <p className="errmsg" role="alert" style={{ margin: 0 }}>{PARTIAL_IMAGE_DETAIL}</p>}
       </Field>
 

@@ -36,6 +36,28 @@ beforeEach(() => {
   reorderRooms.mockReset().mockResolvedValue({ ok: true, data: [SECOND_ROOM, ROOM] });
 });
 
+test('each room offers product creation with its own room UUID selected', () => {
+  renderManager();
+  const rows = within(screen.getByRole('list', { name: 'Ambientes' })).getAllByRole('listitem');
+  expect(within(rows[0]).getByRole('link', { name: 'Adicionar produto' }).getAttribute('href'))
+    .toBe(`/listas/${LIST.id}/produtos/novo?ambiente=${ROOM.id}`);
+  expect(within(rows[1]).getByRole('link', { name: 'Adicionar produto' }).getAttribute('href'))
+    .toBe(`/listas/${LIST.id}/produtos/novo?ambiente=${SECOND_ROOM.id}`);
+});
+
+test('a newly created empty room offers a link to add its first product after refresh', async () => {
+  const room = { ...ROOM, name: 'Quarto', products: [] };
+  createRoom.mockResolvedValue({ ok: true, data: room });
+  const view = renderManager([]);
+  expect(screen.queryByRole('link', { name: 'Adicionar produto' })).toBeNull();
+  await submitName('Quarto');
+  expect(refresh).toHaveBeenCalledOnce();
+  view.rerender(<FeedbackProvider><RoomManager listId={LIST.id} rooms={[room]} /></FeedbackProvider>);
+  expect(screen.getByRole('heading', { name: 'Quarto' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Adicionar produto' }).getAttribute('href'))
+    .toBe(`/listas/${LIST.id}/produtos/novo?ambiente=${ROOM.id}`);
+});
+
 test('moving a room sends every UUID once in the new order without locally reordering persisted rows', async () => {
   const view = renderManager();
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Mover Cozinha para baixo' })); });

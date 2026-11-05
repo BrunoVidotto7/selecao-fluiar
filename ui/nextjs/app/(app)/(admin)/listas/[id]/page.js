@@ -1,3 +1,4 @@
+import ListActivity from '@/components/list-activity/ListActivity';
 import ShoppingList from '@/components/lista/ShoppingList';
 import { getList } from '@/components/listas/queries.server';
 import { readApi } from '@/lib/api.server';
@@ -14,6 +15,7 @@ export default async function Page({ params }) {
   const signature = { officeName: office.name, architectNames: office.members.map((member) => member.name) };
   return (
     <div className="wrap doc">
+      <ListActivity listId={list.id} />
       <ShoppingList key={list.id} list={list} signature={signature} />
     </div>
   );

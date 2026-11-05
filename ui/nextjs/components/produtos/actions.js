@@ -1,13 +1,16 @@
 'use server';
 import { actionResult, ApiError, apiRequest } from '@/lib/api.server';
+import { requireAdmin } from '@/lib/auth.server';
 import { isUuid } from '@/lib/route-input';
 import { revalidateWorkspaceData } from '@/lib/revalidate.server';
 import { validateProductImage, validateClientNotes } from '@/lib/validation';
+import { downloadProductImage, fetchPageImages } from '@/lib/image-import.server';
 
 const HTTP_BAD_REQUEST = 400;
 const HTTP_NOT_FOUND = 404;
 const INVALID_INPUT_DETAIL = 'Revise os dados enviados.';
 const NOT_FOUND_DETAIL = 'Não encontramos o que você procurava.';
+const MAX_LINK_LENGTH = 2048;
 
 function requireId(id) {
   if (!isUuid(id)) throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
@@ -20,6 +23,16 @@ function statusBody(patch) {
     throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
   }
   return { bought: patch.bought, quantity: patch.quantity };
+}
+
+function storeSyncBody(value) {
+  if (value === null) return null;
+  if (!value || typeof value !== 'object' || Array.isArray(value)
+      || typeof value.sourceUrl !== 'string' || !value.sourceUrl.trim() || value.sourceUrl.length > MAX_LINK_LENGTH
+      || (value.variantId != null && (typeof value.variantId !== 'string' || !value.variantId.trim() || value.variantId.length > MAX_LINK_LENGTH))) {
+    throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
+  }
+  return { sourceUrl: value.sourceUrl.trim(), ...(value.variantId == null ? {} : { variantId: value.variantId }) };
 }
 
 function productBody(input) {
@@ -35,6 +48,7 @@ function productBody(input) {
     throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
   }
   return {
+    ...(Object.hasOwn(input, 'storeSync') ? { storeSync: storeSyncBody(input.storeSync) } : {}),
     roomId: input.roomId, name: input.name, quantity: input.quantity,
     unitPrice: input.unitPrice ?? null, notes: input.notes ?? null, bought: input.bought ?? false,
     links: (input.links ?? []).map((link) => ({ url: link.url, note: link.note ?? null })),
@@ -116,6 +130,36 @@ export async function uploadProductImage(listId, productId, formData) {
   });
 }
 
+/** @param {string} pageUrl @returns {Promise<import('@/lib/api.server').ActionResult<{ images: string[] }>>} */
+export async function findProductImages(pageUrl) {
+  return actionResult(async () => {
+    await requireAdmin();
+    if (typeof pageUrl !== 'string' || !pageUrl.trim() || pageUrl.length > MAX_LINK_LENGTH) {
+      throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
+    }
+    return { images: await fetchPageImages(pageUrl.trim()) };
+  });
+}
+
+/** @param {string} listId @param {string} productId @param {string} imageUrl
+ * @returns {Promise<import('@/lib/api.server').ActionResult<{ imageUrl: string }>>} */
+export async function uploadProductImageFromUrl(listId, productId, imageUrl) {
+  return actionResult(async () => {
+    await requireAdmin();
+    requireId(listId);
+    requireId(productId);
+    if (typeof imageUrl !== 'string' || !imageUrl.trim() || imageUrl.length > MAX_LINK_LENGTH) {
+      throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
+    }
+    await requireProductInList(listId, productId);
+    const body = new FormData();
+    body.append('file', await downloadProductImage(imageUrl.trim()));
+    const image = await apiRequest(`/api/products/${productId}/image`, { method: 'PUT', body });
+    revalidateWorkspaceData();
+    return image;
+  });
+}
+
 /** @param {string} listId @param {string} productId @returns {Promise<import('@/lib/api.server').ActionResult<undefined>>} */
 export async function deleteProductImage(listId, productId) {
   return actionResult(async () => {
@@ -139,5 +183,15 @@ export async function saveProductClientNotes(listId, productId, clientNotes) {
     });
     revalidateWorkspaceData();
     return product;
+  });
+}
+
+export async function previewStoreProduct(url, variantId) {
+  return actionResult(async () => {
+    await requireAdmin();
+    const source = storeSyncBody({ sourceUrl: url, variantId });
+    return apiRequest('/api/product-imports/preview', {
+      method: 'POST', body: { url: source.sourceUrl, ...(source.variantId == null ? {} : { variantId: source.variantId }) },
+    });
   });
 }

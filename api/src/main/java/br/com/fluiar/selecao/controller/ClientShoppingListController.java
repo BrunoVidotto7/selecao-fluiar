@@ -13,9 +13,12 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/client/lists")
 public class ClientShoppingListController {
+    private final br.com.fluiar.selecao.service.ListActivityService activity;
+
     private final ClientShoppingListService lists;
 
-    public ClientShoppingListController(ClientShoppingListService lists) {
+    public ClientShoppingListController(ClientShoppingListService lists, br.com.fluiar.selecao.service.ListActivityService activity) {
+        this.activity = activity;
         this.lists = lists;
     }
 
@@ -40,4 +43,10 @@ public class ClientShoppingListController {
             @PathVariable UUID listId, @PathVariable UUID productId, @Valid @RequestBody ProductClientNotesRequest request) {
         return lists.setClientNotes(officeId, clientId, listId, productId, request);
     }
+    @PostMapping("/{listId}/activity")
+    @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void recordActivity(@CurrentOfficeId UUID officeId, @CurrentClientId UUID clientId, @PathVariable UUID listId) {
+        activity.open(officeId, clientId, listId);
+    }
+
 }

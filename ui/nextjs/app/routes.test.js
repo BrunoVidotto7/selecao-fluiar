@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { redirect } from 'next/navigation';
 import Home from './page';
@@ -23,7 +23,7 @@ import RootError from './error';
 import PrivateError from './(app)/error';
 import PublicListPage from './l/[shareToken]/page';
 import RoomsPage from './(app)/(admin)/listas/[id]/ambientes/page';
-import { CLIENT, CLIENT_ACCESS, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
+import { CLIENT, CLIENT_ACCESS, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
@@ -116,6 +116,18 @@ test('new and edit product routes read actual list rooms and client identity, ne
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     'http://localhost:8080/api/lists/' + LIST.id, 'http://localhost:8080/api/lists/' + LIST.id,
   ]);
+});
+
+test('the room management product link opens the form with that room selected', async () => {
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...LIST, rooms: [ROOM, { ...SECOND_ROOM, products: [] }] })));
+  const view = render(await RoomsPage(props({ id: LIST.id })));
+  const row = screen.getByRole('heading', { name: 'Sala' }).closest('li');
+  const href = within(row).getByRole('link', { name: 'Adicionar produto' }).getAttribute('href');
+  const url = new URL(href, 'http://localhost:3000');
+  expect(url.pathname).toBe(`/listas/${LIST.id}/produtos/novo`);
+  view.rerender(await NewProductPage({ ...props({ id: LIST.id }), searchParams: Promise.resolve(Object.fromEntries(url.searchParams)) }));
+  expect(screen.getByLabelText('Ambiente').value).toBe(SECOND_ROOM.id);
+  expect(screen.getByLabelText('Nome do produto').value).toBe('');
 });
 
 test.each([NewProductPage, EditProductPage])('a product route preserves a cross-office list 404', async (Page) => {

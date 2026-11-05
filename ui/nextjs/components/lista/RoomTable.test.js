@@ -114,3 +114,10 @@ test('unmount clears the removal confirmation timer', () => {
   view.unmount();
   expect(vi.getTimerCount()).toBe(0);
 });
+
+test('admin item shows store source and partial sync status', () => {
+  renderRoom({ products: [{ ...PRODUCT, storeSync: { sourceUrl: 'https://moveca.com.br/products/chair', store: 'moveca', enabled: true, status: 'partial', lastSyncedAt: '2026-11-04T12:00:00Z' } }] });
+  expect(screen.getByRole('link', { name: 'Origem: Moveca' }).getAttribute('href')).toBe('https://moveca.com.br/products/chair');
+  expect(screen.getByText(/Atualização parcial/)).toBeTruthy();
+  expect(screen.getByText(/Última atualização completa:/)).toBeTruthy();
+});

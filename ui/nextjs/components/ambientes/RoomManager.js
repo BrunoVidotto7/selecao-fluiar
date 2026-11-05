@@ -43,7 +43,7 @@ function RoomNameForm({ listId, room, write, onSaved, onCancel }) {
   );
 }
 
-function RoomRow({ room, first, last, write, refresh, onMove, onDelete }) {
+function RoomRow({ listId, room, first, last, write, refresh, onMove, onDelete }) {
   const [editing, setEditing] = useState(false);
   return (
     <li className="card card-pad room-row">
@@ -56,6 +56,7 @@ function RoomRow({ room, first, last, write, refresh, onMove, onDelete }) {
           onSaved={() => { setEditing(false); refresh(); }} />
       ) : (
         <div className="room-actions">
+          <Button size="sm" icon="plus" href={`/listas/${listId}/produtos/novo?ambiente=${room.id}`}>Adicionar produto</Button>
           <Button variant="ghost" size="sm" onClick={() => setEditing(true)}>Renomear</Button>
           <Button variant="ghost" size="sm" id={moveButtonId(room.id, -1)} disabled={first} aria-label={`Mover ${room.name} para cima`} onClick={() => onMove(-1)}>Mover para cima</Button>
           <Button variant="ghost" size="sm" id={moveButtonId(room.id, 1)} disabled={last} aria-label={`Mover ${room.name} para baixo`} onClick={() => onMove(1)}>Mover para baixo</Button>
@@ -156,7 +157,7 @@ export default function RoomManager({ listId, rooms }) {
       {rooms.length ? (
         <ol className="room-list" aria-label="Ambientes">
           {rooms.map((room, index) => (
-            <RoomRow key={room.id} room={room} first={index === 0} last={index === rooms.length - 1}
+            <RoomRow key={room.id} listId={listId} room={room} first={index === 0} last={index === rooms.length - 1}
               write={write} refresh={refresh} onMove={(direction) => move(index, direction)} onDelete={() => remove(room)} />
           ))}
         </ol>

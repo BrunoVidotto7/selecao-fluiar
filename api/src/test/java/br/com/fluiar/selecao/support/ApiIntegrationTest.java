@@ -57,6 +57,12 @@ public abstract class ApiIntegrationTest {
     private static final Pattern EMAIL_TOKEN = Pattern.compile("token=([A-Za-z0-9_-]+)");
     private static final long MAX_WAIT_SECONDS = 10;
 
+    @org.springframework.test.context.bean.override.mockito.MockitoSpyBean
+    protected java.time.Clock testClock;
+
+    @MockitoBean
+    protected br.com.fluiar.selecao.service.StoreProductCollector storeCollector;
+
     @MockitoBean
     protected JavaMailSender mailSender;
 

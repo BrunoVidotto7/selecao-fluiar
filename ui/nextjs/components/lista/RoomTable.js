@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Icon from '../ui/Icon';
 import { brl, imageSource } from '@/lib/format';
 import ItemLinks from './ItemLinks';
+import StoreSyncStatus from '../produtos/StoreSyncStatus';
 import ProductClientNotesEditor from './ProductClientNotesEditor';
 import { validateField } from '@/lib/validation';
 
@@ -156,6 +157,7 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes }
                 onClick={remove}>{armed ? 'remover?' : '×'}</button>
             </div>
             <span className="price">{priceText(item)}</span>
+            <StoreSyncStatus sync={item.storeSync} />
           </div>
         </div>
       </td>

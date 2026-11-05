@@ -1,4 +1,6 @@
 app:
+  product-sync:
+    initial-delay-ms: 86400000
   jwt:
     secret: test-only-secret-with-at-least-32-bytes-0123456789
 # The mail health check needs a real JavaMailSenderImpl; the tests replace the mail sender with a mock.

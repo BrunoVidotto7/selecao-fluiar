@@ -31,6 +31,8 @@ import org.springframework.web.multipart.MultipartFile;
 @Transactional(readOnly = true)
 public class ProductImageService {
 
+    private final ListActivityService activity;
+
     private static final int MAX_IMAGE_BYTES = 5 * 1024 * 1024;
     private static final byte[] JPEG_SIGNATURE = {(byte) 0xFF, (byte) 0xD8, (byte) 0xFF};
     private static final byte[] PNG_SIGNATURE = {(byte) 0x89, 'P', 'N', 'G', '\r', '\n', 0x1A, '\n'};
@@ -41,7 +43,8 @@ public class ProductImageService {
     private final UserRepository users;
 
     public ProductImageService(ProductImageRepository imageRepository, ProductRepository productRepository,
-            ShoppingListRepository listRepository, UserRepository users) {
+            ShoppingListRepository listRepository, UserRepository users, ListActivityService activity) {
+        this.activity = activity;
         this.users = users;
         this.imageRepository = imageRepository;
         this.productRepository = productRepository;
@@ -55,7 +58,7 @@ public class ProductImageService {
     @Transactional
     public ProductImageResponse replace(UUID officeId, UUID productId, MultipartFile file) {
         ShoppingList list = lockListOfProduct(officeId, productId);
-        Product product = productRepository.findInOffice(productId, officeId).orElseThrow(ApiException::notFound);
+        Product product = productRepository.findInOfficeForUpdate(productId, officeId).orElseThrow(ApiException::notFound);
 
         byte[] data = readBytes(file);
         if (data.length > MAX_IMAGE_BYTES) {
@@ -63,9 +66,11 @@ public class ProductImageService {
         }
         String contentType = detectContentType(data).orElseThrow(ApiException::invalidImage);
 
+        product.disableStoreSync();
         imageRepository.deleteByProductId(product.getId());
         ProductImage image = imageRepository.save(new ProductImage(product.getId(), contentType, data));
         list.touch();
+        activity.record(list.getId());
 
         return new ProductImageResponse(ImageUrls.of(image.getId()));
     }
@@ -73,10 +78,12 @@ public class ProductImageService {
     @Transactional
     public void delete(UUID officeId, UUID productId) {
         ShoppingList list = lockListOfProduct(officeId, productId);
-        Product product = productRepository.findInOffice(productId, officeId).orElseThrow(ApiException::notFound);
+        Product product = productRepository.findInOfficeForUpdate(productId, officeId).orElseThrow(ApiException::notFound);
 
+        product.disableStoreSync();
         imageRepository.deleteByProductId(product.getId());
         list.touch();
+        activity.record(list.getId());
     }
 
     public ImageContent load(UUID userId, UUID imageId) {

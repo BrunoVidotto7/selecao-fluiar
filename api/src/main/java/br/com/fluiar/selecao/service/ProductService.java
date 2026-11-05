@@ -28,6 +28,11 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ProductService {
 
+    private final ListActivityService activity;
+    private final StoreBindingService bindings;
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+
     private static final String ROOM_ID_FIELD = "roomId";
 
     private final ProductRepository productRepository;
@@ -35,7 +40,9 @@ public class ProductService {
     private final ShoppingListRepository listRepository;
 
     public ProductService(
-            ProductRepository productRepository, RoomRepository roomRepository, ShoppingListRepository listRepository) {
+            ProductRepository productRepository, RoomRepository roomRepository, ShoppingListRepository listRepository, ListActivityService activity, StoreBindingService bindings) {
+        this.bindings = bindings;
+        this.activity = activity;
         this.productRepository = productRepository;
         this.roomRepository = roomRepository;
         this.listRepository = listRepository;
@@ -43,12 +50,17 @@ public class ProductService {
 
     @Transactional
     public ProductResponse create(UUID officeId, UUID listId, ProductRequest request) {
+        listRepository.findInOffice(listId, officeId).orElseThrow(ApiException::notFound);
+        var confirmation = bindings.confirm(request);
+        entityManager.clear();
         ShoppingList list = lockList(officeId, listId);
         Room room = roomOfList(request.roomId(), list);
 
         Product product = productRepository.save(new Product(room, request.name(), request.quantity(),
                 request.unitPrice(), request.notes(), request.bought(), linksOf(request)));
+        bindings.apply(product, request, confirmation, false);
         list.touch();
+        activity.record(list.getId());
 
         return ProductResponse.of(product);
     }
@@ -60,13 +72,20 @@ public class ProductService {
     /** The product only moves between rooms of its own list. */
     @Transactional
     public ProductResponse update(UUID officeId, UUID productId, ProductRequest request) {
+        loadProduct(officeId, productId);
+        var confirmation = bindings.confirm(request);
+        entityManager.clear();
         ShoppingList list = lockListOfProduct(officeId, productId);
-        Product product = loadProduct(officeId, productId);
+        Product product = productRepository.findInOfficeForUpdate(productId, officeId).orElseThrow(ApiException::notFound);
         Room room = roomOfList(request.roomId(), list);
+        boolean manualChange = !java.util.Objects.equals(product.getName(), request.name())
+                || !samePrice(product.getUnitPrice(), request.unitPrice());
+        bindings.apply(product, request, confirmation, manualChange);
 
         product.update(room, request.name(), request.quantity(), request.unitPrice(), request.notes(),
                 request.bought(), linksOf(request));
         list.touch();
+        activity.record(list.getId());
 
         return ProductResponse.of(product);
     }
@@ -74,7 +93,7 @@ public class ProductService {
     @Transactional
     public ProductResponse updateStatus(UUID officeId, UUID productId, ProductStatusRequest request) {
         ShoppingList list = lockListOfProduct(officeId, productId);
-        Product product = loadProduct(officeId, productId);
+        Product product = productRepository.findInOfficeForUpdate(productId, officeId).orElseThrow(ApiException::notFound);
 
         if (request.bought() != null) {
             product.markBought(request.bought());
@@ -83,6 +102,7 @@ public class ProductService {
             product.changeQuantity(request.quantity());
         }
         list.touch();
+        activity.record(list.getId());
 
         return ProductResponse.of(product);
     }
@@ -90,9 +110,10 @@ public class ProductService {
     @Transactional
     public ProductResponse updateClientNotes(UUID officeId, UUID productId, ProductClientNotesRequest request) {
         ShoppingList list = lockListOfProduct(officeId, productId);
-        Product product = loadProduct(officeId, productId);
+        Product product = productRepository.findInOfficeForUpdate(productId, officeId).orElseThrow(ApiException::notFound);
         product.changeClientNotes(request.clientNotes());
         list.touch();
+        activity.record(list.getId());
         return ProductResponse.of(product);
     }
 
@@ -107,6 +128,11 @@ public class ProductService {
         }
 
         list.touch();
+        activity.record(list.getId());
+    }
+
+    private static boolean samePrice(java.math.BigDecimal first, java.math.BigDecimal second) {
+        return first == null ? second == null : second != null && first.compareTo(second) == 0;
     }
 
     private ShoppingList lockList(UUID officeId, UUID listId) {

@@ -43,6 +43,9 @@ public class Product {
     @ManyToOne(fetch = FetchType.LAZY)
     private Room room;
 
+    @jakarta.persistence.Embedded
+    private ProductStoreSync storeSync = new ProductStoreSync();
+
     private String name;
 
     private int quantity;
@@ -83,6 +86,17 @@ public class Product {
         this.bought = bought;
         this.links.addAll(links);
     }
+
+    public ProductStoreSync getStoreSync() {
+        return storeSync == null || storeSync.getSourceUrl() == null ? null : storeSync;
+    }
+    public void bindStore(ProductStoreSync binding) { this.storeSync = binding; }
+    public void disableStoreSync() { if (getStoreSync() != null) storeSync.disable(); }
+    public void synchronize(String name, BigDecimal price) {
+        if (name != null) this.name=name;
+        if (price != null) this.unitPrice=price;
+    }
+    public void imageSaved(UUID imageId) { this.imageId=imageId; }
 
     public UUID getId() {
         return id;
@@ -135,12 +149,13 @@ public class Product {
         this.quantity = quantity;
         this.unitPrice = unitPrice;
         this.notes = notes;
-        this.bought = bought;
+        markBought(bought);
         this.links.clear();
         this.links.addAll(links);
     }
 
     public void markBought(boolean bought) {
+        if (this.bought != bought && getStoreSync() != null) storeSync.invalidateAttempt();
         this.bought = bought;
     }
 

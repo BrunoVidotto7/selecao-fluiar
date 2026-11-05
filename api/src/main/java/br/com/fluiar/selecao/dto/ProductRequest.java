@@ -27,7 +27,7 @@ public record ProductRequest(
         @Size(max = Product.NOTES_MAX_LENGTH) String notes,
         Boolean bought,
         @Size(max = Product.MAX_LINKS, message = ErrorMessages.LINKS_TOO_MANY)
-        List<@NotNull @Valid ProductLinkDto> links) {
+        List<@NotNull @Valid ProductLinkDto> links, tools.jackson.databind.JsonNode storeSync) {
 
     public ProductRequest {
         name = Inputs.text(name);

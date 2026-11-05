@@ -44,3 +44,14 @@ export function productFieldMap(values) {
   });
   return fields;
 }
+
+export function storeSyncChange(request, product, preview, { file, removeImage, importedImage }) {
+  const resolved = preview?.resolution === 'resolved';
+  const origin = resolved ? preview : product?.storeSync?.enabled ? product : null;
+  if (!origin) return undefined;
+
+  const imageChanged = Boolean(file || removeImage) || (resolved ? importedImage !== preview.imageUrl : Boolean(importedImage));
+  if (request.name !== origin.name.trim() || request.unitPrice !== origin.unitPrice || imageChanged) return null;
+  if (!resolved) return undefined;
+  return { sourceUrl: preview.sourceUrl, ...(preview.variantId == null ? {} : { variantId: preview.variantId }) };
+}

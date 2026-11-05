@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 
 public interface ProductImageRepository extends JpaRepository<ProductImage, UUID> {
 
+    java.util.Optional<ProductImage> findByProductId(UUID productId);
+
     /**
      * The bulk delete runs right away; with {@code delete(entity)}, Hibernate would insert the new image before
      * deleting the old one at flush time and violate {@code uk_product_images_product}.

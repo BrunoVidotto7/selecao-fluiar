@@ -2,6 +2,10 @@ package br.com.fluiar.selecao.exception;
 
 public final class ErrorMessages {
 
+    public static final String PRODUCT_COLLECTION_FAILED = "Não foi possível consultar este produto. Confira o endereço e tente novamente.";
+
+    public static final String PRODUCT_STORE_SYNC_MISMATCH = "Busque o produto novamente e confirme nome, preço e foto antes de vincular à loja.";
+
     public static final String AUTHENTICATION_REQUIRED = "Entre na sua conta para continuar.";
     public static final String ACCESS_DENIED = "Você não tem permissão para acessar este recurso.";
     public static final String CLIENT_ALREADY_ACTIVE = "Este cliente já tem acesso ativo.";

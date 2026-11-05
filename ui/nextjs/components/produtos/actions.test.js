@@ -1,15 +1,20 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { saveProduct, saveProductClientNotes, patchProduct, deleteProduct, uploadProductImage, deleteProductImage } from './actions';
+import {
+  saveProduct, saveProductClientNotes, patchProduct, deleteProduct, uploadProductImage, deleteProductImage,
+  findProductImages, uploadProductImageFromUrl, previewStoreProduct,
+} from './actions';
 import { LIST, ROOM, PRODUCT, ME, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
-const { cookies, fetchMock, redirect, revalidatePath } = vi.hoisted(() => ({
-  cookies: vi.fn(), fetchMock: vi.fn(), revalidatePath: vi.fn(),
+const { cookies, fetchMock, redirect, revalidatePath, lookup, requireAdmin } = vi.hoisted(() => ({
+  cookies: vi.fn(), fetchMock: vi.fn(), revalidatePath: vi.fn(), lookup: vi.fn(), requireAdmin: vi.fn(),
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
 }));
 vi.mock('next/headers', () => ({ cookies }));
 vi.mock('next/navigation', () => ({ redirect, notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }) }));
 vi.mock('next/cache', () => ({ revalidatePath }));
+vi.mock('node:dns/promises', () => ({ lookup }));
+vi.mock('@/lib/auth.server', () => ({ requireAdmin }));
 
 const ORIGIN = 'http://localhost:8080';
 const INVALID = { ok: false, status: 400, detail: 'Revise os dados enviados.', errors: {} };
@@ -35,6 +40,8 @@ const commands = [
 beforeEach(() => {
   vi.clearAllMocks();
   cookies.mockResolvedValue({ get: () => ({ value: 'private-jwt' }) });
+  lookup.mockResolvedValue([{ address: '93.184.216.34', family: 4 }]);
+  requireAdmin.mockResolvedValue(ME);
   fetchMock.mockReset().mockImplementation(async (_, options) => options.method === 'GET'
     ? json(LIST) : options.method === 'DELETE' ? new Response(null, { status: 204 }) : json(PRODUCT));
   vi.stubGlobal('fetch', fetchMock);
@@ -216,4 +223,90 @@ test('admin notes are persisted independently and only inside the selected list'
     ORIGIN + '/api/lists/' + LIST.id, ORIGIN + '/api/products/' + PRODUCT.id + '/client-notes',
   ]);
   expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ clientNotes: 'Bought locally' });
+});
+
+const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+const IMAGE_SOURCE = 'https://cdn.loja.com/foto.png';
+
+test('finding images requires an admin and reads the page outside the API', async () => {
+  fetchMock.mockResolvedValue(new Response('<img src="/foto.png">', { headers: { 'Content-Type': 'text/html' } }));
+  expect(await findProductImages('https://loja.com/produto')).toEqual({
+    ok: true, data: { images: ['https://loja.com/foto.png'] },
+  });
+  expect(requireAdmin).toHaveBeenCalledOnce();
+  expect(fetchMock).toHaveBeenCalledWith('https://loja.com/produto', expect.objectContaining({ redirect: 'manual' }));
+});
+
+test.each([undefined, null, '', 'x'.repeat(2049)])('finding images rejects malformed link %j before fetching', async (link) => {
+  expect(await findProductImages(link)).toEqual(INVALID);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('a non-admin cannot fetch external pages or import images', async () => {
+  requireAdmin.mockRejectedValue(new Error('NEXT_REDIRECT'));
+  await expect(findProductImages('https://loja.com/produto')).rejects.toThrow('NEXT_REDIRECT');
+  await expect(uploadProductImageFromUrl(LIST.id, PRODUCT.id, IMAGE_SOURCE)).rejects.toThrow('NEXT_REDIRECT');
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('uploading a chosen image downloads it and sends the detected file to the API', async () => {
+  const saved = { imageUrl: '/api/images/' + PRODUCT.id };
+  fetchMock.mockImplementation(async (url) => {
+    if (url === `${ORIGIN}/api/lists/${LIST.id}`) return json(LIST);
+    if (url === `${ORIGIN}/api/products/${PRODUCT.id}/image`) return json(saved);
+    return new Response(PNG, { headers: { 'Content-Type': 'image/png' } });
+  });
+  expect(await uploadProductImageFromUrl(LIST.id, PRODUCT.id, IMAGE_SOURCE)).toEqual({ ok: true, data: saved });
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    `${ORIGIN}/api/lists/${LIST.id}`, IMAGE_SOURCE, `${ORIGIN}/api/products/${PRODUCT.id}/image`,
+  ]);
+  const request = fetchMock.mock.calls[2][1];
+  expect(request.body).toBeInstanceOf(FormData);
+  expect([...request.body.keys()]).toEqual(['file']);
+  expect(request.body.get('file').type).toBe('image/png');
+  expect(request.headers.has('Content-Type')).toBe(false);
+});
+
+test('an unsafe or invalid chosen image stops before the API write', async () => {
+  fetchMock.mockImplementation(async (url) => {
+    if (url === `${ORIGIN}/api/lists/${LIST.id}`) return json(LIST);
+    return new Response('no', { headers: { 'Content-Type': 'text/html' } });
+  });
+  expect(await uploadProductImageFromUrl(LIST.id, PRODUCT.id, IMAGE_SOURCE)).toEqual({
+    ok: false, status: 400, detail: 'Escolha uma imagem JPG ou PNG.', errors: {},
+  });
+  expect(fetchMock).not.toHaveBeenCalledWith(expect.stringContaining('/image'), expect.anything());
+  expect(revalidatePath).not.toHaveBeenCalled();
+});
+
+test('import rejects malformed ids and links before reading or downloading', async () => {
+  expect(await uploadProductImageFromUrl('slug', PRODUCT.id, IMAGE_SOURCE)).toEqual(INVALID);
+  expect(await uploadProductImageFromUrl(LIST.id, 'slug', IMAGE_SOURCE)).toEqual(INVALID);
+  expect(await uploadProductImageFromUrl(LIST.id, PRODUCT.id, 'x'.repeat(2049))).toEqual(INVALID);
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('import preserves the API membership check and cross-office 404 without downloading', async () => {
+  expect(await uploadProductImageFromUrl(LIST.id, SECOND_PRODUCT.id, IMAGE_SOURCE)).toEqual(NOT_FOUND);
+  fetchMock.mockResolvedValue(json({ detail: NOT_FOUND.detail }, 404));
+  expect(await uploadProductImageFromUrl(LIST.id, PRODUCT.id, IMAGE_SOURCE)).toEqual(NOT_FOUND);
+  expect(fetchMock.mock.calls).toHaveLength(2);
+  expect(fetchMock.mock.calls.every(([url]) => url === `${ORIGIN}/api/lists/${LIST.id}`)).toBe(true);
+});
+
+test('store preview uses the authenticated fixed API operation and no writes or cache invalidation', async () => {
+  const data = { resolution: 'resolved', name: 'Cadeira' };
+  fetchMock.mockResolvedValue(json(data));
+  expect(await previewStoreProduct('https://moveca.com.br/products/chair', 'oak')).toEqual({ ok: true, data });
+  expect(fetchMock).toHaveBeenCalledExactlyOnceWith(`${ORIGIN}/api/product-imports/preview`, expect.objectContaining({ method: 'POST', body: JSON.stringify({ url: 'https://moveca.com.br/products/chair', variantId: 'oak' }) }));
+  expect(revalidatePath).not.toHaveBeenCalled();
+});
+test.each([null, { sourceUrl: 'https://moveca.com.br/products/chair', variantId: 'oak', enabled: true }])('store binding forwards only its authorized fields: %j', async (storeSync) => {
+  await saveProduct(LIST.id, null, { ...BODY, storeSync });
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body).storeSync).toEqual(storeSync === null ? null : { sourceUrl: storeSync.sourceUrl, variantId: 'oak' });
+});
+
+test.each([[[]], [{ sourceUrl: 3 }], [{ sourceUrl: 'https://moveca.com.br', variantId: [] }]])('invalid sync binding is rejected before any API calls: %j', async (storeSync) => {
+  expect(await saveProduct(LIST.id, null, { ...BODY, storeSync })).toEqual(INVALID);
+  expect(fetchMock).not.toHaveBeenCalled();
 });

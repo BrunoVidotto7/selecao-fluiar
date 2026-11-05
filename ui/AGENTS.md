@@ -216,3 +216,5 @@ Share controls retain a returned token until refreshed props acknowledge it; pen
 Office rename drafts belong to the office UUID; reconcile props after saves settle, ignoring superseded-name acknowledgments and preserving newer edits.
 
 Keep JSX copy separate from identifier renames; verify Portuguese labels after field-key changes.
+
+Store preview bindings must compare the current photo intent as well as name and price; removing a preview photo makes the save manual, and changing the source URL invalidates the old preview.

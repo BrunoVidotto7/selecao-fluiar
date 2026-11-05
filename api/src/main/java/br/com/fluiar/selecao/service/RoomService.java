@@ -22,13 +22,16 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class RoomService {
 
+    private final ListActivityService activity;
+
     private static final String NAME_FIELD = "name";
     private static final String ROOM_IDS_FIELD = "roomIds";
 
     private final RoomRepository roomRepository;
     private final ShoppingListRepository listRepository;
 
-    public RoomService(RoomRepository roomRepository, ShoppingListRepository listRepository) {
+    public RoomService(RoomRepository roomRepository, ShoppingListRepository listRepository, ListActivityService activity) {
+        this.activity = activity;
         this.roomRepository = roomRepository;
         this.listRepository = listRepository;
     }
@@ -43,6 +46,7 @@ public class RoomService {
 
         Room room = roomRepository.save(new Room(list, request.name(), roomRepository.findMaxPosition(list) + 1));
         list.touch();
+        activity.record(list.getId());
 
         return RoomResponse.of(room);
     }
@@ -58,6 +62,7 @@ public class RoomService {
 
         room.rename(request.name());
         list.touch();
+        activity.record(list.getId());
 
         return RoomResponse.of(room);
     }
@@ -73,6 +78,7 @@ public class RoomService {
         }
 
         list.touch();
+        activity.record(list.getId());
     }
 
     @Transactional
@@ -86,6 +92,7 @@ public class RoomService {
 
         rooms.forEach(room -> room.moveTo(roomIds.indexOf(room.getId())));
         list.touch();
+        activity.record(list.getId());
 
         return rooms.stream().sorted(Comparator.comparingInt(Room::getPosition)).map(RoomResponse::of).toList();
     }
