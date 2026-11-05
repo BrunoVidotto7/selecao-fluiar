@@ -55,3 +55,8 @@ test('the ten-link limit counts only filled rows', () => {
   expect(validateProductLinks({ links: [...links, { id: 'extra', url: '', note: 'Azul' }] }).links)
     .toBe('Adicione no máximo 10 links.');
 });
+
+test('payloads carry the chosen category', () => {
+  expect(toProductRequest({ ...values, categoryId: 'c1' }).categoryId).toBe('c1');
+  expect(productFieldMap(values).categoryId).toBe('categoryId');
+});

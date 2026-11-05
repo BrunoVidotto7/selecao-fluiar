@@ -38,6 +38,7 @@ export const PRODUCT = {
   clientNotes: null,
   bought: false,
   imageUrl: null,
+  category: { id: '55555555-5555-4555-8555-555555555551', name: 'Eletrodomésticos', deleted: false },
   links: [{ url: 'https://example.com/batedeira', note: null }],
 };
 
@@ -47,6 +48,11 @@ export const SECOND_PRODUCT = {
   roomId: SECOND_ROOM_ID,
   name: 'Sofá',
 };
+
+export const CATEGORIES = [
+  { id: PRODUCT.category.id, name: 'Eletrodomésticos', productCount: 1 },
+  { id: '55555555-5555-4555-8555-555555555552', name: 'Luminotécnica', productCount: 0 },
+];
 
 export const ROOM = { id: ROOM_ID, name: 'Cozinha', position: 0, products: [PRODUCT] };
 export const SECOND_ROOM = { id: SECOND_ROOM_ID, name: 'Sala', position: 1, products: [SECOND_PRODUCT] };

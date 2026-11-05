@@ -23,7 +23,7 @@ import RootError from './error';
 import PrivateError from './(app)/error';
 import PublicListPage from './l/[shareToken]/page';
 import RoomsPage from './(app)/(admin)/listas/[id]/ambientes/page';
-import { CLIENT, CLIENT_ACCESS, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
+import { CLIENT, CLIENT_ACCESS, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT, SECOND_ROOM, CATEGORIES } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
@@ -98,28 +98,31 @@ test('room management uses list and room UUIDs from the private DTO', async () =
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/lists/' + LIST.id]);
 });
 
+const serveList = (list) => async (url) => new Response(JSON.stringify(String(url).endsWith('/api/office/categories') ? CATEGORIES : list));
+
 test('a mismatched nested product URL is not found even when its UUID exists elsewhere', async () => {
-  fetchMock.mockResolvedValue(new Response(JSON.stringify(LIST)));
+  fetchMock.mockImplementation(serveList(LIST));
   await expect(EditProductPage(props({ id: LIST.id, produtoId: SECOND_PRODUCT.id }))).rejects.toThrow('NEXT_NOT_FOUND');
-  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/lists/' + LIST.id]);
+  expect(fetchMock.mock.calls.map(([url]) => url)).toContain('http://localhost:8080/api/lists/' + LIST.id);
 });
 
 test('new and edit product routes read actual list rooms and client identity, never prototype data', async () => {
-  fetchMock.mockImplementation(async () => new Response(JSON.stringify(LIST)));
+  fetchMock.mockImplementation(serveList(LIST));
   const view = render(await NewProductPage({ ...props({ id: LIST.id }), searchParams: Promise.resolve({ ambiente: ROOM.id }) }));
   expect(screen.getByLabelText('Ambiente').value).toBe(ROOM.id);
-  expect(screen.getAllByRole('option').map((option) => option.value)).toEqual(['', ROOM.id]);
+  expect(screen.getAllByRole('option').map((option) => option.value)).toEqual(['', ROOM.id, '', ...CATEGORIES.map((category) => category.id)]);
   expect(screen.getByText('Casa nova · Mariana Souza')).toBeTruthy();
   view.rerender(await EditProductPage(props({ id: LIST.id, produtoId: PRODUCT.id })));
   expect(screen.getByLabelText('Nome do produto').value).toBe(PRODUCT.name);
   expect(screen.getByLabelText('Ambiente').value).toBe(ROOM.id);
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-    'http://localhost:8080/api/lists/' + LIST.id, 'http://localhost:8080/api/lists/' + LIST.id,
+    'http://localhost:8080/api/lists/' + LIST.id, 'http://localhost:8080/api/office/categories',
+    'http://localhost:8080/api/lists/' + LIST.id, 'http://localhost:8080/api/office/categories',
   ]);
 });
 
 test('the room management product link opens the form with that room selected', async () => {
-  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...LIST, rooms: [ROOM, { ...SECOND_ROOM, products: [] }] })));
+  fetchMock.mockImplementation(serveList({ ...LIST, rooms: [ROOM, { ...SECOND_ROOM, products: [] }] }));
   const view = render(await RoomsPage(props({ id: LIST.id })));
   const row = screen.getByRole('heading', { name: 'Sala' }).closest('li');
   const href = within(row).getByRole('link', { name: 'Adicionar produto' }).getAttribute('href');
@@ -131,14 +134,14 @@ test('the room management product link opens the form with that room selected', 
 });
 
 test.each([NewProductPage, EditProductPage])('a product route preserves a cross-office list 404', async (Page) => {
-  fetchMock.mockResolvedValue(new Response(JSON.stringify({ detail: 'Não encontramos o que você procurava.' }), { status: 404 }));
+  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ detail: 'Não encontramos o que você procurava.' }), { status: 404 }));
   await expect(Page(props({ id: LIST.id, produtoId: PRODUCT.id }))).rejects.toThrow('NEXT_NOT_FOUND');
 });
 
 test('edit product forms reset when navigating to another product UUID', async () => {
-  fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...LIST, rooms: [{ ...ROOM, products: [
+  fetchMock.mockImplementation(serveList({ ...LIST, rooms: [{ ...ROOM, products: [
     PRODUCT, { ...SECOND_PRODUCT, roomId: ROOM.id },
-  ] }] })));
+  ] }] }));
   const view = render(await EditProductPage(props({ id: LIST.id, produtoId: PRODUCT.id })));
   fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Rascunho' } });
   view.rerender(await EditProductPage(props({ id: LIST.id, produtoId: SECOND_PRODUCT.id })));

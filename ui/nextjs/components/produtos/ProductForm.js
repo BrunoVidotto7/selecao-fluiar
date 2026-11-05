@@ -8,7 +8,7 @@ import { Field, Segmented, Select, TextInput, Textarea } from '../ui/Fields';
 import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useApiForm from '../forms/useApiForm';
 import { brl, imageSource, parseBRL } from '@/lib/format';
-import { PRODUCT_IMAGE_TYPES, validateField, validateProductImage } from '@/lib/validation';
+import { CATEGORY_REQUIRED, PRODUCT_IMAGE_TYPES, validateField, validateProductImage } from '@/lib/validation';
 import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
 import StoreSyncStatus from './StoreSyncStatus';
 import { toProductRequest, validateProductLinks, productFieldMap, storeSyncChange } from './product-values';
@@ -23,14 +23,15 @@ const LINK_REQUIRED_DETAIL = 'Cole o link da página do produto.';
 const PRODUCT_RULES = {
   nome: { required: true, maxLength: 120 },
   amb: { required: 'Escolha o ambiente do produto.' },
+  categoryId: { required: CATEGORY_REQUIRED },
   qtd: { required: true, integer: true, min: MIN_QUANTITY, max: MAX_QUANTITY },
   preco: { money: true },
   obs: { maxLength: 1000 },
 };
 const fmtPrice = (n) => (n == null ? '' : n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
 
-/** @param {{ listId: string, product?: import('../listas/queries.server').ProductResponse, rooms: import('../listas/queries.server').RoomResponse[], defaultRoomId?: string }} props */
-export default function ProductForm({ listId, product, rooms, defaultRoomId = '' }) {
+/** @param {{ listId: string, product?: import('../listas/queries.server').ProductResponse, rooms: import('../listas/queries.server').RoomResponse[], categories: { id: string, name: string }[], defaultRoomId?: string }} props */
+export default function ProductForm({ listId, product, rooms, categories, defaultRoomId = '' }) {
   const router = useRouter();
   const confirm = useConfirm();
   const toast = useToast();
@@ -72,7 +73,7 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
 
   const f = useApiForm({
     initial: {
-      nome: product?.name || '', amb: product?.roomId || defaultRoomId,
+      nome: product?.name || '', amb: product?.roomId || defaultRoomId, categoryId: product?.category?.id || '',
       qtd: String(product?.quantity ?? MIN_QUANTITY), preco: fmtPrice(product?.unitPrice),
       obs: product?.notes || '', bought: product?.bought ?? false,
       links: product?.links?.length
@@ -235,12 +236,15 @@ export default function ProductForm({ listId, product, rooms, defaultRoomId = ''
     };
   };
   const preco = f.field('preco');
+  const categoryOptions = categories.map((category) => ({ value: category.id, label: category.name }));
+  if (product?.category?.deleted) categoryOptions.push({ value: product.category.id, label: `${product.category.name} (removida)` });
 
   return (
     <form className="card card-pad form" onSubmit={submitProduct} noValidate>
       <div className="row2">
         <TextInput label="Nome do produto" placeholder="Ex.: Batedeira planetária" {...f.field('nome')} />
         <Select label="Ambiente" placeholder="Selecione" options={rooms.map((room) => ({ value: room.id, label: room.name }))} {...f.field('amb')} />
+        <Select label="Categoria" placeholder="Selecione" options={categoryOptions} {...f.field('categoryId')} />
       </div>
 
       <Field id="img" as="span" label="Imagem do produto" optional>

@@ -4,7 +4,7 @@ import { readApi } from '@/lib/api.server';
 import { requireUuid } from '@/lib/route-input';
 
 /** @typedef {{ totalProducts: number, boughtProducts: number, pendingProducts: number, estimatedTotal: number, remainingTotal: number }} ListStatsResponse */
-/** @typedef {{ id: string, roomId: string, name: string, quantity: number, unitPrice: number | null, notes: string | null, clientNotes: string | null, bought: boolean, imageUrl: string | null, storeSync?: { sourceUrl: string, store: string, productId: string, variantId: string | null, enabled: boolean, lastAttemptAt: string | null, lastSyncedAt: string | null, status: string } | null, links: { url: string, note: string | null }[] }} ProductResponse */
+/** @typedef {{ id: string, roomId: string, name: string, quantity: number, unitPrice: number | null, notes: string | null, clientNotes: string | null, bought: boolean, imageUrl: string | null, category: { id: string, name: string, deleted: boolean }, storeSync?: { sourceUrl: string, store: string, productId: string, variantId: string | null, enabled: boolean, lastAttemptAt: string | null, lastSyncedAt: string | null, status: string } | null, links: { url: string, note: string | null }[] }} ProductResponse */
 /** @typedef {{ id: string, name: string, position: number, products: ProductResponse[] }} RoomResponse */
 /** @typedef {{ productId: string, purchase?: { revision: number, changedAt: string, value: boolean }, notes?: { revision: number, changedAt: string, value: string | null } }} ChangedProduct */
 /** @typedef {{ observedRevision: number, products: ChangedProduct[] }} ClientChangesResponse */

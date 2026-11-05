@@ -4,9 +4,10 @@ import ProductForm from './ProductForm';
 import NewProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/novo/page';
 import EditProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/[produtoId]/editar/page';
 import { FeedbackProvider } from '../feedback/Feedback';
-import { LIST, ROOM, PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
+import { LIST, ROOM, PRODUCT, SECOND_ROOM, CATEGORIES } from '@/test-support/fixtures';
 import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
 import { getList } from '../listas/queries.server';
+import { readApi } from '@/lib/api.server';
 
 const { push, refresh, createUrl, revokeUrl } = vi.hoisted(() => ({
   push: vi.fn(), refresh: vi.fn(), createUrl: vi.fn(), revokeUrl: vi.fn(),
@@ -21,6 +22,7 @@ vi.mock('./actions', () => ({
   findProductImages: vi.fn(), uploadProductImageFromUrl: vi.fn(), previewStoreProduct: vi.fn(),
 }));
 vi.mock('../listas/queries.server', () => ({ getList: vi.fn() }));
+vi.mock('@/lib/api.server', () => ({ readApi: vi.fn() }));
 
 const PARTIAL_COPY = 'O produto foi salvo, mas a imagem não foi atualizada. Tente novamente.';
 const MAX_BYTES = 5 * 1024 * 1024;
@@ -38,6 +40,7 @@ const deferred = () => {
 const fillNew = () => {
   fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira' } });
   fireEvent.change(screen.getByLabelText('Ambiente'), { target: { value: ROOM.id } });
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
 };
 const submit = async () => {
   await act(async () => { fireEvent.submit(screen.getByRole('button', { name: 'Salvar produto' }).closest('form')); });
@@ -50,7 +53,7 @@ const searchImages = async (link = 'https://loja.com/produto') => {
   fireEvent.change(screen.getByLabelText('Link da página do produto'), { target: { value: link } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar imagens' })); });
 };
-const mount = (props = {}) => render(<FeedbackProvider><ProductForm listId={LIST.id} rooms={[ROOM, SECOND_ROOM]} {...props} /></FeedbackProvider>);
+const mount = (props = {}) => render(<FeedbackProvider><ProductForm listId={LIST.id} rooms={[ROOM, SECOND_ROOM]} categories={CATEGORIES} {...props} /></FeedbackProvider>);
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -62,6 +65,7 @@ beforeEach(() => {
   findProductImages.mockReset().mockResolvedValue({ ok: true, data: { images: [] } });
   uploadProductImageFromUrl.mockReset().mockResolvedValue({ ok: true, data: { imageUrl: IMAGE_URL } });
   getList.mockReset().mockResolvedValue(LIST);
+  readApi.mockReset().mockResolvedValue(CATEGORIES);
   createUrl.mockReset().mockReturnValue('blob:preview');
   vi.stubGlobal('URL', class extends URL {
     static createObjectURL = createUrl;
@@ -145,9 +149,10 @@ test('the product form requires a name and persists a valid product back to its 
   expect(screen.getByText('Preencha este campo.')).toBeTruthy();
   expect(saveProduct).not.toHaveBeenCalled();
   fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira' } });
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
   await submit();
   expect(saveProduct).toHaveBeenCalledWith(LIST.id, null, {
-    name: 'Batedeira', roomId: ROOM.id, quantity: 1, unitPrice: null, notes: null, bought: false, links: [],
+    name: 'Batedeira', roomId: ROOM.id, categoryId: CATEGORIES[0].id, quantity: 1, unitPrice: null, notes: null, bought: false, links: [],
   });
   expect(push).toHaveBeenCalledWith(`/listas/${LIST.id}`);
   expect(refresh).toHaveBeenCalledOnce();
@@ -272,7 +277,7 @@ test('editing shows API values, object links, image path and bought state withou
   await submit();
   expect(saveProduct.mock.calls[0][1]).toBe(PRODUCT.id);
   expect(saveProduct.mock.calls[0][2]).toEqual({
-    name: PRODUCT.name, roomId: ROOM.id, quantity: 2, unitPrice: 12.5, notes: PRODUCT.notes, bought: true, links: PRODUCT.links,
+    name: PRODUCT.name, roomId: ROOM.id, categoryId: PRODUCT.category.id, quantity: 2, unitPrice: 12.5, notes: PRODUCT.notes, bought: true, links: PRODUCT.links,
   });
   expect(uploadProductImage).not.toHaveBeenCalled();
   expect(deleteProductImage).not.toHaveBeenCalled();
@@ -503,6 +508,7 @@ test('resolved product preview fills fields and saves an explicit binding withou
   previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
   mount({ defaultRoomId: ROOM.id });
   await searchProduct();
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
   expect(screen.getByLabelText('Nome do produto').value).toBe('Cadeira');
   expect(screen.getByLabelText('Preço unitário').value).toBe('1.250,00');
   await submit();
@@ -517,6 +523,7 @@ test('variant preview requires an explicit choice before binding', async () => {
   fireEvent.change(screen.getByLabelText('Versão do produto'), { target: { value: 'oak' } });
   await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar produto' })); });
   expect(previewStoreProduct).toHaveBeenLastCalledWith(STORE_PREVIEW.sourceUrl, 'oak');
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
   await submit();
   expect(saveProduct.mock.calls[0][2].storeSync.variantId).toBe('oak');
 });
@@ -546,6 +553,7 @@ test('removing the preview photo requires manual-save confirmation', async () =>
   mount({ defaultRoomId: ROOM.id });
   await searchProduct();
   fireEvent.click(screen.getByRole('button', { name: 'Remover imagem' }));
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
   await submit();
   expect(saveProduct).not.toHaveBeenCalled();
   await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Salvar como manual' })); });
@@ -557,6 +565,7 @@ test('editing the source URL invalidates an earlier preview binding', async () =
   mount({ defaultRoomId: ROOM.id });
   await searchProduct();
   fireEvent.change(screen.getByLabelText('Link da página do produto'), { target: { value: 'https://moveca.com.br/products/other' } });
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
   await submit();
   expect(saveProduct.mock.calls[0][2]).not.toHaveProperty('storeSync');
 });
@@ -598,4 +607,60 @@ test('pending preview blocks save and unmount suppresses late results', async ()
   view.unmount();
   await act(async () => { pending.resolve({ ok: true, data: STORE_PREVIEW }); });
   expect(push).not.toHaveBeenCalled();
+});
+
+test('requires a category', async () => {
+  mount();
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira' } });
+  fireEvent.change(screen.getByLabelText('Ambiente'), { target: { value: ROOM.id } });
+  await submit();
+  expect(screen.getByText('Escolha uma categoria.')).toBeTruthy();
+  expect(saveProduct).not.toHaveBeenCalled();
+});
+
+test('offers active categories in order with no default', () => {
+  mount();
+  const select = screen.getByLabelText('Categoria');
+  expect(select.value).toBe('');
+  expect([...select.options].map((option) => option.textContent)).toEqual(['Selecione', 'Eletrodomésticos', 'Luminotécnica']);
+});
+
+test('keeps a deleted current category', async () => {
+  const product = { ...PRODUCT, category: { id: 'x', name: 'Pedras', deleted: true } };
+  mount({ product });
+  const select = screen.getByLabelText('Categoria');
+  expect(select.value).toBe('x');
+  expect(select.selectedOptions[0].textContent).toBe('Pedras (removida)');
+  await submit();
+  expect(saveProduct.mock.calls[0][2].categoryId).toBe('x');
+});
+
+test('sends the chosen category', async () => {
+  mount();
+  fillNew();
+  fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[1].id } });
+  await submit();
+  expect(saveProduct.mock.calls[0][2].categoryId).toBe(CATEGORIES[1].id);
+});
+
+test('the store preview leaves the category empty and required', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: { resolution: 'resolved', name: 'Importado', unitPrice: 10, imageUrl: null, sourceUrl: 'https://loja.com/p', variantId: null } });
+  mount();
+  fireEvent.change(screen.getByLabelText('Link da página do produto'), { target: { value: 'https://loja.com/p' } });
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar produto' })); });
+  expect(screen.getByLabelText('Nome do produto').value).toBe('Importado');
+  expect(screen.getByLabelText('Categoria').value).toBe('');
+  fireEvent.change(screen.getByLabelText('Ambiente'), { target: { value: ROOM.id } });
+  await submit();
+  expect(screen.getByText('Escolha uma categoria.')).toBeTruthy();
+  expect(saveProduct).not.toHaveBeenCalled();
+});
+
+test('the product pages load the office categories', async () => {
+  const view = render(await newProductPage());
+  expect(readApi).toHaveBeenCalledWith('/api/office/categories');
+  expect(screen.getByRole('option', { name: 'Luminotécnica' })).toBeTruthy();
+  view.unmount();
+  render(await editProductPage());
+  expect(screen.getByLabelText('Categoria').value).toBe(PRODUCT.category.id);
 });
