@@ -112,3 +112,30 @@ test('delete confirmation is short when the category has no products', async () 
   await click('Apagar Paisagismo');
   expect(screen.getByText('Apagar a categoria Paisagismo?', { selector: 'p' })).toBeTruthy();
 });
+
+test('with a rename open, the new category label still points at the add input and ids are unique', async () => {
+  const { container } = view();
+  await click('Renomear Pedras');
+  const add = screen.getByLabelText('Nova categoria');
+  const rename = screen.getByLabelText('Nome da categoria');
+  expect(add).not.toBe(rename);
+  const ids = Array.from(container.querySelectorAll('[id]'), (el) => el.id);
+  expect(new Set(ids).size).toBe(ids.length);
+});
+
+test('an API field error in a rename row is tied to that row input', async () => {
+  renameCategory.mockResolvedValue({ ok: false, status: 409, detail: 'Conflito.', errors: { name: 'Já existe uma categoria com esse nome.' } });
+  view();
+  await click('Renomear Pedras');
+  fireEvent.change(screen.getByLabelText('Nome da categoria'), { target: { value: 'Tecidos' } });
+  await click('Salvar');
+  const input = screen.getByLabelText('Nome da categoria');
+  expect(document.getElementById(input.getAttribute('aria-describedby')).textContent).toBe('Já existe uma categoria com esse nome.');
+  expect(screen.getByLabelText('Nova categoria').getAttribute('aria-invalid')).toBe('false');
+});
+
+test('delete confirmation uses the singular verb for one product', async () => {
+  view();
+  await click('Apagar Tecidos');
+  expect(screen.getByText('Apagar a categoria Tecidos? 1 produto continua com ela, mas ela some dos filtros.')).toBeTruthy();
+});

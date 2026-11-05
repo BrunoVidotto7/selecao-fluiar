@@ -8,6 +8,8 @@ import { useConfirm, useToast } from '../feedback/Feedback';
 import { CATEGORY_NAME_RULE } from '@/lib/validation';
 import { createCategory, deleteCategory, renameCategory } from './actions';
 
+// Form keys double as input ids, so each form needs its own (no two inputs may share id="name").
+const NEW_NAME = 'new-category-name';
 const DELETE_FAILED_DETAIL = 'Não conseguimos apagar agora. Tente novamente.';
 
 const countLabel = (count) => (count === 1 ? '1 produto' : `${count} produtos`);
@@ -15,25 +17,26 @@ const countLabel = (count) => (count === 1 ? '1 produto' : `${count} produtos`);
 function deleteText(category) {
   const question = `Apagar a categoria ${category.name}?`;
   return category.productCount > 0
-    ? `${question} ${countLabel(category.productCount)} continuam com ela, mas ela some dos filtros.`
+    ? `${question} ${countLabel(category.productCount)} ${category.productCount === 1 ? 'continua' : 'continuam'} com ela, mas ela some dos filtros.`
     : question;
 }
 
 function AddCategoryForm() {
   const router = useRouter();
   const f = useApiForm({
-    initial: { name: '' },
-    rules: { name: CATEGORY_NAME_RULE },
-    action: ({ name }) => createCategory({ name }),
+    initial: { [NEW_NAME]: '' },
+    rules: { [NEW_NAME]: CATEGORY_NAME_RULE },
+    fieldMap: { name: NEW_NAME },
+    action: (values) => createCategory({ name: values[NEW_NAME] }),
     onSuccess: (data, submitted, { toast }) => {
-      f.setValues((current) => (current.name === submitted.name ? { name: '' } : current));
+      f.setValues((current) => (current[NEW_NAME] === submitted[NEW_NAME] ? { [NEW_NAME]: '' } : current));
       toast('Categoria adicionada.');
       router.refresh();
     },
   });
   return (
     <form className="form" onSubmit={f.submit} noValidate>
-      <TextInput label="Nova categoria" {...f.field('name')} />
+      <TextInput label="Nova categoria" {...f.field(NEW_NAME)} />
       <div className="btns"><Button type="submit" busy={f.busy}>{f.busy ? 'Adicionando…' : 'Adicionar'}</Button></div>
     </form>
   );
@@ -41,10 +44,12 @@ function AddCategoryForm() {
 
 function RenameCategoryForm({ category, onDone }) {
   const router = useRouter();
+  const key = `category-${category.id}-name`;
   const f = useApiForm({
-    initial: { name: category.name },
-    rules: { name: CATEGORY_NAME_RULE },
-    action: ({ name }) => renameCategory(category.id, { name }),
+    initial: { [key]: category.name },
+    rules: { [key]: CATEGORY_NAME_RULE },
+    fieldMap: { name: key },
+    action: (values) => renameCategory(category.id, { name: values[key] }),
     onSuccess: (data, submitted, { toast }) => {
       toast('Categoria renomeada.');
       router.refresh();
@@ -53,7 +58,7 @@ function RenameCategoryForm({ category, onDone }) {
   });
   return (
     <form className="form" onSubmit={f.submit} noValidate>
-      <TextInput label="Nome da categoria" {...f.field('name')} />
+      <TextInput label="Nome da categoria" {...f.field(key)} />
       <div className="btns">
         <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar'}</Button>
         <Button variant="ghost" onClick={onDone}>Cancelar</Button>
