@@ -176,7 +176,7 @@ test('the client view is read-only and keeps the API store links and notes', () 
 test('read-only tables accept the public API subset without fabricated identifiers', () => {
   const rooms = [{
     name: 'Cozinha', products: [{
-      name: 'Batedeira', quantity: 2, bought: false,
+      name: 'Batedeira', quantity: 2, bought: false, category: PRODUCT.category,
       links: [{ url: 'https://loja.com/item', note: 'Azul' }],
     }],
   }];
@@ -188,8 +188,9 @@ test('read-only tables accept the public API subset without fabricated identifie
 });
 
 test('public rows are immutable read-only displays even when names repeat', () => {
-  const duplicateRoom = { ...PUBLIC_LIST.rooms[0], products: [PUBLIC_LIST.rooms[0].products[0], {
-    ...PUBLIC_LIST.rooms[0].products[0], quantity: 3, bought: true,
+  const publicProduct = { ...PUBLIC_LIST.rooms[0].products[0], category: PRODUCT.category };
+  const duplicateRoom = { ...PUBLIC_LIST.rooms[0], products: [publicProduct, {
+    ...publicProduct, quantity: 3, bought: true,
   }] };
   render(<ClientView rooms={[duplicateRoom, duplicateRoom, { name: 'Vazio', products: [] }]} />);
   expect(screen.queryAllByRole('row')).toHaveLength(6);
@@ -485,4 +486,73 @@ test('deleted products do not render ghost rows and bought highlights retain the
     products: room.products.filter((product) => product.id !== SECOND_PRODUCT.id) })) }));
   expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
   await act(async () => {});
+});
+
+const ELETRO = PRODUCT.category;
+const LUZ = { id: '55555555-5555-4555-8555-555555555552', name: 'Luminotécnica', deleted: false };
+const categorized = (overrides = {}) => ({
+  ...fullList,
+  rooms: [
+    { ...ROOM, products: [
+      { ...PRODUCT, unitPrice: 10, links: [] },
+      { ...SECOND_PRODUCT, roomId: ROOM.id, name: 'Capacho', quantity: 1, bought: true, unitPrice: 5, links: [] },
+    ] },
+    { ...SECOND_ROOM, name: 'Lavanderia', products: [
+      { ...PRODUCT, id: '44444444-4444-4444-8444-444444447777', roomId: SECOND_ROOM.id,
+        name: 'Varal', quantity: 1, unitPrice: 15, category: LUZ, bought: true, links: [] },
+    ] },
+  ],
+  ...overrides,
+});
+const pick = (name) => fireEvent.change(screen.getByRole('combobox', { name: 'Categoria' }), { target: { value: name } });
+const idOf = (c) => c.id;
+
+test('filters items by category', () => {
+  render(viewOf(categorized()));
+  pick(idOf(LUZ));
+  expect(screen.queryByText('Varal')).not.toBeNull();
+  expect(screen.queryByText('Batedeira')).toBeNull();
+  expect(screen.queryByText('Capacho')).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Cozinha' })).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Lavanderia' })).not.toBeNull();
+});
+
+test('offers only categories present in the list', () => {
+  render(viewOf(categorized()));
+  const labels = [...screen.getByRole('combobox', { name: 'Categoria' }).querySelectorAll('option')].map((o) => o.textContent);
+  expect(labels).toEqual(['Todas as categorias', 'Eletrodomésticos', 'Luminotécnica']);
+});
+
+test('combines with status filter and keeps category', () => {
+  render(viewOf(categorized()));
+  pick(idOf(LUZ));
+  fireEvent.click(screen.getByRole('button', { name: /Pendentes/ }));
+  expect(screen.queryByText('Nenhum item desta categoria com esse status.')).not.toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /Todos/ }));
+  expect(screen.getByRole('combobox', { name: 'Categoria' }).value).toBe(LUZ.id);
+});
+
+test('falls back to all when category disappears', () => {
+  const rendered = render(viewOf(categorized()));
+  pick(idOf(LUZ));
+  expect(screen.queryByText('Batedeira')).toBeNull();
+  const without = categorized();
+  without.rooms = [{ ...without.rooms[0] }];
+  rendered.rerender(viewOf(without));
+  expect(screen.getByRole('combobox', { name: 'Categoria' }).value).toBe('');
+  expect(screen.queryByText('Batedeira')).not.toBeNull();
+  expect(screen.queryByText('Capacho')).not.toBeNull();
+});
+
+test('shows the category under each item name', () => {
+  render(viewOf(categorized()));
+  expect(screen.getAllByText('Eletrodomésticos', { selector: '.ro-cat' })).toHaveLength(2);
+  expect(screen.getAllByText('Luminotécnica', { selector: '.ro-cat' })).toHaveLength(1);
+});
+
+test('client preview has no category filter', () => {
+  render(viewOf(categorized()));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  expect(screen.queryByRole('combobox', { name: 'Categoria' })).toBeNull();
+  expect(screen.getAllByText('Luminotécnica', { selector: '.ro-cat' })).toHaveLength(1);
 });

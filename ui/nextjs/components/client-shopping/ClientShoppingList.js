@@ -2,12 +2,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { unstable_rethrow, useRouter } from 'next/navigation';
 import { Crumbs, EmptyState } from '../ui/Display';
-import { Segmented } from '../ui/Fields';
+import { Segmented, Select } from '../ui/Fields';
 import { useToast } from '../feedback/Feedback';
 import ItemLinks from '../lista/ItemLinks';
 import ProductClientNotesEditor from '../lista/ProductClientNotesEditor';
 import { ListNote, ListSignature } from '../lista/ListFooter';
 import { splitTitle } from '@/lib/format';
+import { matchesCategory, useCategoryFilter } from '@/lib/category-filter';
 import { setClientPurchase, saveClientNotes } from './actions';
 
 const SAVE_FAILED_DETAIL = 'Não conseguimos salvar agora. Tente novamente.';
@@ -18,6 +19,7 @@ export default function ClientShoppingList({ list }) {
 
 function ListContent({ list }) {
   const [filter, setFilter] = useState('all');
+  const [categoryId, setCategoryId, categories] = useCategoryFilter(list.rooms);
   const [pendingIds, setPendingIds] = useState(new Set());
   const pending = useRef(new Set());
   const mounted = useRef(true);
@@ -54,7 +56,7 @@ function ListContent({ list }) {
     if (mounted.current && result.ok) router.refresh();
     return result;
   };
-  const matches = (product) => filter === 'all' || (filter === 'done') === product.bought;
+  const matches = (product) => (filter === 'all' || (filter === 'done') === product.bought) && matchesCategory(product, categoryId);
   const visibleCount = list.rooms.reduce((total, room) => total + room.products.filter(matches).length, 0);
   return <div className="listdoc">
     <Crumbs items={[{ href: '/minhas-listas', label: 'Minhas listas' }, { label: list.name }]} />
@@ -66,7 +68,9 @@ function ListContent({ list }) {
         { value: 'all', label: 'Todos', count: list.stats.totalProducts },
         { value: 'pending', label: 'Pendentes', count: list.stats.pendingProducts },
         { value: 'done', label: 'Comprados', count: list.stats.boughtProducts },
-      ]} /></div>
+      ]} />
+        <Select id="category-filter" label="Categoria" placeholder="Todas as categorias"
+          value={categoryId} onChange={(event) => setCategoryId(event.target.value)} options={categories} /></div>
       {list.rooms.filter((room) => room.products.length).map((room) => <section key={room.id} hidden={!room.products.some(matches)}>
         <div className="roomhead"><h2>{room.name}</h2><span>{room.products.filter((product) => product.bought).length} de {room.products.length} comprados</span></div>
         <div className="tbl view"><table>
@@ -75,7 +79,7 @@ function ListContent({ list }) {
             <td className="ck"><input type="checkbox" className="check" checked={product.bought} disabled={pendingIds.has(product.id)}
               aria-label={`Comprado: ${product.name}`} onChange={(event) => purchase(product.id, event.target.checked)} /></td>
             <td className="qt"><span className="ro-qty">{product.quantity}</span></td>
-            <td className="it"><span className="ro-name">{product.name}</span></td>
+            <td className="it"><span className="ro-name">{product.name}</span><span className="ro-cat">{product.category.name}</span></td>
             <td><ItemLinks links={product.links} empty="Opções em breve" />
               <ProductClientNotesEditor productId={product.id} productName={product.name} clientNotes={product.clientNotes}
                 onSave={(value) => notes(product.id, value)} />
@@ -83,7 +87,8 @@ function ListContent({ list }) {
           </tr>)}</tbody>
         </table></div>
       </section>)}
-      {!visibleCount && <p className="filtered-empty">{filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>}
+      {!visibleCount && <p className="filtered-empty">{categoryId ? 'Nenhum item desta categoria com esse status.'
+        : filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>}
     </> : <EmptyState icon="bag" title="Esta lista ainda não tem produtos" text="O escritório está preparando sua seleção." />}
     <ListNote /><ListSignature signature={list.signature} />
   </div>;

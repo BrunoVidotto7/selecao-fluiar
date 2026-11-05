@@ -157,6 +157,7 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, 
                 aria-label={armed ? `Confirmar remoção de ${item.name}` : `Remover ${item.name}`}
                 onClick={remove}>{armed ? 'remover?' : '×'}</button>
             </div>
+            <span className="ro-cat">{item.category.name}</span>
             <span className="price">{priceText(item)}</span>
             <StoreSyncStatus sync={item.storeSync} />
           </div>

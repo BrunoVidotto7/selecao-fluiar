@@ -5,9 +5,10 @@ import { unstable_rethrow, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Button from '../ui/Button';
 import { Crumbs, EmptyState } from '../ui/Display';
-import { Segmented } from '../ui/Fields';
+import { Segmented, Select } from '../ui/Fields';
 import { useToast } from '../feedback/Feedback';
 import { brl, splitTitle } from '@/lib/format';
+import { matchesCategory, useCategoryFilter } from '@/lib/category-filter';
 import RoomTable from './RoomTable';
 import ClientView from './ClientView';
 import ShareControls from './ShareControls';
@@ -28,6 +29,7 @@ function ShoppingListContent({ list, signature }) {
   const visit = useClientChangeVisit(list.id, list.clientChanges);
   const [mode, setMode] = useState('edit'); // 'edit' | 'view'
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
+  const [categoryId, setCategoryId, categories] = useCategoryFilter(rooms);
   const toast = useToast();
   const router = useRouter();
   const mounted = useRef(true);
@@ -72,8 +74,9 @@ function ShoppingListContent({ list, signature }) {
     return operation;
   };
 
-  const visibleRooms = rooms.map((r) => ({ ...r, shown: r.products.filter((it) => filter === 'all' || (filter === 'done') === it.bought) }))
-    .filter((r) => filter === 'all' || r.shown.length);
+  const unfiltered = filter === 'all' && !categoryId;
+  const visibleRooms = rooms.map((r) => ({ ...r, shown: r.products.filter((it) => (filter === 'all' || (filter === 'done') === it.bought) && matchesCategory(it, categoryId)) }))
+    .filter((r) => unfiltered || r.shown.length);
 
   return (
     <div className="listdoc">
@@ -101,6 +104,8 @@ function ShoppingListContent({ list, signature }) {
           <div className="listbar">
             {stats.totalProducts > 0 && <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
               options={[{ value: 'all', label: 'Todos', count: stats.totalProducts }, { value: 'pend', label: 'Pendentes', count: stats.pendingProducts }, { value: 'done', label: 'Comprados', count: stats.boughtProducts }]} />}
+            {stats.totalProducts > 0 && <Select id="category-filter" label="Categoria" placeholder="Todas as categorias"
+              value={categoryId} onChange={(e) => setCategoryId(e.target.value)} options={categories} />}
             <div className="btns">
               <Button href={`${base}/editar`} variant="ghost" size="sm" icon="edit">Editar lista</Button>
               <Button href={`${base}/ambientes`} variant="ghost" size="sm">Gerenciar ambientes</Button>
@@ -126,7 +131,7 @@ function ShoppingListContent({ list, signature }) {
         <ClientView rooms={rooms} />
       ) : visibleRooms.length ? (
         visibleRooms.map((r) => (
-          <RoomTable key={r.id} room={r} products={r.shown} showAdd={filter === 'all'} listBase={base}
+          <RoomTable key={r.id} room={r} products={r.shown} showAdd={unfiltered} listBase={base}
             pendingIds={pendingIds} changesByProduct={visit.changesByProduct}
             onToggle={(id, bought) => mutateProduct(id, () => patchProduct(list.id, id, { bought }),
               bought ? 'Marcado como comprado' : 'Voltou para pendentes')}
@@ -139,7 +144,8 @@ function ShoppingListContent({ list, signature }) {
             onRemove={(id) => mutateProduct(id, () => deleteProduct(list.id, id), 'Item removido')} />
         ))
       ) : (
-        <p className="filtered-empty">{filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>
+        <p className="filtered-empty">{categoryId ? 'Nenhum item desta categoria com esse status.'
+          : filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>
       )}
 
       <ListNote />

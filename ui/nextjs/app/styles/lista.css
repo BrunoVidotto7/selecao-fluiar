@@ -87,3 +87,6 @@
 .listdoc .client-change-details { color: var(--ink); font-size: 12px; margin-block: 8px; overflow-wrap: anywhere; }
 .listdoc .client-change-details p { margin-block: 4px; }
 .listdoc .client-change-visit { background: var(--chip); color: var(--ink); padding: 12px; margin-block: 16px; border-radius: 8px; }
+/* novo: rótulo de categoria sob o nome do item e select de categoria na barra */
+.ro-cat{display:block;font-size:12px;color:var(--muted)}
+.listbar .field{margin:0}

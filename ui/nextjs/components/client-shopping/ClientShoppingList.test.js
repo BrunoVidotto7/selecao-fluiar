@@ -29,3 +29,33 @@ test('purchase filters and counts use the saved list and do not erase note draft
   fireEvent.click(screen.getByRole('button', { name: /Comprados/ }));
   expect(screen.getByText('Nenhum item comprado ainda.')).toBeTruthy();
 });
+const LUZ = { id: '55555555-5555-4555-8555-555555555552', name: 'Luminotécnica', deleted: false };
+const twoCategories = {
+  ...CLIENT_LIST,
+  stats: { totalProducts: 2, boughtProducts: 1, pendingProducts: 1 },
+  rooms: [{ ...CLIENT_LIST.rooms[0], products: [CLIENT_PRODUCT,
+    { ...CLIENT_PRODUCT, id: '44444444-4444-4444-8444-444444447777', name: 'Pendente', category: LUZ, bought: true }] }],
+};
+const choose = (value) => fireEvent.change(screen.getByRole('combobox', { name: 'Categoria' }), { target: { value } });
+test('filters items by category and shows the label', () => {
+  render(<FeedbackProvider><ClientShoppingList list={twoCategories} /></FeedbackProvider>);
+  expect(screen.getAllByText('Luminotécnica', { selector: '.ro-cat' })).toHaveLength(1);
+  choose(LUZ.id);
+  expect(screen.getByText('Pendente').closest('tr').hidden).toBe(false);
+  expect(screen.getByText(CLIENT_PRODUCT.name).closest('tr').hidden).toBe(true);
+});
+test('combines category with status and keeps the category', () => {
+  render(<FeedbackProvider><ClientShoppingList list={twoCategories} /></FeedbackProvider>);
+  choose(LUZ.id);
+  fireEvent.click(screen.getByRole('button', { name: /Pendentes/ }));
+  expect(screen.getByText('Nenhum item desta categoria com esse status.')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /Todos/ }));
+  expect(screen.getByRole('combobox', { name: 'Categoria' }).value).toBe(LUZ.id);
+});
+test('falls back to all when the category disappears', () => {
+  const rendered = render(<FeedbackProvider><ClientShoppingList list={twoCategories} /></FeedbackProvider>);
+  choose(LUZ.id);
+  const only = { ...twoCategories, rooms: [{ ...twoCategories.rooms[0], products: [CLIENT_PRODUCT] }] };
+  rendered.rerender(<FeedbackProvider><ClientShoppingList list={only} /></FeedbackProvider>);
+  expect(screen.getByRole('combobox', { name: 'Categoria' }).value).toBe('');
+});
