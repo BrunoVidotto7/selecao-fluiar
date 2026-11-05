@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ClientShoppingListService {
 
+    private final java.time.Clock clock;
     private final ListActivityService activity;
     private final ShoppingListRepository lists;
     private final ProductRepository products;
@@ -23,7 +24,8 @@ public class ClientShoppingListService {
     private final UserRepository users;
 
     public ClientShoppingListService(ShoppingListRepository lists, ProductRepository products,
-            OfficeRepository offices, UserRepository users, ListActivityService activity) {
+            OfficeRepository offices, UserRepository users, ListActivityService activity, java.time.Clock clock) {
+        this.clock = clock;
         this.activity = activity;
         this.lists = lists;
         this.products = products;
@@ -46,6 +48,9 @@ public class ClientShoppingListService {
     public ClientProduct setPurchase(UUID officeId, UUID clientId, UUID listId, UUID productId, ProductPurchaseRequest request) {
         ShoppingList list = lockOwnedList(officeId, clientId, listId);
         Product product = productInList(officeId, listId, productId);
+        if (product.isBought() != request.bought()) {
+            product.recordClientPurchase(list.nextClientChangeRevision(), clock.instant(), request.bought());
+        }
         product.markBought(request.bought());
         list.touch();
         activity.record(list.getId());
@@ -56,6 +61,9 @@ public class ClientShoppingListService {
     public ClientProduct setClientNotes(UUID officeId, UUID clientId, UUID listId, UUID productId, ProductClientNotesRequest request) {
         ShoppingList list = lockOwnedList(officeId, clientId, listId);
         Product product = productInList(officeId, listId, productId);
+        if (!java.util.Objects.equals(product.getClientNotes(), request.clientNotes())) {
+            product.recordClientNotes(list.nextClientChangeRevision(), clock.instant(), request.clientNotes());
+        }
         product.changeClientNotes(request.clientNotes());
         list.touch();
         activity.record(list.getId());

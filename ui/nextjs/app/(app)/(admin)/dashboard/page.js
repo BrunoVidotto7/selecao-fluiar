@@ -1,7 +1,9 @@
+import ClientChangesPanel from '@/components/client-changes/ClientChangesPanel';
+import { getClientChangePage } from '@/components/client-changes/queries.server';
 import Link from 'next/link';
 import Button from '@/components/ui/Button';
 import { Avatar, EmptyState, PageHeader, Progress, StatCard } from '@/components/ui/Display';
-import { getCurrentUser, readApi } from '@/lib/api.server';
+import { actionResult, getCurrentUser, readApi } from '@/lib/api.server';
 import { formatUpdatedAt, plural } from '@/lib/format';
 
 export const metadata = { title: 'Dashboard' };
@@ -9,8 +11,14 @@ const DASHBOARD_DATE = new Intl.DateTimeFormat('pt-BR', {
   timeZone: 'America/Sao_Paulo', weekday: 'long', day: 'numeric', month: 'long',
 });
 
-export default async function Page() {
-  const [user, dashboard] = await Promise.all([getCurrentUser(), readApi('/api/dashboard')]);
+const MAX_CHANGES_PAGE = 2147483647;
+
+export default async function Page({ searchParams } = {}) {
+  const input = (await searchParams)?.changesPage;
+  const changesPage = typeof input === 'string' && /^\d+$/.test(input) && Number(input) <= MAX_CHANGES_PAGE ? Number(input) : 0;
+  const [user, dashboard, changes] = await Promise.all([
+    getCurrentUser(), readApi('/api/dashboard'), actionResult(() => getClientChangePage(changesPage)),
+  ]);
   const firstName = user.name.split(' ')[0];
   const actions = <><Button href="/clientes/novo" variant="ghost" icon="plus">Cadastrar cliente</Button><Button href="/listas/nova" icon="plus">Criar lista</Button></>;
 
@@ -21,6 +29,7 @@ export default async function Page() {
         <section className="stats" aria-label="Resumo">
           <StatCard label="Clientes" value={dashboard.clientCount} /><StatCard label="Listas de compras" value={dashboard.listCount} /><StatCard label="Itens pendentes" value={dashboard.pendingProductCount} />
         </section>
+        <ClientChangesPanel result={changes} />
         <EmptyState icon="users" title="Cadastre seu primeiro cliente" text="Depois crie a lista de compras dele, adicione os produtos por ambiente e envie o link.">
           <Button href="/clientes/novo" icon="plus">Cadastrar cliente</Button>
         </EmptyState>
@@ -36,6 +45,7 @@ export default async function Page() {
         <StatCard href="/listas" label="Listas de compras" value={dashboard.listCount} detail={plural(dashboard.completedListCount, 'concluída', 'concluídas')} />
         <StatCard href="/listas" label="Itens pendentes" value={dashboard.pendingProductCount} detail={`de ${dashboard.totalProductCount} itens nas listas`} highlight />
       </section>
+      <ClientChangesPanel result={changes} />
       <div className="split">
         <section className="card">
           <div className="card-head"><h2 className="sec">Clientes recentes</h2><Link href="/clientes">Ver todos</Link></div>

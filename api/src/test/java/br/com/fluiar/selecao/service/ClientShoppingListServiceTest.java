@@ -28,7 +28,7 @@ class ClientShoppingListServiceTest {
     private final ProductRepository products = mock(ProductRepository.class);
     private final OfficeRepository offices = mock(OfficeRepository.class);
     private final UserRepository users = mock(UserRepository.class);
-    private final ClientShoppingListService service = new ClientShoppingListService(lists, products, offices, users, org.mockito.Mockito.mock(ListActivityService.class));
+    private final ClientShoppingListService service = new ClientShoppingListService(lists, products, offices, users, org.mockito.Mockito.mock(ListActivityService.class), java.time.Clock.fixed(java.time.Instant.parse("2026-11-05T12:00:00Z"), java.time.ZoneOffset.UTC));
     private final JsonMapper mapper = JsonMapper.builder().build();
     private ShoppingList list;
     private Product product;
@@ -50,6 +50,19 @@ class ClientShoppingListServiceTest {
         when(products.findInOfficeForUpdate(productId, officeId)).thenReturn(Optional.of(product));
         when(offices.findById(officeId)).thenReturn(Optional.of(new Office("Office")));
         when(users.findByOfficeIdAndRoleOrderByNameAsc(officeId, UserRole.ADMIN)).thenReturn(List.of());
+    }
+
+    @Test
+    void sameInstantChangesHaveDistinctRevisionsAndRepeatedValuesDoNotAdvance() {
+        service.setPurchase(officeId, clientId, listId, productId, new ProductPurchaseRequest(true));
+        service.setClientNotes(officeId, clientId, listId, productId, new ProductClientNotesRequest("  Preto  "));
+        service.setPurchase(officeId, clientId, listId, productId, new ProductPurchaseRequest(true));
+        service.setClientNotes(officeId, clientId, listId, productId, new ProductClientNotesRequest("Preto"));
+        assertThat(list.getClientChangeRevision()).isEqualTo(2);
+        assertThat(product.getClientChanges().getPurchaseRevision()).isEqualTo(1);
+        assertThat(product.getClientChanges().getNotesRevision()).isEqualTo(2);
+        assertThat(product.getClientChanges().getPurchaseChangedAt()).isEqualTo(java.time.Instant.parse("2026-11-05T12:00:00Z"));
+        assertThat(product.getClientChanges().getNotesChangedAt()).isEqualTo(product.getClientChanges().getPurchaseChangedAt());
     }
 
     @Test

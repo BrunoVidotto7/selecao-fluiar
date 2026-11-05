@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ShoppingListService {
 
+    private final ClientChangeService changes;
     private final ListActivityService activity;
 
     private static final String CLIENT_ID_FIELD = "clientId";
@@ -27,7 +28,8 @@ public class ShoppingListService {
     private final ShoppingListRepository listRepository;
     private final ClientRepository clientRepository;
 
-    public ShoppingListService(ShoppingListRepository listRepository, ClientRepository clientRepository, ListActivityService activity) {
+    public ShoppingListService(ShoppingListRepository listRepository, ClientRepository clientRepository, ListActivityService activity, ClientChangeService changes) {
+        this.changes = changes;
         this.activity = activity;
         this.listRepository = listRepository;
         this.clientRepository = clientRepository;
@@ -37,8 +39,10 @@ public class ShoppingListService {
         return listRepository.findSummaries(officeId);
     }
 
-    public ListDetailResponse get(UUID officeId, UUID listId) {
-        return ListDetailResponse.of(loadList(officeId, listId));
+    @Transactional(readOnly = true, isolation = org.springframework.transaction.annotation.Isolation.REPEATABLE_READ)
+    public ListDetailResponse get(UUID officeId, UUID userId, UUID listId) {
+        ShoppingList list = loadList(officeId, listId);
+        return ListDetailResponse.of(list, changes.changesFor(list, userId));
     }
 
     @Transactional

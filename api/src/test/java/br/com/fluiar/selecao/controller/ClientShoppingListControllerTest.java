@@ -51,6 +51,7 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
         jdbc.update("update products set notes = 'Internal', unit_price = 10 where id = ?", productId);
         var response = read(owner, listId);
         assertThat(response).hasStatus(HttpStatus.OK);
+        assertThat(response).bodyJson().doesNotHavePath("$.clientChanges");
         assertThat(response).bodyJson().doesNotHavePath("$.shareToken");
         assertThat(response).bodyJson().doesNotHavePath("$.clientId");
         assertThat(response).bodyJson().doesNotHavePath("$.rooms[0].products[0].notes");
@@ -98,6 +99,22 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
         assertThat(read(owner, listId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(purchase(owner, "{\"bought\":true}")).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(read(other, listId)).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").isEqualTo("Existing note");
+    }
+
+    @Test
+    void recordsOnlyRealClientChangesAndKeepsLatestFieldSnapshots() {
+        assertThat(purchase(owner, "{\"bought\":true}")).hasStatus(HttpStatus.OK);
+        assertThat(jdbc.queryForMap("select * from products where id = ?", productId))
+                .containsEntry("client_purchase_revision", 1L).containsEntry("client_purchase_value", true);
+        purchase(owner, "{\"bought\":true}");
+        notes(owner, "{\"clientNotes\":\"  Prefiro preto  \"}");
+        notes(owner, "{\"clientNotes\":\"Prefiro preto\"}");
+        assertThat(jdbc.queryForObject("select client_change_revision from shopping_lists where id = ?", Long.class, listId)).isEqualTo(2L);
+        purchase(owner, "{\"bought\":false}");
+        notes(owner, "{\"clientNotes\":null}");
+        assertThat(jdbc.queryForMap("select * from products where id = ?", productId))
+                .containsEntry("client_purchase_revision", 3L).containsEntry("client_purchase_value", false)
+                .containsEntry("client_notes_revision", 4L).containsEntry("client_notes_value", null);
     }
 
     private MvcTestResult read(TestSession session, UUID id) {

@@ -4,6 +4,7 @@ import ShoppingList from './ShoppingList';
 import ClientView from './ClientView';
 import { ListNote, ListSignature } from './ListFooter';
 import { FeedbackProvider } from '../feedback/Feedback';
+import { markClientChangesRead } from '../client-changes/actions';
 import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
 import { LIST, OFFICE, PRODUCT, PUBLIC_LIST, ROOM, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
@@ -12,11 +13,13 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh }), usePathname: () => '/listas/' + LIST.id,
   unstable_rethrow: vi.fn(),
 }));
+vi.mock('../client-changes/actions', () => ({ markClientChangesRead: vi.fn().mockResolvedValue({ ok: true }) }));
 vi.mock('../produtos/actions', () => ({ patchProduct: vi.fn(), deleteProduct: vi.fn(), saveProductClientNotes: vi.fn() }));
 vi.mock('./actions', () => ({ rotateShareToken: vi.fn() }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  markClientChangesRead.mockResolvedValue({ ok: true });
   saveProductClientNotes.mockReset().mockResolvedValue({ ok: true, data: { ...PRODUCT, clientNotes: 'Saved' } });
   patchProduct.mockReset().mockResolvedValue({ ok: true, data: PRODUCT });
   deleteProduct.mockReset().mockResolvedValue({ ok: true, data: undefined });
@@ -444,4 +447,42 @@ test('admins can edit client observations and the preview remains read only', as
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
   expect(screen.getByText('Bought locally')).toBeTruthy();
   expect(screen.queryByRole('button', { name: `Salvar observação de ${PRODUCT.name}` })).toBeNull();
+});
+
+test('client change highlights survive refresh and filters during the visit', async () => {
+  const changed = { ...fullList, clientChanges: { observedRevision: 1, products: [{ productId: PRODUCT.id,
+    purchase: { revision: 1, changedAt: '2026-11-05T12:00:00Z', value: true } }] } };
+  const view = render(viewOf(changed));
+  expect(screen.getByText('Alterado pelo cliente')).toBeTruthy();
+  view.rerender(viewOf({ ...fullList, clientChanges: { observedRevision: 2, products: [] } }));
+  expect(screen.getByText('Alterado pelo cliente')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: /Comprados/ }));
+  expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /Todos/ }));
+  expect(screen.getByText('Alterado pelo cliente')).toBeTruthy();
+  await act(async () => {});
+});
+
+test('refresh never confirms changes that arrived after opening and reentry starts a new visit', async () => {
+  const snapshot = { observedRevision: 1, products: [{ productId: PRODUCT.id,
+    purchase: { revision: 1, changedAt: '2026-11-05T12:00:00Z', value: true } }] };
+  const view = render(viewOf({ ...fullList, clientChanges: snapshot }));
+  await act(async () => {});
+  expect(markClientChangesRead).toHaveBeenCalledExactlyOnceWith(LIST.id, 1);
+  view.rerender(viewOf({ ...fullList, clientChanges: { ...snapshot, observedRevision: 2 } }));
+  await act(async () => {});
+  expect(markClientChangesRead).toHaveBeenCalledTimes(1);
+  view.unmount();
+  render(viewOf({ ...fullList, clientChanges: { observedRevision: 2, products: [] } }));
+  expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
+});
+test('deleted products do not render ghost rows and bought highlights retain the done class', async () => {
+  const snapshot = { observedRevision: 1, products: [{ productId: SECOND_PRODUCT.id,
+    purchase: { revision: 1, changedAt: '2026-11-05T12:00:00Z', value: true } }] };
+  const view = render(viewOf({ ...fullList, clientChanges: snapshot }));
+  expect(screen.getByText('Alterado pelo cliente').closest('tr').classList.contains('done')).toBe(true);
+  view.rerender(viewOf({ ...fullList, clientChanges: snapshot, rooms: fullList.rooms.map((room) => ({ ...room,
+    products: room.products.filter((product) => product.id !== SECOND_PRODUCT.id) })) }));
+  expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
+  await act(async () => {});
 });

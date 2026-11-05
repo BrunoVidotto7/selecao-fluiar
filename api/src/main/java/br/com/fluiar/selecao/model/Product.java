@@ -46,6 +46,9 @@ public class Product {
     @jakarta.persistence.Embedded
     private ProductStoreSync storeSync = new ProductStoreSync();
 
+    @jakarta.persistence.Embedded
+    private ProductClientChanges clientChanges = new ProductClientChanges();
+
     private String name;
 
     private int quantity;
@@ -85,6 +88,16 @@ public class Product {
         this.notes = notes;
         this.bought = bought;
         this.links.addAll(links);
+    }
+
+    public ProductClientChanges getClientChanges() { return clientChanges; }
+
+    public void recordClientPurchase(long revision, Instant changedAt, boolean value) {
+        clientChanges.recordPurchase(revision, changedAt, value);
+    }
+
+    public void recordClientNotes(long revision, Instant changedAt, String value) {
+        clientChanges.recordNotes(revision, changedAt, value);
     }
 
     public ProductStoreSync getStoreSync() {

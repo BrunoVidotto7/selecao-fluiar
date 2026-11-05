@@ -17,19 +17,24 @@ public record ListDetailResponse(
         String shareToken,
         Instant updatedAt,
         ListStatsResponse stats,
-        List<RoomResponse> rooms) {
+        List<RoomResponse> rooms,
+        ClientChangesResponse clientChanges) {
 
     /**
      * Loads the rooms, their products and the products' links lazily. The {@code default_batch_fetch_size} setting
      * loads each level for many parents in one query, so the number of queries does not grow with the list.
      */
     public static ListDetailResponse of(ShoppingList list) {
+        return of(list, new ClientChangesResponse(list.getClientChangeRevision(), List.of()));
+    }
+
+    public static ListDetailResponse of(ShoppingList list, ClientChangesResponse clientChanges) {
         Client client = list.getClient();
         List<Room> rooms = list.getRooms();
         List<Product> products = rooms.stream().flatMap(room -> room.getProducts().stream()).toList();
 
         return new ListDetailResponse(list.getId(), list.getName(), list.getDescription(), client.getId(),
                 client.getName(), list.getShareToken(), list.getUpdatedAt(), ListStatsResponse.of(products),
-                rooms.stream().map(RoomResponse::of).toList());
+                rooms.stream().map(RoomResponse::of).toList(), clientChanges);
     }
 }

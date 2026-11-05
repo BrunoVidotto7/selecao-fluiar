@@ -81,6 +81,27 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
     private EntityManagerFactory entityManagerFactory;
 
     @Test
+    void listGetReturnsClientChangesWithoutConsumingThem() {
+        var admin = createAdmin("Ana", "ana@example.com");
+        var second = createAdminInOffice(admin, "Beatriz", "bea@example.com");
+        var client = createClient(admin, "Cliente");
+        var owner = createClientAccount(admin, client, "client-login@example.com");
+        var list = createList(admin, client, "Casa");
+        var product = createProduct(admin, list, createRoom(admin, list, "Sala"), "Sofá");
+        var write = mvc.patch().uri("/api/client/lists/{list}/products/{product}", list, product)
+                .header(HttpHeaders.AUTHORIZATION, bearer(owner)).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"bought\":true}").exchange();
+        assertThat(write).hasStatus(HttpStatus.OK);
+        for (var reader : List.of(admin, admin, second)) {
+            var result = mvc.get().uri("/api/lists/{id}", list).header(HttpHeaders.AUTHORIZATION, bearer(reader)).exchange();
+            assertThat(result).bodyJson().extractingPath("$.clientChanges.observedRevision").isEqualTo(1);
+            assertThat(readJson(result, "$.clientChanges.products[0].productId")).isEqualTo(product.toString());
+            assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].purchase.value").isEqualTo(true);
+            assertThat(result).bodyJson().doesNotHavePath("$.clientChanges.products[0].notes");
+        }
+    }
+
+    @Test
     void createListForClient() {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);

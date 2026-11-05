@@ -30,6 +30,8 @@ public class ShoppingList {
     @ManyToOne(fetch = FetchType.LAZY)
     private Client client;
 
+    private long clientChangeRevision;
+
     private String name;
 
     private String description;
@@ -55,6 +57,9 @@ public class ShoppingList {
         this.description = description;
         this.shareToken = shareToken;
     }
+
+    public long nextClientChangeRevision() { return ++clientChangeRevision; }
+    public long getClientChangeRevision() { return clientChangeRevision; }
 
     public UUID getId() {
         return id;

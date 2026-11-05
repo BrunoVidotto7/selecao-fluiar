@@ -5,6 +5,7 @@ import br.com.fluiar.selecao.dto.ListSummaryResponse;
 import br.com.fluiar.selecao.dto.ShareTokenResponse;
 import br.com.fluiar.selecao.dto.ShoppingListRequest;
 import br.com.fluiar.selecao.security.CurrentOfficeId;
+import br.com.fluiar.selecao.security.CurrentUserId;
 import br.com.fluiar.selecao.service.ShoppingListService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -46,8 +47,8 @@ public class ShoppingListController {
     }
 
     @GetMapping("/{id}")
-    public ListDetailResponse getList(@CurrentOfficeId UUID officeId, @PathVariable UUID id) {
-        return shoppingListService.get(officeId, id);
+    public ListDetailResponse getList(@CurrentOfficeId UUID officeId, @CurrentUserId UUID userId, @PathVariable UUID id) {
+        return shoppingListService.get(officeId, userId, id);
     }
 
     @PutMapping("/{id}")

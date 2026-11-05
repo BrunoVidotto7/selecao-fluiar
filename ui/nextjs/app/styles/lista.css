@@ -80,3 +80,10 @@
 .filtered-empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:10px;margin-top:24px}
 
 .nmw .nm-link{flex:1;min-width:0}
+
+/* novo: alterações do cliente durante a visita */
+.listdoc tr.client-changed td { background: var(--chip); }
+.listdoc tr.client-changed td:first-child { border-left: 3px solid var(--sage); }
+.listdoc .client-change-details { color: var(--ink); font-size: 12px; margin-block: 8px; overflow-wrap: anywhere; }
+.listdoc .client-change-details p { margin-block: 4px; }
+.listdoc .client-change-visit { background: var(--chip); color: var(--ink); padding: 12px; margin-block: 16px; border-radius: 8px; }

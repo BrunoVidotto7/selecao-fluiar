@@ -1,6 +1,8 @@
 package br.com.fluiar.selecao.exception;
 
 public final class ErrorMessages {
+    public static final String CLIENT_CHANGE_REVISION_INVALID = "A revisão informada não está disponível nesta lista.";
+    public static final String CLIENT_CHANGE_PAGE_INVALID = "Informe uma página inteira não negativa.";
 
     public static final String PRODUCT_COLLECTION_FAILED = "Não foi possível consultar este produto. Confira o endereço e tente novamente.";
 

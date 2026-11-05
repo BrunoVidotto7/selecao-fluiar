@@ -52,6 +52,7 @@ export const ROOM = { id: ROOM_ID, name: 'Cozinha', position: 0, products: [PROD
 export const SECOND_ROOM = { id: SECOND_ROOM_ID, name: 'Sala', position: 1, products: [SECOND_PRODUCT] };
 
 export const LIST = {
+  clientChanges: { observedRevision: 0, products: [] },
   id: LIST_ID,
   name: 'Casa nova',
   description: 'Seleção para a casa nova.',

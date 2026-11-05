@@ -14,6 +14,8 @@ import ShareControls from './ShareControls';
 import { ListNote, ListSignature } from './ListFooter';
 import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
 
+import { useClientChangeVisit } from '../client-changes/useClientChangeVisit';
+
 const WRITE_FAILED_DETAIL = 'Não conseguimos salvar agora. Tente novamente.';
 
 /** @param {{ list: import('../listas/queries.server').ListDetailResponse, signature: { officeName: string, architectNames: string[] } }} props */
@@ -23,6 +25,7 @@ export default function ShoppingList({ list, signature }) {
 
 function ShoppingListContent({ list, signature }) {
   const { rooms, stats } = list;
+  const visit = useClientChangeVisit(list.id, list.clientChanges);
   const [mode, setMode] = useState('edit'); // 'edit' | 'view'
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
   const toast = useToast();
@@ -85,6 +88,12 @@ function ShoppingListContent({ list, signature }) {
         </div>
       </header>
 
+      {visit.changesByProduct.size > 0 && <div className="client-change-visit" role="status">
+        {visit.readStatus === 'pending' ? 'Marcando alterações como vistas…'
+          : visit.readStatus === 'success' ? 'Alterações marcadas como vistas. Os destaques permanecem nesta visita.'
+            : <>Não foi possível marcar as alterações como vistas. <button type="button" className="btn btn-sm" onClick={visit.retry}>Tentar novamente</button></>}
+      </div>}
+
       <ShareControls listId={list.id} shareToken={list.shareToken} />
 
       {mode === 'edit' && (
@@ -118,7 +127,7 @@ function ShoppingListContent({ list, signature }) {
       ) : visibleRooms.length ? (
         visibleRooms.map((r) => (
           <RoomTable key={r.id} room={r} products={r.shown} showAdd={filter === 'all'} listBase={base}
-            pendingIds={pendingIds}
+            pendingIds={pendingIds} changesByProduct={visit.changesByProduct}
             onToggle={(id, bought) => mutateProduct(id, () => patchProduct(list.id, id, { bought }),
               bought ? 'Marcado como comprado' : 'Voltou para pendentes')}
             onNotes={async (id, value) => {

@@ -5,6 +5,7 @@ import { unstable_rethrow } from 'next/navigation';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
 import { brl, imageSource } from '@/lib/format';
+import ClientChangeDetails from '../client-changes/ClientChangeDetails';
 import ItemLinks from './ItemLinks';
 import StoreSyncStatus from '../produtos/StoreSyncStatus';
 import ProductClientNotesEditor from './ProductClientNotesEditor';
@@ -21,7 +22,7 @@ const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity > 1
  * onToggle: (id: string, bought: boolean) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onQty: (id: string, quantity: number) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onRemove: (id: string) => Promise<import('@/lib/api.server').ActionResult<undefined>> }} props */
-export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onNotes }) {
+export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onNotes, changesByProduct }) {
   const done = room.products.filter((i) => i.bought).length;
   return (
     <>
@@ -31,7 +32,7 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
           <thead><tr><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
           <tbody>
             {products.map((it) => <ItemRow key={`${listBase}:${it.id}`} item={it} listBase={listBase}
-              pending={pendingIds.has(it.id)} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onNotes={onNotes} />)}
+              change={changesByProduct?.get(it.id)} pending={pendingIds.has(it.id)} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onNotes={onNotes} />)}
             {showAdd && (
               <tr className="new"><td className="ck" /><td colSpan={3}>
                 <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${room.id}`}><Icon name="plus" />novo item em {room.name}</Link>
@@ -44,7 +45,7 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
   );
 }
 
-function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes }) {
+function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, change }) {
   const [quantityDraft, setQuantityDraft] = useState({ value: null, error: '' });
   const currentDraft = useRef(null);
   const inFlight = useRef(false);
@@ -130,7 +131,7 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes }
   };
 
   return (
-    <tr className={item.bought ? 'done' : ''}>
+    <tr className={[item.bought ? 'done' : '', change ? 'client-changed' : ''].filter(Boolean).join(' ')}>
       <td className="ck"><input type="checkbox" className="check" disabled={pending} checked={item.bought}
         onChange={(e) => toggle(e.target.checked)} aria-label={`Comprado: ${item.name}`} /></td>
       <td className="qt">
@@ -162,6 +163,7 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes }
         </div>
       </td>
       <td><ItemLinks links={item.links} empty="Sem links ainda" />
+        {change && <ClientChangeDetails change={change} product={item} />}
         <ProductClientNotesEditor productId={item.id} productName={item.name} clientNotes={item.clientNotes}
           onSave={(value) => onNotes(item.id, value)} />
       </td>
