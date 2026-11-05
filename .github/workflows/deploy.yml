@@ -1,0 +1,59 @@
+name: Deploy to Cubeship
+
+# Test environment only: every push to main builds the API and the UI and pushes them to the
+# Cubeship registry. Cubeship deploys whichever tag lands in the registry, so each run pushes
+# exactly one tag per image (the commit SHA); that tag is what is live and the way to roll back.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cubeship
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  REGISTRY: registry.5-189-167-204.sslip.io
+  IMAGE_PREFIX: registry.5-189-167-204.sslip.io/selecao-fluiar/production
+
+jobs:
+  build-and-push:
+    name: ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: api
+            context: api
+            build_args: ""
+          - app: web
+            context: ui/nextjs
+            # Next.js inlines NEXT_PUBLIC_* at build time, so the API origin is needed here.
+            build_args: NEXT_PUBLIC_API_URL=https://selecao-fluiar-api.5-189-167-204.sslip.io
+    steps:
+      - uses: actions/checkout@v4.2.2
+
+      - uses: docker/setup-buildx-action@v3.10.0
+
+      - uses: docker/login-action@v3.4.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: kai
+          password: ${{ secrets.CUBESHIP_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6.15.0
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.IMAGE_PREFIX }}/${{ matrix.app }}:${{ github.sha }}
+          build-args: ${{ matrix.build_args }}
+          cache-from: type=gha,scope=${{ matrix.app }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.app }}
