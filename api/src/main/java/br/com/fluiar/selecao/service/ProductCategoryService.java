@@ -48,6 +48,7 @@ public class ProductCategoryService {
     /** A name that belonged to a deleted category brings that category back, with its products. */
     @Transactional
     public ProductCategoryResponse create(UUID officeId, ProductCategoryRequest request) {
+        // The office-row lock serializes name races; the unique key on name_key stays as the safety net.
         officeRepository.lockById(officeId);
         String key = ProductCategory.keyOf(request.name());
         ProductCategory category = categoryRepository.findByOfficeIdAndNameKey(officeId, key).orElse(null);

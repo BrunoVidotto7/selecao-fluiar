@@ -3,6 +3,8 @@ package br.com.fluiar.selecao.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
+import com.jayway.jsonpath.JsonPath;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -220,8 +222,8 @@ class ProductCategoryControllerTest extends ApiIntegrationTest {
     }
 
     private List<String> names(MvcTestResult list) {
-        String body = new String(list.getResponse().getContentAsByteArray(), java.nio.charset.StandardCharsets.UTF_8);
-        return com.jayway.jsonpath.JsonPath.read(body, "$[*].name");
+        String body = new String(list.getResponse().getContentAsByteArray(), StandardCharsets.UTF_8);
+        return JsonPath.read(body, "$[*].name");
     }
 
     private MvcTestResult requestList(TestSession session) {
