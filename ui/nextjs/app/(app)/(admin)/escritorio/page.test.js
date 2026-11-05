@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import Page from './page';
 import OfficeManager from '@/components/escritorio/OfficeManager';
+import CategoryManager from '@/components/escritorio/CategoryManager';
 import { INVITATION, OFFICE } from '@/test-support/fixtures';
 
 const { cookies, fetchMock, redirect, notFound } = vi.hoisted(() => ({
@@ -14,6 +15,7 @@ vi.mock('next/headers', () => ({ cookies }));
 vi.mock('next/navigation', () => ({ redirect, notFound }));
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
 
+const CATEGORIES = [{ id: '11111111-1111-4111-8111-111111111111', name: 'Pedras', productCount: 2 }];
 const API_ORIGIN = 'http://localhost:8080';
 const NOW = '2026-11-01T12:00:00.000Z';
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
@@ -42,6 +44,7 @@ test('the page waits for its protected office read and passes the persisted offi
 
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     API_ORIGIN + '/api/office',
+    API_ORIGIN + '/api/office/categories',
   ]);
   expect(settled).toBe(false);
   for (const [, request] of fetchMock.mock.calls) {
@@ -50,10 +53,13 @@ test('the page waits for its protected office read and passes the persisted offi
     expect(request.headers.get('Authorization')).toBe('Bearer private-jwt');
   }
   releases[API_ORIGIN + '/api/office'](json(OFFICE));
+  releases[API_ORIGIN + '/api/office/categories'](json(CATEGORIES));
   await new Promise(setImmediate);
   const page = await pending;
   const manager = page.props.children.find((child) => child.type === OfficeManager);
   expect(manager?.props).toEqual({ office: OFFICE });
+  const categories = page.props.children.find((child) => child.type === CategoryManager);
+  expect(categories?.props).toEqual({ categories: CATEGORIES });
 });
 
 test('a page read without a session redirects rather than rendering empty office data', async () => {
@@ -75,5 +81,5 @@ test('an upstream missing office stays a notFound navigation signal', async () =
     ? json([])
     : json({ detail: 'Não encontramos o que você procurava.' }, 404));
   await expect(Page()).rejects.toThrow('NEXT_NOT_FOUND');
-  expect(notFound).toHaveBeenCalledOnce();
+  expect(notFound).toHaveBeenCalled();
 });

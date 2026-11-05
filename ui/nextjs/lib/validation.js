@@ -1,8 +1,15 @@
 // Field rules: { required: true | 'message', email: true, url: true, minLength: 8,
-//   maxLength: 120, min: 1, max: 999, integer: true, phone: true, password: true, money: true,
+//   maxLength: 120, maxLengthMessage: 'custom text', min: 1, max: 999, integer: true, phone: true, password: true, money: true,
 //   match: 'otherField', requiredIf: 'otherField',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
+export const CATEGORY_REQUIRED = 'Escolha uma categoria.';
+export const CATEGORY_NAME_MAX_LENGTH = 60;
+export const CATEGORY_NAME_RULE = {
+  required: 'Informe o nome da categoria.',
+  maxLength: CATEGORY_NAME_MAX_LENGTH,
+  maxLengthMessage: `Use até ${CATEGORY_NAME_MAX_LENGTH} caracteres.`,
+};
 export const PRODUCT_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
 const INVALID_IMAGE_MESSAGE = 'Escolha um arquivo de imagem (JPG ou PNG).';
@@ -57,7 +64,7 @@ export function validateField(name, values, rule = {}) {
     if (message) return message;
   }
   if (v && rule.minLength && v.length < rule.minLength) return `Use pelo menos ${rule.minLength} caracteres.`;
-  if (rule.maxLength != null && v.length > rule.maxLength) return `Use no máximo ${rule.maxLength} caracteres.`;
+  if (rule.maxLength != null && v.length > rule.maxLength) return rule.maxLengthMessage ?? `Use no máximo ${rule.maxLength} caracteres.`;
   if (v && rule.integer && !Number.isInteger(Number(v))) return INVALID_REQUEST_MESSAGE;
   if (v && rule.min != null && Number(v) < rule.min) return `Use um valor a partir de ${rule.min}.`;
   if (v && rule.max != null && Number(v) > rule.max) return `Use um valor até ${rule.max}.`;
