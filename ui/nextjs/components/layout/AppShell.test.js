@@ -117,7 +117,7 @@ test('unmounting an open drawer removes its focus trap', () => {
 
 test('clients only see their own list navigation and account settings', () => {
   render(<AppShell user={CLIENT_ME}>Conteúdo</AppShell>);
-  expect(screen.getByRole('link', { name: 'Minhas listas' }).getAttribute('href')).toBe('/my-lists');
+  expect(screen.getByRole('link', { name: 'Minhas listas' }).getAttribute('href')).toBe('/minhas-listas');
   expect(screen.queryByRole('link', { name: 'Clientes' })).toBeNull();
   expect(screen.queryByRole('link', { name: 'Escritório' })).toBeNull();
   expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();

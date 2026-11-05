@@ -35,7 +35,7 @@ test.each([[null, 'POST', '/api/lists', 201], [LIST.id, 'PUT', '/api/lists/' + L
     }));
     expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer private-jwt');
     expect(revalidatePath.mock.calls).toEqual([
-      ['/dashboard'], ['/my-lists'], ['/my-lists/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+      ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
     ]);
   },
 );

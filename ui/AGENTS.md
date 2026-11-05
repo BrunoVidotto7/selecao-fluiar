@@ -12,7 +12,7 @@ Authentication, the private layout, office administration, clients, dashboard, s
 and separate room management use the REST API in `../api/`. Settings save profile and password
 independently; password changes replace the httpOnly cookie before success. Product forms save JSON
 before image upload/removal and retain the saved UUID for retries. Inline product controls await API
-writes; refreshed list props own products and totals. Clients use `/my-lists` and can edit purchase status and per-product client notes.
+writes; refreshed list props own products and totals. Clients use `/minhas-listas` and can edit purchase status and per-product client notes.
 `/l/[shareToken]` requires a session and resolves only an authorized list. Copying a link never rotates it; rotation requires
 confirmation because the old link stops working.
 
@@ -43,7 +43,7 @@ Only what the file names do not tell you (paths relative to `ui/nextjs/`):
 app/(auth)/                    login, cadastro, recuperar-senha, nova-senha (layout with brand panel)
 app/(app)/                     internal screens (layout = AppShell: side menu, mobile drawer)
 app/(app)/(admin)/             administrative routes, guarded by requireAdmin
-app/(app)/my-lists/             client list overview/detail, guarded by requireClient
+app/(app)/minhas-listas/             client list overview/detail, guarded by requireClient
 app/(auth)/invitation/          password-only client invitation acceptance
 app/l/[shareToken]/            authenticated share resolver
 app/images/[imageId]/          authenticated binary proxy, private/no-store
@@ -95,7 +95,7 @@ docs/quality-ledger.md         record of a finished code review; history, not in
 
 ## Style
 
-- User-facing text is Brazilian Portuguese. Identifiers, props and test names are English. New route folders and code comments are English; preserve legacy route names.
+- User-facing text and UI routes are Brazilian Portuguese. Only code is English: identifiers, props, test names, comments, API endpoints and JSON fields.
 - Imports: `app/` uses the `@/` alias (`@/components/...`, `@/lib/...`). Inside `components/`,
   import other components with relative paths (`../ui/Button`) and `lib/` with `@/lib/...`.
 - Colors and fonts come only from the CSS variables in `app/styles/app.css`. Reuse its existing

@@ -12,7 +12,7 @@ test('overview loads client summaries and links to owned details', async () => {
   getClientLists.mockResolvedValue([CLIENT_LIST_SUMMARY]);
   render(await Page());
   expect(screen.getByRole('heading', { name: 'Minhas listas' })).toBeTruthy();
-  expect(screen.getByRole('link', { name: CLIENT_LIST.name }).getAttribute('href')).toBe('/my-lists/' + CLIENT_LIST.id);
+  expect(screen.getByRole('link', { name: CLIENT_LIST.name }).getAttribute('href')).toBe('/minhas-listas/' + CLIENT_LIST.id);
 });
 test('detail and metadata use the same protected client query', async () => {
   getClientList.mockResolvedValue(CLIENT_LIST);

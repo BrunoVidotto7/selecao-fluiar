@@ -10,7 +10,7 @@ export default function InvitationForm({ token, invitation }) {
     initial: { password: '', confirmPassword: '' },
     rules: { password: { required: true, password: true }, confirmPassword: { required: true, match: 'password' } },
     action: ({ password }) => acceptInvitation(token, { password }),
-    onSuccess: (user, values, { go }) => go('/my-lists', `Bem-vinda, ${user.name}.`),
+    onSuccess: (user, values, { go }) => go('/minhas-listas', `Bem-vinda, ${user.name}.`),
   });
   return <>
     <header>

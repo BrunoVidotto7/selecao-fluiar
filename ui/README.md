@@ -69,7 +69,7 @@ do servidor podem gravar ou apagar esse cookie, não a renderização de página
 
 ### Fluxos persistentes
 
-- O login direciona administradores à área do escritório e clientes a `/my-lists`.
+- O login direciona administradores à área do escritório e clientes a `/minhas-listas`.
   Contas de administrador são inseridas no banco; clientes entram por convite. Não há cadastro público.
   Recuperação de senha usa
   o link `/nova-senha?token=...` enviado por e-mail; envio e reenvio aguardam a API.
@@ -96,7 +96,7 @@ do servidor podem gravar ou apagar esse cookie, não a renderização de página
    um convite ao e-mail cadastrado. Pode reenviar ou revogar um convite pendente.
 2. No Mailpit (`http://localhost:8025`), abra `/invitation?token=...`. O cliente
    define somente sua senha. O link vale por 7 dias; reenvio invalida o anterior.
-3. Após aceitar, o cliente vê suas listas em `/my-lists`, marca ou desmarca compras
+3. Após aceitar, o cliente vê suas listas em `/minhas-listas`, marca ou desmarca compras
    e salva observações por produto. O administrador acompanha e altera esses dados
    na lista administrativa. Observações internas permanecem separadas.
 4. Outro cliente, mesmo do mesmo escritório, não pode ler nem alterar essa lista.
@@ -123,7 +123,7 @@ nextjs/
 │   │   ├── login/  cadastro/  recuperar-senha/  nova-senha/  invitation/
 │   ├── l/[shareToken]/            Resolução de link com login e autorização
 │   └── (app)/                     Telas internas (layout com menu lateral)
-│       ├── my-lists/              Listas do cliente e detalhe [id]/
+│       ├── minhas-listas/              Listas do cliente e detalhe [id]/
 │       ├── (admin)/               Agrupa as rotas administrativas abaixo
 │       ├── dashboard/
 │       ├── clientes/              lista · novo/ · [id]/ · [id]/editar/
@@ -167,7 +167,7 @@ nextjs/
 | Listas | `/listas` · `/listas/nova` · `/listas/[id]` · `/listas/[id]/editar` |
 | Ambientes | `/listas/[id]/ambientes` |
 | Produtos | `/listas/[id]/produtos/novo` · `/listas/[id]/produtos/[produtoId]/editar` |
-| Listas do cliente | `/my-lists` · `/my-lists/[id]` |
+| Listas do cliente | `/minhas-listas` · `/minhas-listas/[id]` |
 | Link com acesso restrito | `/l/[shareToken]` |
 | Configurações | `/configuracoes` |
 | Escritório | `/escritorio` |

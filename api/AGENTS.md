@@ -84,7 +84,7 @@ Only what file names do not tell you:
   value: use `@NotNull @Size(min = 8, max = 72)`, not `@NotBlank` together with `@Size`.
 - Error responses and logs never show personal data or internal details (e-mail addresses, tokens, file
   paths, SQL values). Follow the existing handlers in `GlobalExceptionHandler`.
-- User-facing text is Brazilian Portuguese. Code, endpoints and JSON fields are English. Specific messages
+- User-facing text and UI routes are Brazilian Portuguese. Only code is English: identifiers, props, test names, comments, API endpoints and JSON fields. Specific messages
   are constants in `exception/ErrorMessages.java`. Bean Validation defaults are in
   `src/main/resources/ValidationMessages.properties`. The UI shows the same wording
   (`../ui/nextjs/lib/validation.js`): when you change a message, change both sides.

@@ -9,8 +9,7 @@ The repo holds an integrated UI and API:
 Before working in `ui/`, read `ui/AGENTS.md`: it has the UI commands, rules and checks. The rest of
 this file is for the whole repo.
 
-User-facing text is Brazilian Portuguese. Code, identifiers, endpoints and JSON fields are English
-(legacy UI routes retain their existing names; new code and routes use English).
+User-facing text and UI routes are Brazilian Portuguese. Only code is English: identifiers, props, test names, comments, API endpoints and JSON fields.
 
 ## Working principles
 

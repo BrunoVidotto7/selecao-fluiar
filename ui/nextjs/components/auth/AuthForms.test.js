@@ -441,6 +441,6 @@ test('client login opens private lists without offering public signup', async ()
   renderForm(LoginForm);
   fillLogin();
   await submitReal('Entrar');
-  expect(push).toHaveBeenCalledWith('/my-lists');
+  expect(push).toHaveBeenCalledWith('/minhas-listas');
   expect(screen.queryByRole('link', { name: 'Criar conta' })).toBeNull();
 });

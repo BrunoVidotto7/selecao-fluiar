@@ -13,5 +13,5 @@ export default async function Page({ params }) {
   if (!isUuid(access?.listId) || !['ADMIN', 'CLIENT'].includes(access.role)) {
     throw new ApiError(HTTP_BAD_GATEWAY, INVALID_RESPONSE_DETAIL);
   }
-  redirect(access.role === 'ADMIN' ? `/listas/${access.listId}` : `/my-lists/${access.listId}`);
+  redirect(access.role === 'ADMIN' ? `/listas/${access.listId}` : `/minhas-listas/${access.listId}`);
 }

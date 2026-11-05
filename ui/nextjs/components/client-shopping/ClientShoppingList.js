@@ -57,7 +57,7 @@ function ListContent({ list }) {
   const matches = (product) => filter === 'all' || (filter === 'done') === product.bought;
   const visibleCount = list.rooms.reduce((total, room) => total + room.products.filter(matches).length, 0);
   return <div className="listdoc">
-    <Crumbs items={[{ href: '/my-lists', label: 'Minhas listas' }, { label: list.name }]} />
+    <Crumbs items={[{ href: '/minhas-listas', label: 'Minhas listas' }, { label: list.name }]} />
     <header style={{ paddingTop: 18 }}><h1>{title}{emphasis && <> <em>{emphasis}</em></>}</h1>
       {list.description && <p className="meta">{list.description}</p>}
     </header>

@@ -12,7 +12,7 @@ beforeEach(() => vi.clearAllMocks());
 test('a client cannot enter an administrative page', async () => {
   getCurrentUser.mockResolvedValue(CLIENT_ME);
   await expect(requireAdmin()).rejects.toThrow('NEXT_REDIRECT');
-  expect(redirect).toHaveBeenCalledWith('/my-lists');
+  expect(redirect).toHaveBeenCalledWith('/minhas-listas');
 });
 
 test('an admin uses administrative pages rather than client APIs', async () => {

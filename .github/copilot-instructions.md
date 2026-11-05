@@ -9,8 +9,7 @@ Interior architects manage clients and per-room shopping lists. Two independent 
 Repo-wide rules are in the root `AGENTS.md`. **Read the relevant `AGENTS.md` before editing**: it has
 the authoritative commands, conventions and boundaries for that app; this file only summarizes.
 
-User-facing text is Brazilian Portuguese everywhere. Code, identifiers, endpoints and JSON fields are
-English.
+User-facing text and UI routes are Brazilian Portuguese. Only code is English: identifiers, props, test names, comments, API endpoints and JSON fields.
 
 ## Commands
 

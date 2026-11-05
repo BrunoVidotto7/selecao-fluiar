@@ -50,7 +50,7 @@ test('invitation acceptance cannot choose its office or email', async () => {
   fill();
   await submit();
   expect(acceptInvitation).toHaveBeenCalledExactlyOnceWith(TOKEN, { password: 'password123' });
-  expect(push).toHaveBeenCalledExactlyOnceWith('/my-lists');
+  expect(push).toHaveBeenCalledExactlyOnceWith('/minhas-listas');
   expect(refresh).toHaveBeenCalledOnce();
   expect(JSON.parse(sessionStorage.getItem('flash')).m).toContain('Cliente Convidado');
 });
@@ -83,7 +83,7 @@ test('acceptance sends passwords without trimming spaces or non-ASCII characters
   fill('  Sênha1234 🔑  ');
   await submit();
   expect(acceptInvitation).toHaveBeenCalledExactlyOnceWith(TOKEN, { password: '  Sênha1234 🔑  ' });
-  expect(push).toHaveBeenCalledWith('/my-lists');
+  expect(push).toHaveBeenCalledWith('/minhas-listas');
 });
 
 test.each([
@@ -127,7 +127,7 @@ test('acceptance remains pending and blocks duplicate submits until the server c
   expect(acceptInvitation).toHaveBeenCalledOnce();
   expect(push).not.toHaveBeenCalled();
   await act(async () => pending.resolve({ ok: true, data: USER }));
-  expect(push).toHaveBeenCalledWith('/my-lists');
+  expect(push).toHaveBeenCalledWith('/minhas-listas');
   expect(refresh).toHaveBeenCalledOnce();
 });
 

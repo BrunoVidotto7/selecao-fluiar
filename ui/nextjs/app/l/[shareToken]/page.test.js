@@ -19,7 +19,7 @@ beforeEach(() => {
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 test('an owner is directed to their private client list', async () => {
   await expect(page()).rejects.toThrow('NEXT_REDIRECT');
-  expect(redirect).toHaveBeenCalledWith('/my-lists/' + LIST.id);
+  expect(redirect).toHaveBeenCalledWith('/minhas-listas/' + LIST.id);
   expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer jwt');
 });
 test('missing and revoked sessions preserve a safe local share return path', async () => {

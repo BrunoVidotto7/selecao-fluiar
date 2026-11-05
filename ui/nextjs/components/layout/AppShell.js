@@ -25,7 +25,7 @@ export default function AppShell({ user, children }) {
   const pathname = usePathname();
   const home = getHomePath(user);
   const navigation = user.role === 'CLIENT'
-    ? [{ href: '/my-lists', label: 'Minhas listas', icon: 'list' }, { href: '/configuracoes', label: 'Configurações', icon: 'gear' }]
+    ? [{ href: '/minhas-listas', label: 'Minhas listas', icon: 'list' }, { href: '/configuracoes', label: 'Configurações', icon: 'gear' }]
     : NAV;
   const [open, setOpen] = useState(false);
   const openBtn = useRef(null);

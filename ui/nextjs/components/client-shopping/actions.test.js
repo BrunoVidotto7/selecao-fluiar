@@ -23,7 +23,7 @@ test('purchase writes use only the owning-client endpoint and refresh saved data
   expect(fetchMock.mock.calls[0][0]).toBe(`http://localhost:8080/api/client/lists/${CLIENT_LIST.id}/products/${CLIENT_PRODUCT.id}`);
   expect(fetchMock.mock.calls[0][1].body).toBe('{"bought":true}');
   expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer client-jwt');
-  expect(revalidatePath).toHaveBeenCalledWith('/my-lists');
+  expect(revalidatePath).toHaveBeenCalledWith('/minhas-listas');
 });
 test('notes use a separate fixed endpoint and clear only when explicitly null or blank', async () => {
   fetchMock.mockImplementation(async () => new Response(JSON.stringify({ ...CLIENT_PRODUCT, clientNotes: 'Saved' })));

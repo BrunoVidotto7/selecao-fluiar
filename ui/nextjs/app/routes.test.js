@@ -82,7 +82,7 @@ test.each([
 test('a shared token routes an authenticated client to its private list', async () => {
   fetchMock.mockResolvedValue(new Response(JSON.stringify({ listId: LIST.id, role: 'CLIENT' })));
   await expect(PublicListPage(props({ shareToken: LIST.shareToken }))).rejects.toThrow('NEXT_REDIRECT');
-  expect(redirect).toHaveBeenCalledWith('/my-lists/' + LIST.id);
+  expect(redirect).toHaveBeenCalledWith('/minhas-listas/' + LIST.id);
   expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer jwt');
 });
 

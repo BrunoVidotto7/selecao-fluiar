@@ -10,7 +10,7 @@ Seleção Fluiar: a shopping-list workspace where interior architects manage cli
 
 Detailed per-app rules live in `AGENTS.md` (repo-wide), `api/AGENTS.md` and `ui/AGENTS.md`; read the relevant one before editing. `.github/copilot-instructions.md` summarizes them. Setup, configuration variables and API examples are in `README.md`.
 
-User-facing text is Brazilian Portuguese. Code, identifiers, endpoints and JSON fields are English (legacy UI route names are kept).
+User-facing text and UI routes are Brazilian Portuguese. Only code is English: identifiers, props, test names, comments, API endpoints and JSON fields.
 
 ## Commands
 

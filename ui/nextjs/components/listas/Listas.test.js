@@ -377,7 +377,7 @@ test('unmounting the form does not cancel the confirmed server delete or its suc
   view.rerender(feedback(<h2>Outra tela</h2>));
   await act(async () => release(new Response(null, { status: 204 })));
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/my-lists'], ['/my-lists/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
   expect(fetchMock).toHaveBeenCalledOnce();
   expect(push).not.toHaveBeenCalled();

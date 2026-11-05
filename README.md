@@ -24,7 +24,7 @@ Interior projects involve many products, purchase alternatives, rooms, and clien
 
 ### For clients
 
-- Accept an invitation by setting a password, then access their assigned lists at `/my-lists`.
+- Accept an invitation by setting a password, then access their assigned lists at `/minhas-listas`.
 - Mark products as purchased and maintain separate client notes visible to the architect.
 - Filter products by purchase status and follow the supplied retailer links.
 

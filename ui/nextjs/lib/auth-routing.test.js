@@ -2,7 +2,7 @@ import { expect, test } from 'vitest';
 import { getHomePath, getLoginPath, safeReturnPath } from './auth-routing';
 
 test('role determines the account home', () => {
-  expect(getHomePath({ role: 'CLIENT' })).toBe('/my-lists');
+  expect(getHomePath({ role: 'CLIENT' })).toBe('/minhas-listas');
   expect(getHomePath({ role: 'ADMIN' })).toBe('/dashboard');
   expect(() => getHomePath({ role: 'UNKNOWN' })).toThrow();
 });

@@ -4,7 +4,7 @@ const USER_FIELDS = ['id', 'name', 'email', 'officeId', 'officeName'];
 
 export function getHomePath(user) {
   if (user?.role === 'ADMIN') return '/dashboard';
-  if (user?.role === 'CLIENT') return '/my-lists';
+  if (user?.role === 'CLIENT') return '/minhas-listas';
   throw new TypeError('Unknown account role.');
 }
 
