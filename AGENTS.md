@@ -1,17 +1,16 @@
 # AGENTS.md
 
 Seleção Fluiar: a web app where interior architects manage clients and per-room shopping lists.
-The repo holds two independent apps that are not connected yet:
+The repo holds an integrated UI and API:
 
-- `ui/nextjs/`: Next.js 15 (App Router), React 19, plain JavaScript (no TypeScript). It runs on fake
-  data from `lib/data.js`. Nothing is saved and there is no authentication.
+- `ui/nextjs/`: Next.js 15 (App Router), React 19, plain JavaScript (no TypeScript). It calls the API from the server and stores JWTs in an httpOnly cookie.
 - `api/`: REST API in Java 25 and Spring Boot. Its commands, rules and boundaries are in `api/AGENTS.md`.
 
 Before working in `ui/`, read `ui/AGENTS.md`: it has the UI commands, rules and checks. The rest of
 this file is for the whole repo.
 
 User-facing text is Brazilian Portuguese. Code, identifiers, endpoints and JSON fields are English
-(the UI has a few exceptions, listed in `ui/AGENTS.md`).
+(legacy UI routes retain their existing names; new code and routes use English).
 
 ## Working principles
 
@@ -62,7 +61,7 @@ you changed:
 
 - Commit messages are one short imperative sentence ending with a period, like the existing
   history: `Validate the whole purchase link, not only its start.`
-- There is no root `.gitignore`. Check `git status` before `git add` and never commit
+- Root `.gitignore` excludes local worktrees. Check `git status` before `git add` and never commit
   `node_modules/`, `.next/`, `api/target/` or `ui/.playwright-mcp/` (browser tool output).
 
 ## Boundaries

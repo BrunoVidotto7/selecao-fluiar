@@ -69,7 +69,9 @@ do servidor podem gravar ou apagar esse cookie, não a renderização de página
 
 ### Fluxos persistentes
 
-- Cadastro e login abrem a área privada do escritório. Recuperação de senha usa
+- O login direciona administradores à área do escritório e clientes a `/my-lists`.
+  Contas de administrador são inseridas no banco; clientes entram por convite. Não há cadastro público.
+  Recuperação de senha usa
   o link `/nova-senha?token=...` enviado por e-mail; envio e reenvio aguardam a API.
 - Clientes têm suas próprias listas. Crie uma lista, abra **Gerenciar ambientes**
   e adicione, renomeie ou reordene os ambientes antes de cadastrar produtos.
@@ -88,48 +90,26 @@ do servidor podem gravar ou apagar esse cookie, não a renderização de página
   mostram `detail` no aviso e `errors[field]` junto ao campo. Duplicatas ficam
   bloqueadas durante o envio; sair da tela descarta avisos e navegação tardios.
 
-### Compartilhar com o cliente
+### Acesso do cliente e compartilhamento
 
-1. Na lista, mesmo vazia, clique em **Copiar link**. Isso copia o endereço público
-   `/l/<token>` na origem do frontend, sem gerar outro token.
-2. Quem abrir o endereço não precisa entrar. A página mostra nome e descrição da
-   lista, ambientes com produtos, quantidades, compras, links e notas das lojas,
-   além do nome do escritório e de seus membros.
-3. A página pública não mostra preços, imagens, IDs, observações internas ou dados
-   de contato do cliente. Não tem edição, navegação privada nem envia a sessão à
-   API. Cada leitura é sem cache; token inexistente, inválido ou antigo retorna 404.
-4. **Gerar novo link** pede confirmação: o endereço anterior deixará de funcionar.
-   Só após a API confirmar a alteração o novo token passa a ser mostrado e copiado.
-   Envie o novo endereço ao cliente. Uma falha mantém o link anterior.
-5. Se a área de transferência for negada ou indisponível, selecione o campo
-   **Link público** e copie manualmente. O aplicativo não anuncia uma cópia que falhou.
-6. Se a leitura da API falhar, **Tentar novamente** solicita uma nova leitura no
-   servidor e reinicia a tela de erro.
+1. O administrador abre o cadastro do cliente e usa **Acesso do cliente** para enviar
+   um convite ao e-mail cadastrado. Pode reenviar ou revogar um convite pendente.
+2. No Mailpit (`http://localhost:8025`), abra `/invitation?token=...`. O cliente
+   define somente sua senha. O link vale por 7 dias; reenvio invalida o anterior.
+3. Após aceitar, o cliente vê suas listas em `/my-lists`, marca ou desmarca compras
+   e salva observações por produto. O administrador acompanha e altera esses dados
+   na lista administrativa. Observações internas permanecem separadas.
+4. Outro cliente, mesmo do mesmo escritório, não pode ler nem alterar essa lista.
+   Preços, imagens e observações internas não aparecem na visão do cliente.
+5. **Copiar link** copia `/l/<token>`. O endereço exige login e verifica a propriedade
+   da lista; possuir o link não concede acesso. **Gerar novo link** invalida o anterior.
+6. Mudanças no e-mail de contato invalidam convites pendentes. Uma conta já ativa
+   mantém seu próprio e-mail de login, mostrado no cadastro do cliente.
 
-### Convites pelo Mailpit
-
-Com a API e o Next.js em execução conforme a configuração acima:
-
-1. Entre com uma conta em `/login`, abra `/escritorio` e envie um convite para um
-   e-mail que ainda não tenha conta.
-2. Abra o Mailpit em `http://localhost:8025`, encontre a mensagem de convite e abra
-   o link completo `/convite?token=...`. O link vale por 7 dias; reenviar o convite
-   para o mesmo e-mail no mesmo escritório invalida o link anterior.
-3. Confira o escritório, quem convidou e o e-mail fixo. Informe seu nome e uma
-   senha, confirme-a e clique em **Criar conta e aceitar convite**. Não há escolha
-   de outro e-mail ou escritório.
-4. A aceitação cria a conta convidada e entra nela neste navegador, com cookie de
-   sessão não persistente. Se já havia outra conta conectada, somente a sessão
-   deste navegador é substituída: a conta anterior não é movida nem modificada.
-   Apenas abrir o link não troca a sessão.
-5. Para conferir os dados compartilhados, abra a mesma lista com as duas contas
-   do escritório, usando navegadores ou perfis separados.
-6. Reabra um link já aceito, revogue um convite pendente ou teste o link antigo
-   após um reenvio. A página deve pedir um novo convite, sem formulário de conta.
-   Se o link for revogado entre a abertura e o envio, a aceitação deve falhar sem
-   trocar a sessão. Um e-mail que ganhou uma conta nesse intervalo também não
-   permite a aceitação. Falhas da API não devem indicar sucesso; na leitura,
-   use **Tentar novamente** após o serviço voltar.
+Para conferir o fluxo real, use perfis de navegador separados para administrador e
+clientes. Confira um link revogado, expirado e aceito, a troca do contato antes da
+aceitação e a recusa de acesso à lista de outro cliente. Leituras com falha oferecem
+**Tentar novamente**; envios com falha preservam os rascunhos.
 
 ### Estrutura
 
@@ -140,9 +120,11 @@ nextjs/
 │   ├── styles/app.css             Design system (tokens de cor, tipografia, componentes)
 │   ├── styles/lista.css           Regras da página original da lista
 │   ├── (auth)/                    Telas de acesso (layout com painel da marca)
-│   │   ├── login/  cadastro/  recuperar-senha/  nova-senha/  convite/
-│   ├── l/[shareToken]/            Lista pública somente para leitura
+│   │   ├── login/  cadastro/  recuperar-senha/  nova-senha/  invitation/
+│   ├── l/[shareToken]/            Resolução de link com login e autorização
 │   └── (app)/                     Telas internas (layout com menu lateral)
+│       ├── my-lists/              Listas do cliente e detalhe [id]/
+│       ├── (admin)/               Agrupa as rotas administrativas abaixo
 │       ├── dashboard/
 │       ├── clientes/              lista · novo/ · [id]/ · [id]/editar/
 │       ├── listas/                lista · nova/ · [id]/ · [id]/editar/
@@ -155,11 +137,11 @@ nextjs/
 │   ├── layout/        AppShell (menu desktop + gaveta mobile), AuthLayout
 │   ├── feedback/      FeedbackProvider: avisos (toast) e confirmação de exclusão
 │   ├── forms/         useApiForm: formulários assíncronos e erros por campo
-│   ├── auth/          Formulários de login, cadastro e senha
+│   ├── auth/          Formulários de login e senha
 │   ├── clientes/      Tabela, formulário e exclusão de clientes
 │   ├── listas/        Tabela, cartões e formulário de listas
 │   ├── ambientes/     Criação, nomes e ordem dos ambientes
-│   ├── lista/         Lista privada, exibição pública e controles de compartilhamento
+│   ├── lista/         Lista administrativa, observações e compartilhamento
 │   ├── produtos/      Formulário de produto
 │   └── configuracoes/ Formulário de configurações
 ├── lib/
@@ -176,18 +158,19 @@ nextjs/
 | Tela | Rota |
 |---|---|
 | Login | `/login` |
-| Cadastro | `/cadastro` |
+| Cadastro antigo | `/cadastro` redireciona ao login |
 | Recuperar senha | `/recuperar-senha` |
 | Nova senha | `/nova-senha?token=...` |
-| Convite | `/convite?token=...` |
+| Convite | `/invitation?token=...` (endereço antigo redireciona) |
 | Dashboard | `/dashboard` |
 | Clientes | `/clientes` · `/clientes/novo` · `/clientes/[id]` · `/clientes/[id]/editar` |
 | Listas | `/listas` · `/listas/nova` · `/listas/[id]` · `/listas/[id]/editar` |
 | Ambientes | `/listas/[id]/ambientes` |
 | Produtos | `/listas/[id]/produtos/novo` · `/listas/[id]/produtos/[produtoId]/editar` |
-| Lista pública | `/l/[shareToken]` |
+| Listas do cliente | `/my-lists` · `/my-lists/[id]` |
+| Link com acesso restrito | `/l/[shareToken]` |
 | Configurações | `/configuracoes` |
-| Escritório e convites | `/escritorio` |
+| Escritório | `/escritorio` |
 
 Estados vazios e erros vêm da API. Os antigos parâmetros `?estado=` não controlam
 a aplicação Next.js.

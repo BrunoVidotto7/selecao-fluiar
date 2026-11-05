@@ -12,8 +12,8 @@ Authentication, the private layout, office administration, clients, dashboard, s
 and separate room management use the REST API in `../api/`. Settings save profile and password
 independently; password changes replace the httpOnly cookie before success. Product forms save JSON
 before image upload/removal and retain the saved UUID for retries. Inline product controls await API
-writes; refreshed list props own products and totals. Public `/l/[shareToken]` lists are read-only
-and use the public API without a session. Copying a link never rotates it; rotation requires
+writes; refreshed list props own products and totals. Clients use `/my-lists` and can edit purchase status and per-product client notes.
+`/l/[shareToken]` requires a session and resolves only an authorized list. Copying a link never rotates it; rotation requires
 confirmation because the old link stops working.
 
 ## Commands
@@ -42,7 +42,11 @@ Only what the file names do not tell you (paths relative to `ui/nextjs/`):
 ```
 app/(auth)/                    login, cadastro, recuperar-senha, nova-senha (layout with brand panel)
 app/(app)/                     internal screens (layout = AppShell: side menu, mobile drawer)
-app/l/[shareToken]/            public read-only list, outside the authenticated layout
+app/(app)/(admin)/             administrative routes, guarded by requireAdmin
+app/(app)/my-lists/             client list overview/detail, guarded by requireClient
+app/(auth)/invitation/          password-only client invitation acceptance
+app/l/[shareToken]/            authenticated share resolver
+app/images/[imageId]/          authenticated binary proxy, private/no-store
 app/styles/app.css             design tokens (CSS variables) and every shared class
 app/styles/lista.css           rules copied from the original list page, scoped to .listdoc
 components/ui/                 Button, Fields (TextInput, Select, ...), Display (PageHeader, EmptyState, ...), Icon
@@ -91,8 +95,7 @@ docs/quality-ledger.md         record of a finished code review; history, not in
 
 ## Style
 
-- User-facing text is Brazilian Portuguese. Identifiers, props and test names are English. Route
-  folders and code comments are Portuguese, like the existing ones.
+- User-facing text is Brazilian Portuguese. Identifiers, props and test names are English. New route folders and code comments are English; preserve legacy route names.
 - Imports: `app/` uses the `@/` alias (`@/components/...`, `@/lib/...`). Inside `components/`,
   import other components with relative paths (`../ui/Button`) and `lib/` with `@/lib/...`.
 - Colors and fonts come only from the CSS variables in `app/styles/app.css`. Reuse its existing
@@ -140,11 +143,12 @@ setup is documented in `../api/README.md`. The fixed points:
   to `/login`. Protected reads get the JWT from the httpOnly cookie, never browser storage.
 - Pages keep user reads request-scoped. Server Actions expose fixed operations with validated
   UUID/token arguments and whitelisted bodies; `actionResult` wraps only expected `ApiError`s.
-- Auth, invitation/reset and public share reads do not read or forward the JWT, even with a stale
-  cookie. Public pages use `/api/public/lists/{token}` and only `PublicListResponse` fields:
-  no private IDs, prices, images, internal notes or client contact details.
+- Auth and invitation/reset requests do not read or forward the JWT. Share resolution uses the
+  current session and returns only `{listId, role}`. Client pages use client DTOs without prices,
+  images, internal notes or contact details. Image reads use the private Next proxy; tokens stay
+  in server headers. Login preserves only validated local `/l/<token>` return paths.
 - Errors are `ProblemDetail`: show `detail` in a toast and each `errors[field]` under its field.
-  API fields are English (`name`, `phone`) and form keys are Portuguese (`nome`, `tel`): map them.
+  API fields and new form keys are English; map any retained legacy form keys explicitly.
 - The UI and the API show the same validation messages. If you change the wording in
   `lib/validation.js`, change `api/src/main/java/br/com/fluiar/selecao/exception/ErrorMessages.java`
   or `api/src/main/resources/ValidationMessages.properties` too.
@@ -210,3 +214,5 @@ Browser email inputs strip surrounding whitespace; test normalized comparisons w
 Share controls retain a returned token until refreshed props acknowledge it; pending refreshes must not announce rotation early.
 
 Office rename drafts belong to the office UUID; reconcile props after saves settle, ignoring superseded-name acknowledgments and preserving newer edits.
+
+Keep JSX copy separate from identifier renames; verify Portuguese labels after field-key changes.

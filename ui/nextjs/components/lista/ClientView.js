@@ -1,6 +1,6 @@
 import ItemLinks from './ItemLinks';
 
-// Visão do cliente: reprodução fiel da página original (somente leitura)
+// Read-only preview of the client-facing content.
 /** @param {{ rooms: { id?: string, name: string, products: { id?: string, name: string, quantity: number, bought: boolean, links: { url: string, note: string | null }[] }[] }[] }} props */
 export default function ClientView({ rooms }) {
   return rooms.filter((r) => r.products.length).map((r, roomIndex) => (
@@ -15,7 +15,9 @@ export default function ClientView({ rooms }) {
                 <td className="ck"><span className={'mark ' + (it.bought ? 'on' : 'off')} role="img" aria-label={it.bought ? 'Comprado' : 'Ainda não comprado'} /></td>
                 <td className="qt"><span className="ro-qty">{it.quantity}</span></td>
                 <td className="it"><span className="ro-name">{it.name}</span></td>
-                <td><ItemLinks links={it.links} empty="Opções em breve" /></td>
+                <td><ItemLinks links={it.links} empty="Opções em breve" />
+                  {it.clientNotes && <p className="meta"><b>Observação do cliente:</b> {it.clientNotes}</p>}
+                </td>
               </tr>
             ))}
           </tbody>

@@ -137,7 +137,7 @@ export function ClientForm({ client }) {
     <form className="card card-pad form" onSubmit={f.submit} noValidate>
       <TextInput label="Nome completo" autoComplete="off" placeholder="Ex.: Marina Duarte" {...f.field('nome')} />
       <div className="row2">
-        <TextInput label="E-mail" type="email" placeholder="nome@email.com" hint="Usado para enviar o link da lista ao cliente." {...f.field('email')} />
+        <TextInput label="E-mail" type="email" placeholder="nome@email.com" hint="Usado para convidar o cliente. Após ativar o acesso, o e-mail da conta é gerenciado separadamente." {...f.field('email')} />
         <TextInput label="Telefone" type="tel" inputMode="tel" placeholder="(31) 99999-9999" {...tel} onChange={(e) => f.setValue('tel', maskPhone(e.target.value))} />
       </div>
       <div className="formfoot">

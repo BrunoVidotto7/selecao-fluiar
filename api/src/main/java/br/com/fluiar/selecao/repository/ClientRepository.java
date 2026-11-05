@@ -6,12 +6,18 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
 public interface ClientRepository extends JpaRepository<Client, UUID> {
 
     Optional<Client> findByIdAndOfficeId(UUID id, UUID officeId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select c from Client c where c.id = :id and c.officeId = :officeId")
+    Optional<Client> findByIdAndOfficeIdForUpdate(UUID id, UUID officeId);
 
     @Query("""
             select new br.com.fluiar.selecao.dto.ClientSummaryResponse(

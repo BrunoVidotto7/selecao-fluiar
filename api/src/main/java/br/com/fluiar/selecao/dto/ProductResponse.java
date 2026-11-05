@@ -12,13 +12,14 @@ public record ProductResponse(
         int quantity,
         BigDecimal unitPrice,
         String notes,
+        String clientNotes,
         boolean bought,
         String imageUrl,
         List<ProductLinkDto> links) {
 
     public static ProductResponse of(Product product) {
         return new ProductResponse(product.getId(), product.getRoom().getId(), product.getName(),
-                product.getQuantity(), product.getUnitPrice(), product.getNotes(), product.isBought(),
+                product.getQuantity(), product.getUnitPrice(), product.getNotes(), product.getClientNotes(), product.isBought(),
                 ImageUrls.of(product.getImageId()), product.getLinks().stream().map(ProductLinkDto::of).toList());
     }
 }

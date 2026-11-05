@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.controller;
 
 import br.com.fluiar.selecao.dto.ProductRequest;
+import br.com.fluiar.selecao.dto.ProductClientNotesRequest;
 import br.com.fluiar.selecao.dto.ProductResponse;
 import br.com.fluiar.selecao.dto.ProductStatusRequest;
 import br.com.fluiar.selecao.security.CurrentOfficeId;
@@ -51,6 +52,12 @@ public class ProductController {
     public ProductResponse updateProductStatus(@CurrentOfficeId UUID officeId, @PathVariable UUID productId,
             @Valid @RequestBody ProductStatusRequest request) {
         return productService.updateStatus(officeId, productId, request);
+    }
+
+    @PutMapping("/products/{productId}/client-notes")
+    public ProductResponse updateClientNotes(@CurrentOfficeId UUID officeId, @PathVariable UUID productId,
+            @Valid @RequestBody ProductClientNotesRequest request) {
+        return productService.updateClientNotes(officeId, productId, request);
     }
 
     @DeleteMapping("/products/{productId}")

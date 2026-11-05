@@ -37,11 +37,11 @@ test('updated dates use the default current time when now is omitted', () => {
   }
 });
 
-test('image paths resolve against the configured API base and missing images stay null', () => {
+test('image paths resolve only through the authenticated local proxy', () => {
   expect(imageSource(null)).toBeNull();
-  expect(imageSource('/api/images/' + PRODUCT.id)).toBe('http://localhost:8080/api/images/' + PRODUCT.id);
+  expect(imageSource('/api/images/' + PRODUCT.id)).toBe('/images/' + PRODUCT.id);
   vi.stubEnv('NEXT_PUBLIC_API_URL', 'https://api.example.com/');
-  expect(imageSource('/api/images/' + PRODUCT.id)).toBe('https://api.example.com/api/images/' + PRODUCT.id);
+  expect(imageSource('/api/images/' + PRODUCT.id)).toBe('/images/' + PRODUCT.id);
 });
 
 test('parseBRL preserves legacy grouped, blank and zero conversion', () => {

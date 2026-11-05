@@ -4,7 +4,7 @@ import ShoppingList from './ShoppingList';
 import ClientView from './ClientView';
 import { ListNote, ListSignature } from './ListFooter';
 import { FeedbackProvider } from '../feedback/Feedback';
-import { patchProduct, deleteProduct } from '../produtos/actions';
+import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
 import { LIST, OFFICE, PRODUCT, PUBLIC_LIST, ROOM, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
 const { refresh, push } = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
@@ -12,11 +12,12 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh }), usePathname: () => '/listas/' + LIST.id,
   unstable_rethrow: vi.fn(),
 }));
-vi.mock('../produtos/actions', () => ({ patchProduct: vi.fn(), deleteProduct: vi.fn() }));
+vi.mock('../produtos/actions', () => ({ patchProduct: vi.fn(), deleteProduct: vi.fn(), saveProductClientNotes: vi.fn() }));
 vi.mock('./actions', () => ({ rotateShareToken: vi.fn() }));
 
 beforeEach(() => {
   vi.clearAllMocks();
+  saveProductClientNotes.mockReset().mockResolvedValue({ ok: true, data: { ...PRODUCT, clientNotes: 'Saved' } });
   patchProduct.mockReset().mockResolvedValue({ ok: true, data: PRODUCT });
   deleteProduct.mockReset().mockResolvedValue({ ok: true, data: undefined });
   vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:8080');
@@ -49,7 +50,7 @@ test.each([LIST, { ...LIST, rooms: [], stats: {
   render(viewOf(list));
   expect(screen.queryByRole('button', { name: 'Copiar link' })).not.toBeNull();
   expect(screen.queryByRole('button', { name: 'Gerar novo link' })).not.toBeNull();
-  expect(screen.getByRole('textbox', { name: 'Link público' }).value).toContain(LIST.shareToken);
+  expect(screen.getByRole('textbox', { name: 'Link da lista' }).value).toContain(LIST.shareToken);
 });
 
 test('the API room products render quantities and the persisted estimated and remaining totals', () => {
@@ -208,13 +209,13 @@ test('the original list note remains unchanged', () => {
   expect(screen.getByText(/A Fluiar não realiza vendas nem se responsabiliza pelas transações/)).toBeTruthy();
 });
 
-test('API image paths use the origin helper and null prices remain Sem preço', () => {
+test('API image paths use the authenticated local proxy and null prices remain Sem preço', () => {
   const product = { ...PRODUCT, imageUrl: '/api/images/' + PRODUCT.id, unitPrice: null };
   const { container } = render(<ShoppingList list={{
     ...LIST, rooms: [{ ...ROOM, products: [product] }],
     stats: { ...LIST.stats, estimatedTotal: 0, remainingTotal: 0 },
   }} signature={signature} />);
-  expect(container.querySelector('img')?.getAttribute('src')).toBe('http://localhost:8080/api/images/' + PRODUCT.id);
+  expect(container.querySelector('img')?.getAttribute('src')).toBe('/images/' + PRODUCT.id);
   expect(screen.queryByText('Sem preço')).not.toBeNull();
   expect(container.querySelector('.price')?.textContent).not.toContain('0,00');
 });
@@ -430,4 +431,17 @@ test('populated lists expose room management without changing product controls o
   expect(screen.getAllByRole('checkbox')).toHaveLength(3);
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
   expect(screen.queryByRole('link', { name: 'Gerenciar ambientes' })).toBeNull();
+});
+
+test('admins can edit client observations and the preview remains read only', async () => {
+  const list = { ...LIST, rooms: [{ ...ROOM, products: [{ ...PRODUCT, clientNotes: 'Bought locally' }] }] };
+  render(viewOf(list));
+  const input = screen.getByRole('textbox', { name: `Observação do cliente: ${PRODUCT.name}` });
+  expect(input.value).toBe('Bought locally');
+  fireEvent.change(input, { target: { value: 'Saved' } });
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: `Salvar observação de ${PRODUCT.name}` })));
+  expect(saveProductClientNotes).toHaveBeenCalledWith(LIST.id, PRODUCT.id, 'Saved');
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  expect(screen.getByText('Bought locally')).toBeTruthy();
+  expect(screen.queryByRole('button', { name: `Salvar observação de ${PRODUCT.name}` })).toBeNull();
 });

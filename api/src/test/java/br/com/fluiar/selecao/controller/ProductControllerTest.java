@@ -65,7 +65,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductWithPriceAndLinks() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -95,7 +95,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductWithoutPriceKeepsNull() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -112,7 +112,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductRequiresRoomOfTheSameList() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
         createRoom(paula, listId, KITCHEN);
@@ -129,7 +129,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductRequiresQuantity() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -141,7 +141,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductValidatesInput() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -156,7 +156,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductReportsAnEmptyLinkEntry() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -169,7 +169,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void createProductRejectsMoreThanTenLinks() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         List<Map<String, String>> elevenLinks = IntStream.rangeClosed(1, LINK_COUNT_OVER_LIMIT)
@@ -185,7 +185,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProductReplacesLinksAndMovesRoomInsideList() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);
@@ -209,7 +209,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProductRejectsRoomOfAnotherList() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
@@ -227,7 +227,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProductReportsABlankName() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = createProduct(paula, listId, kitchenId, MIXER);
@@ -240,7 +240,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void patchChangesOnlyTheGivenField() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 
@@ -257,7 +257,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void patchReportsAQuantityOverTheLimit() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 
@@ -270,7 +270,7 @@ class ProductControllerTest extends ApiIntegrationTest {
     /** A fractional quantity is refused instead of being cut down to a whole number. */
     @Test
     void fractionalQuantityIsRejectedWithoutChanges() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = createProduct(paula, listId, kitchenId, MIXER);
@@ -298,7 +298,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void productChangesUpdateListStats() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = createMixer(paula, listId, kitchenId);
@@ -321,7 +321,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void productChangesRefreshListUpdatedAt() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = createProduct(paula, listId, kitchenId, MIXER);
@@ -335,7 +335,7 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void deleteProduct() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 
@@ -350,8 +350,8 @@ class ProductControllerTest extends ApiIntegrationTest {
 
     @Test
     void productOfAnotherOfficeIsNotFound() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = createProduct(paula, listId, kitchenId, MIXER);
@@ -374,8 +374,8 @@ class ProductControllerTest extends ApiIntegrationTest {
     /** The room id comes in the body, so a room of another office is a field error (400), like one of another list. */
     @Test
     void productCannotUseRoomOfAnotherOffice() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID paulaListId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID paulaKitchenId = createRoom(paula, paulaListId, KITCHEN);
         UUID marinaListId = createList(marina, createClient(marina, HELENA_NAME), OTHER_LIST_NAME);
@@ -396,7 +396,7 @@ class ProductControllerTest extends ApiIntegrationTest {
     /** Another transaction deletes the laundry and commits only while the move of the mixer to it waits. */
     @Test
     void productMovedToARoomDeletedMeanwhileIsRejected() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);
@@ -419,7 +419,7 @@ class ProductControllerTest extends ApiIntegrationTest {
      */
     @Test
     void overlappingStatusChangesKeepBothChanges() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 
@@ -437,7 +437,7 @@ class ProductControllerTest extends ApiIntegrationTest {
     /** Another transaction deletes the kitchen and commits only while the creation waits for it. */
     @Test
     void createProductInARoomDeletedMeanwhileIsRejected() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -455,7 +455,7 @@ class ProductControllerTest extends ApiIntegrationTest {
      */
     @Test
     void overlappingDeletesOfTheSameProductDeleteItOnce() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 

@@ -82,7 +82,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void createListForClient() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestCreate(paula,
@@ -98,7 +98,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void createListRequiresClient() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestCreate(paula, Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION));
 
@@ -108,8 +108,8 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void createListRejectsClientOfAnotherOffice() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID marinaClientId = createClient(marina, CAMILA_NAME);
 
         var result = requestCreate(paula,
@@ -121,7 +121,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void createListReportsInvalidFields() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestCreate(paula,
@@ -132,7 +132,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void createListTrimsTheNameAndDropsABlankDescription() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestCreate(paula,
@@ -145,7 +145,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void listListsReturnsSummaries() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var result = requestLists(paula);
@@ -158,8 +158,8 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void listListsShowsOnlyOwnOfficeLists() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         createList(marina, createClient(marina, CAMILA_NAME), MARINA_LIST_NAME);
 
@@ -171,7 +171,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void clientShowsItsLists() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         createList(paula, clientId, LIST_NAME);
 
@@ -189,7 +189,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
     /** Lavanderia is stored first, so the order of the response comes from the positions. */
     @Test
     void getListShowsRoomsProductsAndStats() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         Room laundry = storeRoom(listId, LAUNDRY, 1);
         Room kitchen = storeRoom(listId, KITCHEN, 0);
@@ -233,7 +233,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void getListShowsTheProductImageUrl() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         Product mixer = productRepository.save(
                 new Product(storeRoom(listId, KITCHEN, 0), MIXER, 1, null, null, false, List.of()));
@@ -250,7 +250,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
     /** Loading the products and links of one room or product at a time would add statements for each of them. */
     @Test
     void getListStatementCountDoesNotGrowWithRoomsAndProducts() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID smallListId = createList(paula, clientId, LIST_NAME);
         storeProductWithLink(storeRoom(smallListId, KITCHEN, 0), MIXER);
@@ -269,7 +269,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateListCanMoveToAnotherClient() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID helenaId = createClient(paula, HELENA_NAME);
 
@@ -282,7 +282,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateListChangesNameAndDescription() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
         storeUpdatedAt(listId, OLDER_UPDATE);
@@ -300,7 +300,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateListReportsInvalidFields() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
 
@@ -312,7 +312,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void deleteListRemovesIt() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var result = requestDelete(paula, listId);
@@ -323,8 +323,8 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void listOfAnotherOfficeIsNotFound() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID marinaClientId = createClient(marina, CAMILA_NAME);
 
@@ -341,7 +341,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
     /** Both deletes wait for another transaction's lock on the list, so they reach the delete together. */
     @Test
     void overlappingDeletesOfTheSameListDeleteItOnce() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var results = requestsDuringConcurrentTransaction(() -> jdbc.queryForList(LOCK_LISTS), List.of(
@@ -358,7 +358,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
      */
     @Test
     void updateOfAListDeletedMeanwhileIsNotFound() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
 

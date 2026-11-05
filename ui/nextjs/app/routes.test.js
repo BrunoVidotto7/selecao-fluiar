@@ -4,26 +4,26 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { redirect } from 'next/navigation';
 import Home from './page';
 import NotFound from './not-found';
-import ClientPage from './(app)/clientes/[id]/page';
-import { generateMetadata as clientMetadata } from './(app)/clientes/[id]/page';
-import ClientsPage from './(app)/clientes/page';
-import EditClientPage from './(app)/clientes/[id]/editar/page';
-import ListPage from './(app)/listas/[id]/page';
-import { generateMetadata as listMetadata } from './(app)/listas/[id]/page';
-import ListsPage from './(app)/listas/page';
+import ClientPage from './(app)/(admin)/clientes/[id]/page';
+import { generateMetadata as clientMetadata } from './(app)/(admin)/clientes/[id]/page';
+import ClientsPage from './(app)/(admin)/clientes/page';
+import EditClientPage from './(app)/(admin)/clientes/[id]/editar/page';
+import ListPage from './(app)/(admin)/listas/[id]/page';
+import { generateMetadata as listMetadata } from './(app)/(admin)/listas/[id]/page';
+import ListsPage from './(app)/(admin)/listas/page';
 import SettingsPage from './(app)/configuracoes/page';
-import EditProductPage from './(app)/listas/[id]/produtos/[produtoId]/editar/page';
-import NewProductPage from './(app)/listas/[id]/produtos/novo/page';
+import EditProductPage from './(app)/(admin)/listas/[id]/produtos/[produtoId]/editar/page';
+import NewProductPage from './(app)/(admin)/listas/[id]/produtos/novo/page';
 import PrivateLayout from './(app)/layout';
 import RootLayout from './layout';
 import LoginPage from './(auth)/login/page';
 import SignupPage from './(auth)/cadastro/page';
-import InvitationPage from './(auth)/convite/page';
+import InvitationPage from './(auth)/invitation/page';
 import RootError from './error';
 import PrivateError from './(app)/error';
 import PublicListPage from './l/[shareToken]/page';
-import RoomsPage from './(app)/listas/[id]/ambientes/page';
-import { CLIENT, LIST, ME, OFFICE, PRODUCT, PUBLIC_LIST, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
+import RoomsPage from './(app)/(admin)/listas/[id]/ambientes/page';
+import { CLIENT, CLIENT_ACCESS, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
 
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
@@ -36,7 +36,7 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/login',
 }));
 vi.mock('@/components/auth/actions', () => ({ login: vi.fn(), signup: vi.fn(), logout: vi.fn() }));
-vi.mock('@/components/convite/actions', () => ({ acceptInvitation: vi.fn() }));
+vi.mock('@/components/invitation/actions', () => ({ acceptInvitation: vi.fn() }));
 vi.mock('@/components/configuracoes/actions', () => ({ updateProfile: vi.fn(), changePassword: vi.fn() }));
 vi.mock('@/components/produtos/actions', () => ({
   saveProduct: vi.fn(), patchProduct: vi.fn(), deleteProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(),
@@ -79,15 +79,11 @@ test.each([
   await expect(Page(props(params))).rejects.toThrow('NEXT_NOT_FOUND');
 });
 
-test('the public token route displays the read-only API DTO without entering the private layout', async () => {
-  fetchMock.mockResolvedValue(new Response(JSON.stringify(PUBLIC_LIST)));
-  render(await PublicListPage(props({ shareToken: LIST.shareToken })));
-  expect(screen.queryByRole('heading', { name: LIST.name })).not.toBeNull();
-  expect(screen.queryByRole('checkbox')).toBeNull();
-  expect(screen.queryByRole('link', { name: /Editar/ })).toBeNull();
-  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/public/lists/' + LIST.shareToken]);
-  expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBeNull();
-  expect(cookieStore.get).not.toHaveBeenCalled();
+test('a shared token routes an authenticated client to its private list', async () => {
+  fetchMock.mockResolvedValue(new Response(JSON.stringify({ listId: LIST.id, role: 'CLIENT' })));
+  await expect(PublicListPage(props({ shareToken: LIST.shareToken }))).rejects.toThrow('NEXT_REDIRECT');
+  expect(redirect).toHaveBeenCalledWith('/my-lists/' + LIST.id);
+  expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer jwt');
 });
 
 test('room management uses list and room UUIDs from the private DTO', async () => {
@@ -233,7 +229,7 @@ test('retry requests a fresh private layout render that can display the recovere
   expect(cookieStore.delete).not.toHaveBeenCalled();
 });
 
-test.each([['login', LoginPage, 'Entrar'], ['signup', SignupPage, 'Criar conta']])(
+test.each([['login', LoginPage, 'Entrar']])(
   'the %s page remains public with a revoked cookie and ignores demo states', async (_, Page, submitLabel) => {
     cookieStore.get.mockReturnValue({ value: 'revoked-jwt' });
     render(await Page({ searchParams: Promise.resolve({ estado: 'erro' }) }));
@@ -257,7 +253,7 @@ test('the root layout keeps page content and feedback without the prototype navi
 test('the invitation route stays in the public auth layout with a revoked browser session', async () => {
   cookieStore.get.mockReturnValue({ value: 'revoked-jwt' });
   fetchMock.mockResolvedValue(new Response(JSON.stringify({
-    email: 'nova@example.com', officeName: 'Ateliê Horizonte', invitedByName: 'Ana Lima',
+    clientName: 'Cliente Convidado', email: 'nova@example.com', officeName: 'Ateliê Horizonte', invitedByName: 'Ana Lima',
   })));
   render(await InvitationPage({ searchParams: Promise.resolve({ token: 'a'.repeat(43) }) }));
   expect(screen.queryByRole('button', { name: 'Criar conta e aceitar convite' })).not.toBeNull();
@@ -334,7 +330,7 @@ test('a lists read outage is not swallowed as a successful empty page', async ()
 });
 
 test('client metadata and detail both consume the authoritative private client endpoint', async () => {
-  fetchMock.mockImplementation(async () => new Response(JSON.stringify(CLIENT)));
+  fetchMock.mockImplementation(async (url) => new Response(JSON.stringify(url.endsWith('/access') ? CLIENT_ACCESS : CLIENT)));
   expect(await clientMetadata(props({ id: CLIENT.id }))).toEqual({ title: CLIENT.name });
   render(await ClientPage({ ...props({ id: CLIENT.id }), searchParams: Promise.resolve({ estado: 'vazio' }) }));
   expect(screen.getByRole('heading', { name: CLIENT.name })).toBeTruthy();
@@ -344,6 +340,7 @@ test('client metadata and detail both consume the authoritative private client e
   expect(screen.getByText('Cliente desde 31 de outubro de 2026')).toBeTruthy();
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     'http://localhost:8080/api/clients/' + CLIENT.id, 'http://localhost:8080/api/clients/' + CLIENT.id,
+    'http://localhost:8080/api/clients/' + CLIENT.id + '/access',
   ]);
 });
 
@@ -384,4 +381,9 @@ test('edit client forms are keyed by the returned UUID so navigation cannot reta
   view.rerender(await EditClientPage(props({ id: second.id })));
   expect(screen.getByLabelText('Nome completo').value).toBe('Beatriz Silva');
   expect(screen.getByLabelText('Telefone').value).toBe('(31) 99999-8888');
+});
+
+test('the retired signup page returns to login', () => {
+  expect(() => SignupPage()).toThrow('NEXT_REDIRECT');
+  expect(redirect).toHaveBeenCalledWith('/login');
 });

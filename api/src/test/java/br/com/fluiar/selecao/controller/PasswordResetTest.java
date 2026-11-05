@@ -57,7 +57,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void requestSendsLinkToExistingAccount() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestReset(PAULA_EMAIL);
 
@@ -70,7 +70,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void requestIgnoresEmailCaseAndSpaces() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestReset(" Paula@Fluiar.com.br ");
 
@@ -80,7 +80,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void requestForUnknownEmailSendsNothing() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestReset(UNKNOWN_EMAIL);
 
@@ -91,7 +91,7 @@ class PasswordResetTest extends ApiIntegrationTest {
     @Test
     @ExtendWith(OutputCaptureExtension.class)
     void failedEmailDeliveryAnswersGenericErrorAndKeepsNoLink(CapturedOutput output) {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         doThrow(new MailSendException(SMTP_REJECTION)).when(mailSender).send(any(SimpleMailMessage.class));
 
         var result = requestReset(PAULA_EMAIL);
@@ -118,7 +118,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void linkExpiresOneHourAfterTheRequest() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         Instant requestedAfter = Instant.now();
 
         resetTokenSentTo(PAULA_EMAIL);
@@ -131,7 +131,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void inspectReturnsAccountEmail() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
 
         var result = inspect(token);
@@ -142,7 +142,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void resetChangesPasswordAndRevokesSessions() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
 
         var result = resetPassword(token, NEW_PASSWORD);
@@ -155,7 +155,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void resetDuringPasswordChangeDoesNotRollBackTheVersion() throws Exception {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
         String concurrentPasswordHash = passwordEncoder.encode(CONCURRENT_PASSWORD);
 
@@ -170,7 +170,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void overlappingResetsWithTheSameLinkChangeThePasswordOnce() throws Exception {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
 
         var results = requestsDuringConcurrentUserChange(session, NO_CHANGE, List.of(
@@ -182,7 +182,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void overlappingResetsWithTwoPendingLinksChangeThePasswordOnce() throws Exception {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String firstToken = resetTokenSentTo(PAULA_EMAIL);
         String secondToken = resetTokenSentTo(PAULA_EMAIL);
 
@@ -195,7 +195,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void emailChangeInvalidatesPendingLinks() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
         assertThat(requestProfileUpdate(session, PAULA_NAME, PAULA_NEW_EMAIL, DEFAULT_PASSWORD)).hasStatus(HttpStatus.OK);
 
@@ -210,7 +210,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void passwordChangeInvalidatesPendingLinks() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
         assertThat(requestPasswordChange(session, DEFAULT_PASSWORD, NEW_PASSWORD)).hasStatus(HttpStatus.OK);
 
@@ -223,7 +223,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void profileUpdateWithoutEmailChangeKeepsPendingLinks() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
         assertThat(requestProfileUpdate(session, PAULA_NEW_NAME, "PAULA@fluiar.com.br")).hasStatus(HttpStatus.OK);
 
@@ -234,7 +234,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void requestDuringEmailChangeSendsNoLinkToTheOldAddress() throws Exception {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestDuringConcurrentUserChange(session,
                 user -> user.changeEmail(PAULA_NEW_EMAIL),
@@ -256,7 +256,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void resetLinkWorksOnlyOnce() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
         assertThat(resetPassword(token, NEW_PASSWORD)).hasStatus(HttpStatus.NO_CONTENT);
 
@@ -268,7 +268,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void resetInvalidatesOtherPendingLinks() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         String olderToken = resetTokenSentTo(PAULA_EMAIL);
         String newerToken = resetTokenSentTo(PAULA_EMAIL);
         assertThat(resetPassword(newerToken, NEW_PASSWORD)).hasStatus(HttpStatus.NO_CONTENT);
@@ -281,7 +281,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void expiredLinkIsRejected() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         String token = resetTokenSentTo(PAULA_EMAIL);
         jdbc.update("update password_reset_tokens set expires_at = now() - interval '1 minute'");
 
@@ -301,7 +301,7 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     void requestBlocksTheEmailAfterTooManyAttempts() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             assertThat(requestReset(PAULA_EMAIL)).hasStatus(HttpStatus.ACCEPTED);

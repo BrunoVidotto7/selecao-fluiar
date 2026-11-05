@@ -1,6 +1,6 @@
-// Regras por campo: { required: true | 'mensagem', email: true, url: true, minLength: 8,
+// Field rules: { required: true | 'message', email: true, url: true, minLength: 8,
 //   maxLength: 120, min: 1, max: 999, integer: true, phone: true, password: true, money: true,
-//   match: 'outroCampo', requiredIf: 'outroCampo',
+//   match: 'otherField', requiredIf: 'otherField',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
 export const PRODUCT_IMAGE_TYPES = ['image/jpeg', 'image/png'];
@@ -85,4 +85,10 @@ export function passwordStrength(v) {
   if (/[A-Z]/.test(v) && /[a-z]/.test(v)) s++;
   if (/\d|[^\w]/.test(v) && v.length >= 10) s++;
   return Math.max(1, s);
+}
+
+export const CLIENT_NOTES_MAX_LENGTH = 1000;
+export function validateClientNotes(value) {
+  if (value !== null && typeof value !== 'string') return INVALID_REQUEST_MESSAGE;
+  return validateField('clientNotes', { clientNotes: value }, { maxLength: CLIENT_NOTES_MAX_LENGTH });
 }

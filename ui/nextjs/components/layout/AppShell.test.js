@@ -1,7 +1,7 @@
 import { beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import AppShell from './AppShell';
-import { ME } from '@/test-support/fixtures';
+import { ME, CLIENT_ME } from '@/test-support/fixtures';
 import { logout } from '../auth/actions';
 
 const { route } = vi.hoisted(() => ({ route: { pathname: '/dashboard' } }));
@@ -113,4 +113,12 @@ test('unmounting an open drawer removes its focus trap', () => {
   remaining.focus();
   expect(fireEvent.keyDown(remaining, { key: 'Tab' })).toBe(true);
   expect(document.activeElement).toBe(remaining);
+});
+
+test('clients only see their own list navigation and account settings', () => {
+  render(<AppShell user={CLIENT_ME}>Conteúdo</AppShell>);
+  expect(screen.getByRole('link', { name: 'Minhas listas' }).getAttribute('href')).toBe('/my-lists');
+  expect(screen.queryByRole('link', { name: 'Clientes' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Escritório' })).toBeNull();
+  expect(screen.queryByRole('link', { name: 'Dashboard' })).toBeNull();
 });

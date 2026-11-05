@@ -1,6 +1,7 @@
 'use client';
-// Estrutura das telas internas: menu lateral (desktop) e gaveta com topo fixo (tablet/celular).
+// Shared responsive navigation for authenticated accounts.
 import { useEffect, useRef, useState } from 'react';
+import { getHomePath } from '@/lib/auth-routing';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Icon from '../ui/Icon';
@@ -9,7 +10,7 @@ import { logout } from '../auth/actions';
 import { initials } from '@/lib/format';
 import { keepFocusInside } from '@/lib/focus';
 
-// Mesmo ponto de quebra do CSS em que o menu vira gaveta sobre a página.
+// Match the existing CSS drawer breakpoint.
 const DRAWER_MEDIA = '(max-width: 960px)';
 
 const NAV = [
@@ -22,6 +23,10 @@ const NAV = [
 
 export default function AppShell({ user, children }) {
   const pathname = usePathname();
+  const home = getHomePath(user);
+  const navigation = user.role === 'CLIENT'
+    ? [{ href: '/my-lists', label: 'Minhas listas', icon: 'list' }, { href: '/configuracoes', label: 'Configurações', icon: 'gear' }]
+    : NAV;
   const [open, setOpen] = useState(false);
   const openBtn = useRef(null);
   const firstLink = useRef(null);
@@ -45,16 +50,16 @@ export default function AppShell({ user, children }) {
     <div className="shell">
       <a className="skip" href="#main">Pular para o conteúdo</a>
       <header className="topbar">
-        <Link className="logo" href="/dashboard">FLUIAR</Link>
+        <Link className="logo" href={home}>FLUIAR</Link>
         <button ref={openBtn} className="iconbtn" aria-label="Abrir menu" aria-controls="side" aria-expanded={open} onClick={() => setOpen(true)}>
           <Icon name="menu" />
         </button>
       </header>
       <aside ref={sideRef} className={'side' + (open ? ' open' : '')} id="side" aria-label="Menu principal">
         <button className="iconbtn close" aria-label="Fechar menu" onClick={() => { setOpen(false); openBtn.current?.focus(); }}><Icon name="x" /></button>
-        <Link className="logo" href="/dashboard">FLUIAR<small>Seleção</small></Link>
+        <Link className="logo" href={home}>FLUIAR<small>Seleção</small></Link>
         <nav className="nav">
-          {NAV.map((n, i) => (
+          {navigation.map((n, i) => (
             <Link key={n.href} ref={i === 0 ? firstLink : undefined} href={n.href} aria-current={active(n.href) ? 'page' : undefined}>
               <Icon name={n.icon} />{n.label}
             </Link>

@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ProductLinkDto;
+import br.com.fluiar.selecao.dto.ProductClientNotesRequest;
 import br.com.fluiar.selecao.dto.ProductRequest;
 import br.com.fluiar.selecao.dto.ProductResponse;
 import br.com.fluiar.selecao.dto.ProductStatusRequest;
@@ -83,6 +84,15 @@ public class ProductService {
         }
         list.touch();
 
+        return ProductResponse.of(product);
+    }
+
+    @Transactional
+    public ProductResponse updateClientNotes(UUID officeId, UUID productId, ProductClientNotesRequest request) {
+        ShoppingList list = lockListOfProduct(officeId, productId);
+        Product product = loadProduct(officeId, productId);
+        product.changeClientNotes(request.clientNotes());
+        list.touch();
         return ProductResponse.of(product);
     }
 

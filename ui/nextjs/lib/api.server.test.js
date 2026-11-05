@@ -68,7 +68,7 @@ test('public requests ignore even a revoked cookie', async () => {
   expect(cookies).not.toHaveBeenCalled();
 });
 
-test.each(['/api/auth/login', '/api/auth/signup', '/api/public/lists/' + LIST.shareToken, '/api/images/' + PRODUCT.id])(
+test.each(['/api/auth/login', '/api/auth/password-reset-requests'])(
   'public namespace %s ignores the default required authentication', async (path) => {
     cookieStore.get.mockReturnValue(undefined);
     await apiRequest(path);
@@ -290,7 +290,7 @@ test('getCurrentUser redirects a revoked session without exposing user data or w
 test('workspace revalidation invalidates only the shared private views', () => {
   revalidateWorkspaceData();
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/my-lists'], ['/my-lists/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
 });
 
@@ -309,4 +309,18 @@ test('fixtures use the complete API shapes and expose only the public subset in 
     rooms: [{ name: 'Cozinha', products: [{ name: 'Batedeira', quantity: 2, bought: false, links: PRODUCT.links }] }],
     signature: { officeName: ME.officeName, architectNames: [ME.name] },
   });
+});
+
+test('an unauthenticated shared-link request retains only a validated local return path', async () => {
+  cookieStore.get.mockReturnValue(undefined);
+  const target = '/l/' + 'a'.repeat(43);
+  await expect(apiRequest('/api/public/lists/' + 'a'.repeat(43), { returnTo: target })).rejects.toThrow('NEXT_REDIRECT');
+  expect(redirect).toHaveBeenCalledWith('/login?next=' + encodeURIComponent(target));
+  expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test.each(['/api/public/lists/' + LIST.shareToken, '/api/images/' + PRODUCT.id])('private resource %s requires a session', async (path) => {
+  cookieStore.get.mockReturnValue(undefined);
+  await expect(apiRequest(path)).rejects.toThrow('NEXT_REDIRECT');
+  expect(fetchMock).not.toHaveBeenCalled();
 });

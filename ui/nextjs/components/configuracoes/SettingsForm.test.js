@@ -30,7 +30,7 @@ const expectFieldError = (input, message) => {
   expect(document.getElementById(input.id + '-err').textContent).toBe(message);
 };
 const fillPassword = (password = 'newPassword123') => {
-  type('Senha atual', 'oldPassword', { selector: '#atual' });
+  type('Senha atual', 'oldPassword', { selector: '#currentPassword' });
   type('Nova senha', password);
   type('Confirme a nova senha', password);
 };
@@ -52,20 +52,20 @@ test('profile and password have independent accessible forms and save buttons', 
   expect(screen.queryByRole('button', { name: 'Alterar senha' })).toBeTruthy();
   expect(profileForm()).not.toBe(passwordForm());
   expect(screen.queryByRole('button', { name: 'Salvar alterações' })).toBeNull();
-  expect(screen.getByLabelText('Nome completo').id).toBe('nome');
+  expect(screen.getByLabelText('Nome completo').id).toBe('name');
   expect(screen.getByLabelText('E-mail').id).toBe('email');
-  expect(screen.getByLabelText('Senha atual').id).toBe('atual');
-  expect(screen.getByLabelText('Nova senha').id).toBe('nova');
-  expect(screen.getByLabelText('Confirme a nova senha').id).toBe('nova2');
+  expect(screen.getByLabelText('Senha atual').id).toBe('currentPassword');
+  expect(screen.getByLabelText('Nova senha').id).toBe('newPassword');
+  expect(screen.getByLabelText('Confirme a nova senha').id).toBe('confirmNewPassword');
 });
 
 test('changing email requires the current password only for the profile request', async () => {
   render(tree());
   type('E-mail', SAVED_USER.email);
   await submit(profileForm());
-  expectFieldError(screen.getByLabelText('Senha atual', { selector: '#senhaEmail' }), 'Informe a senha atual para trocar o e-mail.');
+  expectFieldError(screen.getByLabelText('Senha atual', { selector: '#emailPassword' }), 'Informe a senha atual para trocar o e-mail.');
   expect(updateProfile).not.toHaveBeenCalled();
-  type('Senha atual', 'oldPassword', { selector: '#senhaEmail' });
+  type('Senha atual', 'oldPassword', { selector: '#emailPassword' });
   await submit(profileForm());
   expect(updateProfile).toHaveBeenCalledExactlyOnceWith({
     name: ME.name, email: 'new@example.com', currentPassword: 'oldPassword',
@@ -73,7 +73,7 @@ test('changing email requires the current password only for the profile request'
   expect(changePassword).not.toHaveBeenCalled();
   expect(screen.getByText('Perfil salvo.')).toBeTruthy();
   expect(screen.getByLabelText('Nome completo').value).toBe('Ana Reis');
-  expect(screen.queryByLabelText('Senha atual', { selector: '#senhaEmail' })).toBeNull();
+  expect(screen.queryByLabelText('Senha atual', { selector: '#emailPassword' })).toBeNull();
   expect(refresh).toHaveBeenCalledOnce();
 });
 
@@ -86,7 +86,7 @@ test.each([
   type('Nome completo', 'Ana Reis');
   type('E-mail', email);
   fillPassword();
-  expect(screen.queryByLabelText('Senha atual', { selector: '#senhaEmail' })).toBeNull();
+  expect(screen.queryByLabelText('Senha atual', { selector: '#emailPassword' })).toBeNull();
   await submit(profileForm());
   expect(updateProfile).toHaveBeenCalledExactlyOnceWith({ name: 'Ana Reis', email: sentEmail });
   expect(changePassword).not.toHaveBeenCalled();
@@ -98,18 +98,18 @@ test.each([WRONG_PASSWORD, RATE_LIMIT])('profile failure %j retains its own edit
   render(tree());
   type('Nome completo', 'Ana Reis');
   type('E-mail', 'new@example.com');
-  type('Senha atual', 'wrongPassword', { selector: '#senhaEmail' });
+  type('Senha atual', 'wrongPassword', { selector: '#emailPassword' });
   fillPassword();
   await submit(profileForm());
   expect(updateProfile).toHaveBeenCalledOnce();
   expect(screen.getByLabelText('Nome completo').value).toBe('Ana Reis');
   expect(screen.getByLabelText('E-mail').value).toBe('new@example.com');
-  expect(screen.getByLabelText('Senha atual', { selector: '#senhaEmail' }).value).toBe('wrongPassword');
+  expect(screen.getByLabelText('Senha atual', { selector: '#emailPassword' }).value).toBe('wrongPassword');
   expect(screen.getByLabelText('Nova senha').value).toBe('newPassword123');
   expect(screen.getByRole('status').textContent).toContain(failure.detail);
   if (failure.errors.currentPassword) {
-    expectFieldError(screen.getByLabelText('Senha atual', { selector: '#senhaEmail' }), 'Senha atual incorreta.');
-    expect(screen.getByLabelText('Senha atual', { selector: '#atual' }).getAttribute('aria-invalid')).not.toBe('true');
+    expectFieldError(screen.getByLabelText('Senha atual', { selector: '#emailPassword' }), 'Senha atual incorreta.');
+    expect(screen.getByLabelText('Senha atual', { selector: '#currentPassword' }).getAttribute('aria-invalid')).not.toBe('true');
   }
   expect(changePassword).not.toHaveBeenCalled();
   expect(refresh).not.toHaveBeenCalled();
@@ -142,7 +142,7 @@ test.each([WRONG_PASSWORD, RATE_LIMIT])('saved profile survives a separate passw
   const view = render(tree());
   type('Nome completo', 'Ana Reis');
   type('E-mail', 'new@example.com');
-  type('Senha atual', 'oldPassword', { selector: '#senhaEmail' });
+  type('Senha atual', 'oldPassword', { selector: '#emailPassword' });
   fillPassword();
   await submit(profileForm());
   expect(screen.getByText('Perfil salvo.')).toBeTruthy();
@@ -153,12 +153,12 @@ test.each([WRONG_PASSWORD, RATE_LIMIT])('saved profile survives a separate passw
   view.rerender(tree(SAVED_USER));
   expect(screen.getByLabelText('Nome completo').value).toBe('Ana Reis');
   expect(screen.getByLabelText('E-mail').value).toBe('new@example.com');
-  expect(screen.queryByLabelText('Senha atual', { selector: '#senhaEmail' })).toBeNull();
-  expect(screen.getByLabelText('Senha atual', { selector: '#atual' }).value).toBe('oldPassword');
+  expect(screen.queryByLabelText('Senha atual', { selector: '#emailPassword' })).toBeNull();
+  expect(screen.getByLabelText('Senha atual', { selector: '#currentPassword' }).value).toBe('oldPassword');
   expect(screen.getByLabelText('Nova senha').value).toBe('newPassword123');
   expect(screen.getByLabelText('Confirme a nova senha').value).toBe('newPassword123');
   if (failure.errors.currentPassword) {
-    expectFieldError(screen.getByLabelText('Senha atual', { selector: '#atual' }), 'Senha atual incorreta.');
+    expectFieldError(screen.getByLabelText('Senha atual', { selector: '#currentPassword' }), 'Senha atual incorreta.');
     expect(within(profileForm()).queryByText('Senha atual incorreta.')).toBeNull();
   }
   await submit(profileForm());
@@ -179,11 +179,11 @@ test('password failure and profile success can settle independently without drop
   await submit(passwordForm());
   expect(changePassword).toHaveBeenCalledOnce();
   await act(async () => { password.resolve(WRONG_PASSWORD); });
-  expectFieldError(screen.getByLabelText('Senha atual', { selector: '#atual' }), 'Senha atual incorreta.');
+  expectFieldError(screen.getByLabelText('Senha atual', { selector: '#currentPassword' }), 'Senha atual incorreta.');
   await act(async () => { profile.resolve({ ok: true, data: { ...ME, name: 'Ana Reis' } }); });
   expect(screen.getByLabelText('Nome completo').value).toBe('Ana Reis');
   expect(screen.getByLabelText('Nova senha').value).toBe('newPassword123');
-  expectFieldError(screen.getByLabelText('Senha atual', { selector: '#atual' }), 'Senha atual incorreta.');
+  expectFieldError(screen.getByLabelText('Senha atual', { selector: '#currentPassword' }), 'Senha atual incorreta.');
 });
 
 test('a pending profile success updates the saved baseline without overwriting newer drafts on refresh', async () => {
@@ -192,21 +192,21 @@ test('a pending profile success updates the saved baseline without overwriting n
   const view = render(tree());
   type('Nome completo', 'Ana Reis');
   type('E-mail', 'new@example.com');
-  type('Senha atual', 'oldPassword', { selector: '#senhaEmail' });
+  type('Senha atual', 'oldPassword', { selector: '#emailPassword' });
   await submit(profileForm());
   expect(updateProfile).toHaveBeenCalledExactlyOnceWith({
     name: 'Ana Reis', email: 'new@example.com', currentPassword: 'oldPassword',
   });
   type('Nome completo', 'Próximo nome');
   type('E-mail', 'next@example.com');
-  type('Senha atual', 'anotherPassword', { selector: '#senhaEmail' });
+  type('Senha atual', 'anotherPassword', { selector: '#emailPassword' });
   await act(async () => { pending.resolve({ ok: true, data: SAVED_USER }); });
   view.rerender(tree(SAVED_USER));
   expect(screen.getByLabelText('Nome completo').value).toBe('Próximo nome');
   expect(screen.getByLabelText('E-mail').value).toBe('next@example.com');
-  expect(screen.getByLabelText('Senha atual', { selector: '#senhaEmail' }).value).toBe('anotherPassword');
+  expect(screen.getByLabelText('Senha atual', { selector: '#emailPassword' }).value).toBe('anotherPassword');
   type('E-mail', 'NEW@EXAMPLE.COM');
-  expect(screen.queryByLabelText('Senha atual', { selector: '#senhaEmail' })).toBeNull();
+  expect(screen.queryByLabelText('Senha atual', { selector: '#emailPassword' })).toBeNull();
 });
 
 test.each([

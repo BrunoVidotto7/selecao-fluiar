@@ -38,20 +38,22 @@ class ProductImageControllerTest extends ApiIntegrationTest {
     private static final int FIVE_MB = 5 * 1024 * 1024;
     private static final String NOT_AN_IMAGE = "hello";
     private static final String IMAGE_PATH = "/api/images/";
-    private static final String ONE_YEAR_MAX_AGE = "max-age=31536000";
-    private static final String PUBLIC_CACHE = "public";
+    private static final String PRIVATE_CACHE = "private";
+    private static final String NO_STORE_CACHE = "no-store";
     private static final String INVALID_IMAGE = "Escolha um arquivo de imagem (JPG ou PNG).";
     private static final String IMAGE_TOO_LARGE = "A imagem deve ter até 5 MB.";
     private static final Instant OLDER_UPDATE = Instant.parse("2020-01-01T00:00:00Z");
     private static final String STORE_LIST_UPDATED_AT = "update shopping_lists set updated_at = ? where id = ?";
     private static final String LOCK_LISTS = "select id from shopping_lists for update";
 
+    private TestSession imageReader;
+
     @Autowired
     private ProductService productService;
 
     @Test
-    void uploadPngReturnsPublicImageUrl() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+    void uploadPngReturnsAuthenticatedImageUrl() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
         byte[] png = smallImage(PNG_SIGNATURE);
 
@@ -64,14 +66,14 @@ class ProductImageControllerTest extends ApiIntegrationTest {
         assertThat(image).hasStatus(HttpStatus.OK);
         assertThat(image).hasContentType(MediaType.IMAGE_PNG);
         assertThat(image.getResponse().getContentAsByteArray()).isEqualTo(png);
-        assertThat(image.getResponse().getHeader(HttpHeaders.CACHE_CONTROL)).contains(ONE_YEAR_MAX_AGE, PUBLIC_CACHE);
+        assertThat(image.getResponse().getHeader(HttpHeaders.CACHE_CONTROL)).contains(PRIVATE_CACHE, NO_STORE_CACHE);
         assertThat(storedImageUrl(paula, mixerId)).isEqualTo(imageUrl);
     }
 
     /** The JPEG is sent without an image content type: the stored type comes from its first bytes. */
     @Test
     void uploadReplacesPreviousImage() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
         String pngUrl = uploadImage(paula, mixerId);
 
@@ -90,7 +92,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void uploadRejectsFileThatIsNotAnImage() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var result = requestUpload(paula, mixerId, new MockMultipartFile(FILE_PART, JPEG_FILE_NAME,
@@ -103,7 +105,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void uploadWithoutFileIsRejected() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var result = mvc.put().uri("/api/products/{productId}/image", mixerId)
@@ -117,7 +119,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void uploadRejectsFileOver5MB() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var result = requestUpload(paula, mixerId, pngFile(imageOfSize(PNG_SIGNATURE, FIVE_MB + 1)));
@@ -129,7 +131,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void uploadAcceptsFileOfExactly5MB() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var result = requestUpload(paula, mixerId, pngFile(imageOfSize(PNG_SIGNATURE, FIVE_MB)));
@@ -139,7 +141,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void deleteImage() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
         String imageUrl = uploadImage(paula, mixerId);
 
@@ -152,7 +154,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void deleteImageOfProductWithoutImageSucceeds() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 
@@ -165,8 +167,8 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void imageOfAnotherOfficeCannotBeChanged() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID mixerId = createMixer(paula);
         String imageUrl = uploadImage(paula, mixerId);
 
@@ -181,7 +183,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
 
     @Test
     void imageChangesRefreshListUpdatedAt() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
 
@@ -196,7 +198,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
      */
     @Test
     void overlappingUploadsOfTheSameProductBothSucceed() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var results = requestsDuringConcurrentTransaction(() -> jdbc.queryForList(LOCK_LISTS), List.of(
@@ -211,7 +213,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
     /** Another transaction deletes the mixer and commits only while the upload waits for it. */
     @Test
     void uploadForAProductDeletedMeanwhileIsNotFound() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var results = requestsDuringConcurrentTransaction(
@@ -224,7 +226,7 @@ class ProductImageControllerTest extends ApiIntegrationTest {
     /** Another transaction deletes the mixer and commits only while the image delete waits for it. */
     @Test
     void deleteImageOfAProductDeletedMeanwhileIsNotFound() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);
 
         var results = requestsDuringConcurrentTransaction(
@@ -234,7 +236,31 @@ class ProductImageControllerTest extends ApiIntegrationTest {
         assertThat(statusesOf(results)).containsExactly(HttpStatus.NOT_FOUND);
     }
 
+    @Test
+    void onlyTheOwnerAndOfficeAdminCanReadAnImageAndReassignmentRevokesTheOwner() {
+        var admin = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID client = createClient(admin, "Owner", "owner@example.com");
+        UUID otherClient = createClient(admin, "Other", "other@example.com");
+        var owner = createClientAccount(admin, client, "owner@example.com");
+        var other = createClientAccount(admin, otherClient, "other@example.com");
+        var remote = createAdmin(MARINA_NAME, MARINA_EMAIL);
+        UUID list = createList(admin, client, LIST_NAME);
+        UUID product = createProduct(admin, list, createRoom(admin, list, KITCHEN), MIXER);
+        String imageUrl = uploadImage(admin, product);
+
+        assertThat(mvc.get().uri(imageUrl).exchange()).hasStatus(HttpStatus.UNAUTHORIZED);
+        assertThat(mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(admin)).exchange()).hasStatus(HttpStatus.OK);
+        assertThat(mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(owner)).exchange()).hasStatus(HttpStatus.OK);
+        assertThat(mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(other)).exchange()).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(remote)).exchange()).hasStatus(HttpStatus.NOT_FOUND);
+
+        jdbc.update("update shopping_lists set client_id = ? where id = ?", otherClient, list);
+        assertThat(mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(owner)).exchange()).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(other)).exchange()).hasStatus(HttpStatus.OK);
+    }
+
     private UUID createMixer(TestSession session) {
+        imageReader = session;
         UUID listId = createList(session, createClient(session, SERGIO_NAME), LIST_NAME);
         return createProduct(session, listId, createRoom(session, listId, KITCHEN), MIXER);
     }
@@ -299,8 +325,8 @@ class ProductImageControllerTest extends ApiIntegrationTest {
                 .exchange();
     }
 
-    /** Sent without a token, like an {@code <img src>}. */
+    /** Read through the authenticated image endpoint. */
     private MvcTestResult requestImage(String imageUrl) {
-        return mvc.get().uri(imageUrl).exchange();
+        return mvc.get().uri(imageUrl).header(HttpHeaders.AUTHORIZATION, bearer(imageReader)).exchange();
     }
 }

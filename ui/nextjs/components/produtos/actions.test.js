@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { saveProduct, patchProduct, deleteProduct, uploadProductImage, deleteProductImage } from './actions';
+import { saveProduct, saveProductClientNotes, patchProduct, deleteProduct, uploadProductImage, deleteProductImage } from './actions';
 import { LIST, ROOM, PRODUCT, ME, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
 const { cookies, fetchMock, redirect, revalidatePath } = vi.hoisted(() => ({
@@ -206,4 +206,14 @@ test('PATCH preserves the product write other-office 404 and quantity field vali
     ok: false, status: 400, detail: 'Revise os campos destacados.', errors: { quantity: 'Use um valor até 999.' },
   });
   expect(revalidatePath).not.toHaveBeenCalled();
+});
+
+test('admin notes are persisted independently and only inside the selected list', async () => {
+  const saved = { ...PRODUCT, clientNotes: 'Bought locally' };
+  fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST) : json(saved));
+  expect(await saveProductClientNotes(LIST.id, PRODUCT.id, '  Bought locally  ')).toEqual({ ok: true, data: saved });
+  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+    ORIGIN + '/api/lists/' + LIST.id, ORIGIN + '/api/products/' + PRODUCT.id + '/client-notes',
+  ]);
+  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ clientNotes: 'Bought locally' });
 });

@@ -14,6 +14,14 @@ public interface OfficeInvitationRepository extends JpaRepository<OfficeInvitati
 
     Optional<OfficeInvitation> findByTokenHash(String tokenHash);
 
+    interface ClientContext {
+        UUID getClientId();
+        UUID getOfficeId();
+    }
+
+    @Query("select i.clientId as clientId, i.officeId as officeId from OfficeInvitation i where i.tokenHash = :tokenHash")
+    Optional<ClientContext> findClientContextByTokenHash(String tokenHash);
+
     /**
      * Loads the invitation and locks its row until the transaction ends. When a concurrent transaction holds the
      * lock, this waits and then reads the row as that transaction left it: nothing if it deleted the invitation, the
@@ -23,21 +31,15 @@ public interface OfficeInvitationRepository extends JpaRepository<OfficeInvitati
     @Query("select i from OfficeInvitation i where i.tokenHash = :tokenHash")
     Optional<OfficeInvitation> findByTokenHashForUpdate(String tokenHash);
 
-    List<OfficeInvitation> findByOfficeIdOrderByCreatedAtDesc(UUID officeId);
+    Optional<OfficeInvitation> findByClientId(UUID clientId);
 
-    /**
-     * Deletes in one statement and returns how many invitations it deleted. When a concurrent transaction deletes the
-     * same invitation first, this waits for it and deletes nothing, instead of failing on a row that is already gone.
-     */
-    @Modifying
-    @Query("delete from OfficeInvitation i where i.id = :id and i.officeId = :officeId")
-    int deleteByIdAndOfficeId(UUID id, UUID officeId);
+    Optional<OfficeInvitation> findByOfficeIdAndEmail(UUID officeId, String email);
 
-    /**
-     * A bulk JPQL delete runs at once. A {@code delete(entity)} would reach the database only at flush, after the
-     * insert of the new invitation, and that insert would break the unique key {@code (office_id, email)}.
-     */
     @Modifying
-    @Query("delete from OfficeInvitation i where i.officeId = :officeId and i.email = :email")
-    void deleteByOfficeIdAndEmail(UUID officeId, String email);
+    @Query("delete from OfficeInvitation i where i.clientId = :clientId")
+    void deleteByClientId(UUID clientId);
+
+    @Modifying
+    @Query("delete from OfficeInvitation i where i.id = :id and i.officeId = :officeId and i.clientId = :clientId")
+    int deleteForClient(UUID id, UUID officeId, UUID clientId);
 }

@@ -8,6 +8,7 @@ import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.model.Client;
 import br.com.fluiar.selecao.repository.ClientRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
+import br.com.fluiar.selecao.repository.OfficeInvitationRepository;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -20,7 +21,10 @@ public class ClientService {
     private final ClientRepository clientRepository;
     private final ShoppingListRepository listRepository;
 
-    public ClientService(ClientRepository clientRepository, ShoppingListRepository listRepository) {
+    private final OfficeInvitationRepository invitationRepository;
+
+    public ClientService(ClientRepository clientRepository, ShoppingListRepository listRepository, OfficeInvitationRepository invitationRepository) {
+        this.invitationRepository = invitationRepository;
         this.clientRepository = clientRepository;
         this.listRepository = listRepository;
     }
@@ -46,7 +50,10 @@ public class ClientService {
 
     @Transactional
     public ClientResponse update(UUID officeId, UUID clientId, ClientRequest request) {
-        Client client = loadClient(officeId, clientId);
+        Client client = clientRepository.findByIdAndOfficeIdForUpdate(clientId, officeId).orElseThrow(ApiException::notFound);
+        if (!client.getEmail().equals(request.email())) {
+            invitationRepository.deleteByClientId(clientId);
+        }
         client.update(request.name(), request.email(), request.phone());
         // Hibernate refreshes updatedAt only when the update runs; the response needs the new value.
         clientRepository.flush();

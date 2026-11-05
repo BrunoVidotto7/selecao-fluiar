@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { getHomePath } from '@/lib/auth-routing';
 import { useRouter } from 'next/navigation';
 import Button from '../ui/Button';
 import { PasswordInput, TextInput } from '../ui/Fields';
@@ -15,22 +16,22 @@ function ProfileForm({ user }) {
   const [savedEmail, setSavedEmail] = useState(user.email);
   const isNewEmail = (email) => email.trim().toLowerCase() !== savedEmail.trim().toLowerCase();
   const f = useApiForm({
-    initial: { nome: user.name, email: user.email, senhaEmail: '' },
+    initial: { name: user.name, email: user.email, emailPassword: '' },
     rules: {
-      nome: { required: true, maxLength: PROFILE_NAME_MAX_LENGTH },
+      name: { required: true, maxLength: PROFILE_NAME_MAX_LENGTH },
       email: { required: true, email: true, maxLength: PROFILE_EMAIL_MAX_LENGTH },
-      senhaEmail: { required: EMAIL_PASSWORD_REQUIRED, when: (values) => isNewEmail(values.email) },
+      emailPassword: { required: EMAIL_PASSWORD_REQUIRED, when: (values) => isNewEmail(values.email) },
     },
-    fieldMap: { name: 'nome', currentPassword: 'senhaEmail' },
-    action: ({ nome, email, senhaEmail }) => updateProfile({
-      name: nome, email, ...(isNewEmail(email) ? { currentPassword: senhaEmail } : {}),
+    fieldMap: { name: 'name', currentPassword: 'emailPassword' },
+    action: ({ name, email, emailPassword }) => updateProfile({
+      name, email, ...(isNewEmail(email) ? { currentPassword: emailPassword } : {}),
     }),
     onSuccess: (data, submitted, { toast }) => {
       setSavedEmail(data.email);
       f.setValues((current) => ({
-        nome: current.nome === submitted.nome ? data.name : current.nome,
+        name: current.name === submitted.name ? data.name : current.name,
         email: current.email === submitted.email ? data.email : current.email,
-        senhaEmail: current.senhaEmail === submitted.senhaEmail ? '' : current.senhaEmail,
+        emailPassword: current.emailPassword === submitted.emailPassword ? '' : current.emailPassword,
       }));
       toast('Perfil salvo.');
       router.refresh();
@@ -38,9 +39,9 @@ function ProfileForm({ user }) {
   });
   return (
     <form className="form" onSubmit={f.submit} noValidate>
-      <TextInput label="Nome completo" autoComplete="name" {...f.field('nome')} />
+      <TextInput label="Nome completo" autoComplete="name" {...f.field('name')} />
       <TextInput label="E-mail" type="email" autoComplete="email" hint="Para trocar o e-mail, confirme com a sua senha atual." {...f.field('email')} />
-      {isNewEmail(f.values.email) && <PasswordInput label="Senha atual" autoComplete="current-password" {...f.field('senhaEmail')} />}
+      {isNewEmail(f.values.email) && <PasswordInput label="Senha atual" autoComplete="current-password" {...f.field('emailPassword')} />}
       <div className="btns"><Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar perfil'}</Button></div>
     </form>
   );
@@ -49,26 +50,26 @@ function ProfileForm({ user }) {
 function PasswordForm() {
   const router = useRouter();
   const f = useApiForm({
-    initial: { atual: '', nova: '', nova2: '' },
+    initial: { currentPassword: '', newPassword: '', confirmNewPassword: '' },
     rules: {
-      atual: { requiredIf: 'nova' },
-      nova: { required: true, password: true },
-      nova2: { required: true, match: 'nova' },
+      currentPassword: { requiredIf: 'newPassword' },
+      newPassword: { required: true, password: true },
+      confirmNewPassword: { required: true, match: 'newPassword' },
     },
-    fieldMap: { currentPassword: 'atual', newPassword: 'nova' },
-    action: ({ atual, nova }) => changePassword({ currentPassword: atual, newPassword: nova }),
+    fieldMap: { currentPassword: 'currentPassword', newPassword: 'newPassword' },
+    action: ({ currentPassword, newPassword }) => changePassword({ currentPassword, newPassword }),
     onSuccess: (data, values, { toast }) => {
-      f.setValues({ atual: '', nova: '', nova2: '' });
+      f.setValues({ currentPassword: '', newPassword: '', confirmNewPassword: '' });
       toast('Senha alterada.');
       router.refresh();
     },
   });
   return (
     <form className="form" onSubmit={f.submit} noValidate>
-      <PasswordInput label="Senha atual" autoComplete="current-password" {...f.field('atual')} />
+      <PasswordInput label="Senha atual" autoComplete="current-password" {...f.field('currentPassword')} />
       <div className="row2">
-        <PasswordInput label="Nova senha" autoComplete="new-password" placeholder="Mínimo de 8 caracteres" showStrength {...f.field('nova')} />
-        <PasswordInput label="Confirme a nova senha" autoComplete="new-password" {...f.field('nova2')} />
+        <PasswordInput label="Nova senha" autoComplete="new-password" placeholder="Mínimo de 8 caracteres" showStrength {...f.field('newPassword')} />
+        <PasswordInput label="Confirme a nova senha" autoComplete="new-password" {...f.field('confirmNewPassword')} />
       </div>
       <div className="btns"><Button type="submit" busy={f.busy}>{f.busy ? 'Alterando…' : 'Alterar senha'}</Button></div>
     </form>
@@ -79,8 +80,8 @@ function PasswordForm() {
 export default function SettingsForm({ user }) {
   return (
     <div className="settings">
-      <section className="card setsec" aria-labelledby="perfil-title">
-        <div className="about"><h2 className="sec" id="perfil-title">Perfil</h2><p>Seu nome aparece na assinatura das listas enviadas aos clientes.</p></div>
+      <section className="card setsec" aria-labelledby="profile-title">
+        <div className="about"><h2 className="sec" id="profile-title">Perfil</h2><p>{user.role === 'ADMIN' ? 'Seu nome aparece na assinatura das listas enviadas aos clientes.' : 'Gerencie os dados da sua conta.'}</p></div>
         <ProfileForm key={user.id} user={user} />
       </section>
       <section className="card setsec">
@@ -88,7 +89,7 @@ export default function SettingsForm({ user }) {
         <PasswordForm key={user.id} />
       </section>
       <div className="savebar">
-        <Button variant="ghost" href="/dashboard">Cancelar</Button>
+        <Button variant="ghost" href={getHomePath(user)}>Cancelar</Button>
       </div>
     </div>
   );

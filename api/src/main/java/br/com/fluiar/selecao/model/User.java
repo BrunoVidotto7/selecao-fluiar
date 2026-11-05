@@ -1,6 +1,8 @@
 package br.com.fluiar.selecao.model;
 
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -27,6 +29,11 @@ public class User {
 
     private UUID officeId;
 
+    @Enumerated(EnumType.STRING)
+    private UserRole role;
+
+    private UUID clientId;
+
     private String name;
 
     private String email;
@@ -45,10 +52,32 @@ public class User {
     }
 
     public User(UUID officeId, String name, String email, String passwordHash) {
+        this(officeId, null, UserRole.ADMIN, name, email, passwordHash);
+    }
+
+    private User(UUID officeId, UUID clientId, UserRole role, String name, String email, String passwordHash) {
         this.officeId = officeId;
+        this.clientId = clientId;
+        this.role = role;
         this.name = name;
         this.email = email;
         this.passwordHash = passwordHash;
+    }
+
+    public static User admin(UUID officeId, String name, String email, String passwordHash) {
+        return new User(officeId, null, UserRole.ADMIN, name, email, passwordHash);
+    }
+
+    public static User client(UUID officeId, UUID clientId, String name, String email, String passwordHash) {
+        return new User(officeId, clientId, UserRole.CLIENT, name, email, passwordHash);
+    }
+
+    public UserRole getRole() {
+        return role;
+    }
+
+    public UUID getClientId() {
+        return clientId;
     }
 
     public UUID getId() {

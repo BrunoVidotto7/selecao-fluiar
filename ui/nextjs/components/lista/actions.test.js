@@ -30,7 +30,7 @@ test('rotation posts once to the private UUID endpoint and returns the opaque to
   );
   expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer private-jwt');
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/my-lists'], ['/my-lists/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
 });
 

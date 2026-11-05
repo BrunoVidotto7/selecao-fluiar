@@ -18,6 +18,8 @@ public class TokenService {
 
     public static final String OFFICE_ID_CLAIM = "office_id";
     public static final String CREDENTIALS_VERSION_CLAIM = "cv";
+    public static final String ROLE_CLAIM = "role";
+    public static final String CLIENT_ID_CLAIM = "client_id";
 
     private final JwtEncoder jwtEncoder;
     private final Clock clock;
@@ -35,15 +37,18 @@ public class TokenService {
         Instant issuedAt = clock.instant().truncatedTo(ChronoUnit.SECONDS);
         Instant expiresAt = issuedAt.plus(lifetime);
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
+        JwtClaimsSet.Builder claims = JwtClaimsSet.builder()
                 .subject(user.getId().toString())
                 .claim(OFFICE_ID_CLAIM, user.getOfficeId().toString())
                 .claim(CREDENTIALS_VERSION_CLAIM, user.getCredentialsVersion())
+                .claim(ROLE_CLAIM, user.getRole().name())
                 .issuedAt(issuedAt)
-                .expiresAt(expiresAt)
-                .build();
+                .expiresAt(expiresAt);
+        if (user.getClientId() != null) {
+            claims.claim(CLIENT_ID_CLAIM, user.getClientId().toString());
+        }
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).build();
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
+        String token = jwtEncoder.encode(JwtEncoderParameters.from(header, claims.build())).getTokenValue();
 
         return new IssuedToken(token, expiresAt);
     }

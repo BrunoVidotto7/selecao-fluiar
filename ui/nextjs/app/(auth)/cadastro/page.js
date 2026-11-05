@@ -1,3 +1,2 @@
-import { SignupForm } from '@/components/auth/AuthForms';
-export const metadata = { title: 'Criar conta' };
-export default function Page() { return <SignupForm />; }
+import { redirect } from 'next/navigation';
+export default function Page() { redirect('/login'); }

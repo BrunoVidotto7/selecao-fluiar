@@ -43,8 +43,8 @@ class OfficeControllerTest extends ApiIntegrationTest {
 
     @Test
     void getOfficeListsMembers() {
-        signUp(MARINA_NAME, MARINA_EMAIL);
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestOffice(paula);
 
@@ -57,8 +57,8 @@ class OfficeControllerTest extends ApiIntegrationTest {
 
     @Test
     void getOfficeListsMembersByName() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        inviteMember(paula, ANA_NAME, ANA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        createAdminInOffice(paula, ANA_NAME, ANA_EMAIL);
 
         var result = requestOffice(paula);
 
@@ -69,7 +69,7 @@ class OfficeControllerTest extends ApiIntegrationTest {
 
     @Test
     void renameOffice() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestRename(paula, NEW_OFFICE_NAME);
 
@@ -87,7 +87,7 @@ class OfficeControllerTest extends ApiIntegrationTest {
     @ParameterizedTest
     @MethodSource("invalidOfficeNames")
     void renameReportsInvalidName(String name, String expectedMessage) {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestRename(paula, name);
 
@@ -96,146 +96,11 @@ class OfficeControllerTest extends ApiIntegrationTest {
     }
 
     @Test
-    void inviteSendsEmailAndShowsPendingInvitation() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-
-        var result = requestInvitation(paula, ISABELA_EMAIL_AS_TYPED);
-
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        assertThat(result).bodyJson().extractingPath("$.email").isEqualTo(ISABELA_EMAIL);
-        assertThat(result).bodyJson().extractingPath("$.createdAt").asString().isNotBlank();
-        SimpleMailMessage email = lastEmailTo(ISABELA_EMAIL);
-        assertThat(email.getFrom()).isEqualTo("nao-responda@fluiar.com.br");
-        assertThat(email.getSubject())
-                .isEqualTo("Convite para o escritório Escritório de Paula Hooper — Seleção Fluiar");
-        assertThat(email.getText())
-                .startsWith("Paula Hooper convidou você para participar do escritório Escritório de Paula Hooper"
-                        + " na Seleção Fluiar.")
-                .contains(INVITATION_LINK_PREFIX);
-        var invitations = requestInvitations(paula);
-        assertThat(invitations).hasStatus(HttpStatus.OK);
-        assertThat(invitations).bodyJson().extractingPath("$[*].id").asArray()
-                .containsExactly(readJson(result, "$.id"));
-    }
-
-    @Test
-    void invitationExpiresSevenDaysAfterItIsSent() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        Instant sentAfter = Instant.now();
-
-        var result = requestInvitation(paula, ISABELA_EMAIL);
-
-        Instant sentBefore = Instant.now();
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        Instant expiresAt = Instant.parse(readJson(result, "$.expiresAt"));
-        assertThat(expiresAt).isBetween(sentAfter.plus(INVITATION_VALIDITY), sentBefore.plus(INVITATION_VALIDITY));
-    }
-
-    /**
-     * The long e-mail keeps every part within the e-mail format limits (64-character local part, 63-character domain
-     * labels), so only the 254-character limit fails.
-     */
-    static Stream<Arguments> invalidInvitationEmails() {
-        String longEmail = "i".repeat(64) + "@" + ("d".repeat(63) + ".").repeat(3) + "com.br";
-        return Stream.of(
-                Arguments.of(" ", "Preencha este campo."),
-                Arguments.of("isabela@", "Digite um e-mail válido, como nome@email.com."),
-                Arguments.of(longEmail, "Use no máximo 254 caracteres."));
-    }
-
-    @ParameterizedTest
-    @MethodSource("invalidInvitationEmails")
-    void inviteReportsInvalidEmail(String email, String expectedMessage) {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-
-        var result = requestInvitation(paula, email);
-
-        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.errors.email").isEqualTo(expectedMessage);
-    }
-
-    @Test
-    void inviteRejectsEmailThatAlreadyHasAccount() {
-        signUp(ISABELA_NAME, ISABELA_EMAIL);
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-
-        var result = requestInvitation(paula, ISABELA_EMAIL_AS_TYPED);
-
-        assertThat(result).hasStatus(HttpStatus.CONFLICT);
-        assertThat(result).bodyJson().extractingPath("$.errors.email").isEqualTo("Este e-mail já tem uma conta.");
-        verify(mailSender, never()).send(any(SimpleMailMessage.class));
-    }
-
-    @Test
-    void invitingAgainReplacesPreviousInvitation() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var firstInvitation = invite(paula, ISABELA_EMAIL);
-        var secondInvitation = invite(paula, ISABELA_EMAIL);
-
-        var invitations = requestInvitations(paula);
-
-        assertThat(invitations).hasStatus(HttpStatus.OK);
-        assertThat(invitations).bodyJson().extractingPath("$[*].id").asArray().containsExactly(secondInvitation.id());
-        assertThat(requestInspection(firstInvitation.token())).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(requestInspection(secondInvitation.token())).hasStatus(HttpStatus.OK);
-    }
-
-    @Test
-    void revokeInvalidatesInvitation() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var invitation = invite(paula, ISABELA_EMAIL);
-
-        var result = requestRevoke(paula, invitation.id());
-
-        assertThat(result).hasStatus(HttpStatus.NO_CONTENT);
-        assertThat(requestInspection(invitation.token())).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(requestInvitations(paula)).bodyJson().extractingPath("$").asArray().isEmpty();
-    }
-
-    @Test
-    void revokeInvitationOfAnotherOfficeIsNotFound() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
-        var invitation = invite(paula, ISABELA_EMAIL);
-
-        var result = requestRevoke(marina, invitation.id());
-
-        assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(requestInspection(invitation.token())).hasStatus(HttpStatus.OK);
-    }
-
-    /** Both revokes wait for another transaction's lock on the invitation, so they reach the delete together. */
-    @Test
-    void overlappingRevokesOfTheSameInvitationDeleteItOnce() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var invitation = invite(paula, ISABELA_EMAIL);
-
-        var results = requestsDuringConcurrentTransaction(() -> jdbc.queryForList(LOCK_INVITATIONS), List.of(
-                () -> requestRevoke(paula, invitation.id()),
-                () -> requestRevoke(paula, invitation.id())));
-
-        assertThat(statusesOf(results)).containsExactlyInAnyOrder(HttpStatus.NO_CONTENT, HttpStatus.NOT_FOUND);
-        assertThat(requestInspection(invitation.token())).hasStatus(HttpStatus.BAD_REQUEST);
-    }
-
-    @Test
-    void invitationsOfAnotherOfficeAreNotListed() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
-        invite(paula, ISABELA_EMAIL);
-
-        var result = requestInvitations(marina);
-
-        assertThat(result).hasStatus(HttpStatus.OK);
-        assertThat(result).bodyJson().extractingPath("$").asArray().isEmpty();
-    }
-
-    /** Invites the e-mail and returns the id of the invitation and the token of the link sent by e-mail. */
-    private SentInvitation invite(TestSession owner, String email) {
-        var result = requestInvitation(owner, email);
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-
-        return new SentInvitation(readJson(result, "$.id"), extractToken(lastEmailTo(email).getText()));
+    void officeMemberInvitationsAreRetired() {
+        var admin = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        assertThat(mvc.post().uri("/api/office/invitations").header(HttpHeaders.AUTHORIZATION, bearer(admin))
+                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("email", ISABELA_EMAIL))).exchange())
+                .hasStatus(HttpStatus.NOT_FOUND);
     }
 
     private MvcTestResult requestOffice(TestSession session) {

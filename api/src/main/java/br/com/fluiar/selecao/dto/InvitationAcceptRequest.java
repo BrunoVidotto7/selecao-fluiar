@@ -1,15 +1,15 @@
 package br.com.fluiar.selecao.dto;
 
-import br.com.fluiar.selecao.model.User;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonCreator;
+import tools.jackson.databind.JsonNode;
 
-/** The e-mail is not part of the request: the new account uses the invited e-mail. */
-public record InvitationAcceptRequest(
-        @NotBlank @Size(max = User.NAME_MAX_LENGTH) String name,
-        @ValidPassword String password) {
-
-    public InvitationAcceptRequest {
-        name = Inputs.text(name);
+public record InvitationAcceptRequest(@ValidPassword String password) {
+    @JsonCreator(mode = JsonCreator.Mode.DELEGATING)
+    public static InvitationAcceptRequest from(JsonNode body) {
+        if (body == null || !body.isObject() || body.size() != 1 || !body.has("password")
+                || !body.get("password").isTextual()) {
+            throw new IllegalArgumentException("Expected only a password string.");
+        }
+        return new InvitationAcceptRequest(body.get("password").textValue());
     }
 }

@@ -19,6 +19,13 @@ public interface ProductRepository extends JpaRepository<Product, UUID> {
             """)
     Optional<Product> findInOffice(UUID id, UUID officeId);
 
+    @Query("""
+            select p from Product p join fetch p.room r join fetch r.list l join fetch l.client c
+            where c.officeId = :officeId and p.id =
+                (select image.productId from ProductImage image where image.id = :imageId)
+            """)
+    Optional<Product> findByImageInOffice(UUID imageId, UUID officeId);
+
     /**
      * Deletes in one statement and returns how many products it deleted: 0 when the product is already gone, for
      * example because a concurrent request deleted it first.

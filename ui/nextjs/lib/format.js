@@ -1,3 +1,4 @@
+import { isUuid } from './route-input';
 export const brl = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 export const pct = (total, done) => (total ? Math.round((100 * done) / total) : 0);
 export const initials = (name) => {
@@ -48,4 +49,7 @@ export function formatUpdatedAt(iso, now = new Date()) {
   return shortDate(date, false);
 }
 
-export const imageSource = (imageUrl) => imageUrl == null ? null : new URL(imageUrl, process.env.NEXT_PUBLIC_API_URL).href;
+export const imageSource = (imageUrl) => {
+  const match = typeof imageUrl === 'string' ? imageUrl.match(/^\/api\/images\/([0-9a-f-]+)$/i) : null;
+  return match && isUuid(match[1]) ? `/images/${match[1]}` : null;
+};

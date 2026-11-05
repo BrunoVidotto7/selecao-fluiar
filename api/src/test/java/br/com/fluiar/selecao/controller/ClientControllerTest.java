@@ -48,7 +48,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void createClientNormalizesEmailAndPhone() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestCreate(paula, Map.of(
                 "name", SERGIO_NAME, "email", " Sergio.Hooper@Gmail.com ", "phone", "(31) 98842-1170"));
@@ -63,7 +63,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void createClientReportsInvalidFields() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestCreate(paula, INVALID_CLIENT_DATA);
 
@@ -72,7 +72,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void createClientRejectsMalformedJson() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = mvc.post().uri("/api/clients")
                 .header(HttpHeaders.AUTHORIZATION, bearer(paula))
@@ -86,8 +86,8 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void listClientsShowsOfficeClients() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         createClient(paula, SERGIO_NAME);
         createClient(paula, HELENA_NAME);
         createClient(marina, CAMILA_NAME);
@@ -102,9 +102,9 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void colleaguesShareClients() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
-        var isabela = inviteMember(paula, ISABELA_NAME, ISABELA_EMAIL);
+        var isabela = createAdminInOffice(paula, ISABELA_NAME, ISABELA_EMAIL);
 
         var result = requestClients(isabela);
 
@@ -114,7 +114,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void getClientReturnsDetail() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestClient(paula, clientId);
@@ -126,7 +126,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void getClientShowsItsLists() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         createClient(paula, HELENA_NAME);
         storeList(clientId, LIST_NAME);
@@ -139,7 +139,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void clientIdThatIsNotAUuidIsRejected() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = mvc.get().uri("/api/clients/{id}", NOT_A_UUID)
                 .header(HttpHeaders.AUTHORIZATION, bearer(paula))
@@ -151,7 +151,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateClientChangesData() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         storeUpdatedAt(clientId, OLDER_UPDATE);
 
@@ -168,7 +168,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateClientReportsInvalidFields() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestUpdate(paula, clientId, INVALID_CLIENT_DATA);
@@ -178,7 +178,7 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void deleteClientRemovesIt() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestDelete(paula, clientId);
@@ -189,8 +189,8 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     @Test
     void clientOfAnotherOfficeIsNotFound() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         assertThat(requestClient(marina, clientId)).hasStatus(HttpStatus.NOT_FOUND);
@@ -205,7 +205,7 @@ class ClientControllerTest extends ApiIntegrationTest {
     /** Both deletes wait for another transaction's lock on the client, so they reach the delete together. */
     @Test
     void overlappingDeletesOfTheSameClientDeleteItOnce() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var results = requestsDuringConcurrentTransaction(() -> jdbc.queryForList(LOCK_CLIENTS), List.of(
@@ -222,7 +222,7 @@ class ClientControllerTest extends ApiIntegrationTest {
      */
     @Test
     void updateOfAClientDeletedMeanwhileIsNotFound() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var results = requestsDuringConcurrentTransaction(

@@ -2,7 +2,7 @@
 
 REST API of Seleção Fluiar: interior architects manage clients and per-room shopping lists.
 Java 25, Spring Boot 4.1, PostgreSQL 18, Flyway, and Spring Security with JWTs that this API signs itself.
-The UI in `../ui/nextjs/` does not call this API yet. Repo-wide rules (git, the UI) are in `../AGENTS.md`.
+The UI in `../ui/nextjs/` calls this API through server requests. Repo-wide rules (git, the UI) are in `../AGENTS.md`.
 
 Run every command from `api/`.
 
@@ -53,8 +53,9 @@ Only what file names do not tell you:
   by the git rules in `../AGENTS.md`.
 - For a new resource, copy `ClientController`, `ClientService`, `ClientRepository`, `model/Client`,
   `dto/ClientRequest` and `dto/ClientResponse`. For its tests, copy `ClientControllerTest`.
-- `config/SecurityConfig` `PUBLIC_PATHS`: the only paths that work without a token. Every other path needs
-  `Authorization: Bearer <token>`.
+- `config/SecurityConfig` `PUBLIC_PATHS`: only authentication, health and documentation are public. Other paths need
+  `Authorization: Bearer <token>`. `/api/client/**` requires CLIENT, administrative resources require
+  ADMIN; `/api/me`, share resolution and image reads accept both roles.
 
 ## Code rules
 
@@ -91,10 +92,15 @@ Only what file names do not tell you:
 - No Lombok, no MapStruct, no interfaces for services. Name magic numbers and strings as constants.
   Comment only a "why" that is not obvious.
 
+Client accounts bind to one client in the same office. Client list writes lock the list before
+rechecking ownership. `clientNotes` is separate from internal `notes`; purchase and notes use
+independent strict payloads. Invitations bind to the stored client contact and accept only a password.
+Admins are provisioned explicitly with `ops/provision-admin.sql`; there is no public signup.
+
 ## Test rules
 
 - API tests extend `support/ApiIntegrationTest` and call the real endpoints with `MockMvcTester`. Use its
-  helpers (`signUp`, `inviteMember`, `createClient`, `createList`, `createRoom`, `createProduct`, `bearer`,
+  helpers (`createAdmin`, `createClientAccount`, `inviteClient`, `createClient`, `createList`, `createRoom`, `createProduct`, `bearer`,
   `readJson`, `lastEmailTo`, `extractToken`) and add new shared helpers there.
 - Every test class shares one Spring context and one PostgreSQL container. A `@MockitoBean`,
   `@TestPropertySource` or other context setting in a single class starts a second context and container.

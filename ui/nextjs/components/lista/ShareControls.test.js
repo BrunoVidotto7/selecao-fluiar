@@ -22,7 +22,7 @@ function deferred() {
 const viewOf = (props = {}) => (
   <FeedbackProvider><ShareControls listId={LIST.id} shareToken={LIST.shareToken} {...props} /></FeedbackProvider>
 );
-const linkField = () => screen.getByRole('textbox', { name: 'Link público' });
+const linkField = () => screen.getByRole('textbox', { name: 'Link da lista' });
 const copy = () => fireEvent.click(screen.getByRole('button', { name: 'Copiar link' }));
 const requestRotation = () => fireEvent.click(screen.getByRole('button', { name: 'Gerar novo link' }));
 const confirmRotation = () => fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Gerar novo link' }));

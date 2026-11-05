@@ -2,19 +2,14 @@ package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ListDetailResponse;
 import br.com.fluiar.selecao.dto.ListSummaryResponse;
-import br.com.fluiar.selecao.dto.PublicListResponse;
 import br.com.fluiar.selecao.dto.ShareTokenResponse;
 import br.com.fluiar.selecao.dto.ShoppingListRequest;
 import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.exception.ErrorMessages;
 import br.com.fluiar.selecao.model.Client;
-import br.com.fluiar.selecao.model.Office;
 import br.com.fluiar.selecao.model.ShoppingList;
-import br.com.fluiar.selecao.model.User;
 import br.com.fluiar.selecao.repository.ClientRepository;
-import br.com.fluiar.selecao.repository.OfficeRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
-import br.com.fluiar.selecao.repository.UserRepository;
 import br.com.fluiar.selecao.security.SecureTokens;
 import java.util.List;
 import java.util.UUID;
@@ -29,15 +24,10 @@ public class ShoppingListService {
 
     private final ShoppingListRepository listRepository;
     private final ClientRepository clientRepository;
-    private final OfficeRepository officeRepository;
-    private final UserRepository userRepository;
 
-    public ShoppingListService(ShoppingListRepository listRepository, ClientRepository clientRepository,
-            OfficeRepository officeRepository, UserRepository userRepository) {
+    public ShoppingListService(ShoppingListRepository listRepository, ClientRepository clientRepository) {
         this.listRepository = listRepository;
         this.clientRepository = clientRepository;
-        this.officeRepository = officeRepository;
-        this.userRepository = userRepository;
     }
 
     public List<ListSummaryResponse> list(UUID officeId) {
@@ -81,15 +71,6 @@ public class ShoppingListService {
         if (deleted == 0) {
             throw ApiException.notFound();
         }
-    }
-
-    /** No office filter: whoever has the link may see the list, and rotating the token revokes the old link. */
-    public PublicListResponse getPublic(String shareToken) {
-        ShoppingList list = listRepository.findByShareToken(shareToken).orElseThrow(ApiException::notFound);
-        Office office = officeRepository.findById(list.getClient().getOfficeId()).orElseThrow(ApiException::notFound);
-        List<User> members = userRepository.findByOfficeIdOrderByNameAsc(office.getId());
-
-        return PublicListResponse.of(list, office, members);
     }
 
     /** Gives the list a new link; the old link stops working. */

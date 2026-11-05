@@ -2,7 +2,7 @@
 import { actionResult, ApiError, apiRequest } from '@/lib/api.server';
 import { isUuid } from '@/lib/route-input';
 import { revalidateWorkspaceData } from '@/lib/revalidate.server';
-import { validateProductImage } from '@/lib/validation';
+import { validateProductImage, validateClientNotes } from '@/lib/validation';
 
 const HTTP_BAD_REQUEST = 400;
 const HTTP_NOT_FOUND = 404;
@@ -124,5 +124,20 @@ export async function deleteProductImage(listId, productId) {
     await requireProductInList(listId, productId);
     await apiRequest(`/api/products/${productId}/image`, { method: 'DELETE' });
     revalidateWorkspaceData();
+  });
+}
+
+export async function saveProductClientNotes(listId, productId, clientNotes) {
+  return actionResult(async () => {
+    requireId(listId);
+    requireId(productId);
+    const error = validateClientNotes(clientNotes);
+    if (error) throw new ApiError(HTTP_BAD_REQUEST, error, { clientNotes: error });
+    await requireProductInList(listId, productId);
+    const product = await apiRequest(`/api/products/${productId}/client-notes`, {
+      method: 'PUT', body: { clientNotes: clientNotes?.trim() || null },
+    });
+    revalidateWorkspaceData();
+    return product;
   });
 }

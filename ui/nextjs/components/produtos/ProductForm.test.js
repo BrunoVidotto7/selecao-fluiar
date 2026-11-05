@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import ProductForm from './ProductForm';
-import NewProductPage from '@/app/(app)/listas/[id]/produtos/novo/page';
-import EditProductPage from '@/app/(app)/listas/[id]/produtos/[produtoId]/editar/page';
+import NewProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/novo/page';
+import EditProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/[produtoId]/editar/page';
 import { FeedbackProvider } from '../feedback/Feedback';
 import { LIST, ROOM, PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct } from './actions';
@@ -24,6 +24,7 @@ vi.mock('../listas/queries.server', () => ({ getList: vi.fn() }));
 const PARTIAL_COPY = 'O produto foi salvo, mas a imagem não foi atualizada. Tente novamente.';
 const MAX_BYTES = 5 * 1024 * 1024;
 const IMAGE_URL = '/api/images/99999999-9999-4999-8999-999999999999';
+const LOCAL_IMAGE_URL = '/images/99999999-9999-4999-8999-999999999999';
 const newProductPage = (query = {}) => NewProductPage({
   params: Promise.resolve({ id: LIST.id }), searchParams: Promise.resolve(query),
 });
@@ -260,7 +261,7 @@ test('editing shows API values, object links, image path and bought state withou
   expect(screen.getByLabelText(/Observações/).value).toBe('Conferir as medidas.');
   expect(screen.getByLabelText('Link da loja').value).toBe('https://example.com/batedeira');
   expect(screen.getByRole('radio', { name: 'Comprado' }).checked).toBe(true);
-  expect(screen.getByRole('img', { name: 'Prévia do produto' }).src).toBe('http://localhost:8080' + IMAGE_URL);
+  expect(screen.getByRole('img', { name: 'Prévia do produto' }).getAttribute('src')).toBe(LOCAL_IMAGE_URL);
   await submit();
   expect(saveProduct.mock.calls[0][1]).toBe(PRODUCT.id);
   expect(saveProduct.mock.calls[0][2]).toEqual({
@@ -323,7 +324,7 @@ test('JSON saving completes before multipart upload and a pending submit cannot 
   expect(push).not.toHaveBeenCalled();
   await act(async () => { uploading.resolve({ ok: true, data: { imageUrl: IMAGE_URL } }); });
   expect(push).toHaveBeenCalledExactlyOnceWith(`/listas/${LIST.id}`);
-  expect(screen.getByRole('img', { name: 'Prévia do produto' }).src).toBe('http://localhost:8080' + IMAGE_URL);
+  expect(screen.getByRole('img', { name: 'Prévia do produto' }).getAttribute('src')).toBe(LOCAL_IMAGE_URL);
   expect(revokeUrl).toHaveBeenCalledWith('blob:preview');
 });
 

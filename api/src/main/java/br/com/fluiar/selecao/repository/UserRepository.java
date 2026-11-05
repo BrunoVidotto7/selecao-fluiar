@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.repository;
 
 import br.com.fluiar.selecao.model.User;
+import br.com.fluiar.selecao.model.UserRole;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
@@ -15,10 +16,9 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     boolean existsByEmail(String email);
 
-    List<User> findByOfficeIdOrderByNameAsc(UUID officeId);
+    List<User> findByOfficeIdAndRoleOrderByNameAsc(UUID officeId, UserRole role);
 
-    @Query("select u.credentialsVersion from User u where u.id = :id")
-    Optional<Integer> findCredentialsVersion(UUID id);
+    Optional<User> findByClientId(UUID clientId);
 
     /**
      * Loads the user and locks its row until the transaction ends. Every flow that writes the account uses it, so

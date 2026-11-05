@@ -56,7 +56,7 @@ class DashboardControllerTest extends ApiIntegrationTest {
      */
     @Test
     void dashboardSummarizesOffice() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID sergioId = createClient(paula, SERGIO_NAME);
         UUID helenaId = createClient(paula, HELENA_NAME);
         jdbc.update(MOVE_CLIENT_CREATION_TO_40_DAYS_AGO, helenaId);
@@ -90,7 +90,7 @@ class DashboardControllerTest extends ApiIntegrationTest {
     /** The first client and the first list are updated earlier than the others, so they are the ones left out. */
     @Test
     void recentItemsAreLimitedToFive() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         List<UUID> clientIds = new ArrayList<>();
         List<UUID> listIds = new ArrayList<>();
         for (int number = 1; number <= CLIENTS_OVER_RECENT_LIMIT; number++) {
@@ -118,7 +118,7 @@ class DashboardControllerTest extends ApiIntegrationTest {
      */
     @Test
     void clientsCreatedThisMonthUseTheSaoPauloMonth() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         Instant monthStart = YearMonth.now(clock).atDay(1).atStartOfDay(clock.getZone()).toInstant();
         storeClientCreatedAt(createClient(paula, SERGIO_NAME), monthStart);
         storeClientCreatedAt(createClient(paula, HELENA_NAME), monthStart.minus(TIME_BEFORE_MONTH_START));
@@ -132,7 +132,7 @@ class DashboardControllerTest extends ApiIntegrationTest {
 
     @Test
     void emptyOfficeReturnsZeros() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestDashboard(paula);
 
@@ -150,8 +150,8 @@ class DashboardControllerTest extends ApiIntegrationTest {
 
     @Test
     void dashboardCountsOnlyOwnOfficeData() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID paulaListId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         createProduct(paula, paulaListId, createRoom(paula, paulaListId, KITCHEN), MIXER);
         UUID marinaListId = createList(marina, createClient(marina, CAMILA_NAME), MARINA_LIST_NAME);

@@ -56,8 +56,8 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void meReturnsAuthenticatedUser() {
-        signUp(ISABELA_NAME, ISABELA_EMAIL);
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(ISABELA_NAME, ISABELA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = mvc.get().uri("/api/me").header(HttpHeaders.AUTHORIZATION, bearer(session));
 
@@ -75,7 +75,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void meWithTamperedTokenIsUnauthorized() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = mvc.get().uri("/api/me").header(HttpHeaders.AUTHORIZATION, bearer(session) + "x");
 
@@ -85,7 +85,7 @@ class AccountControllerTest extends ApiIntegrationTest {
     @ParameterizedTest
     @CsvSource({"PT11H, OK", "PT13H, UNAUTHORIZED"})
     void meAcceptsTokenOnlyUntilItExpires(Duration tokenAge, HttpStatus expectedStatus) {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestMe(regularTokenIssuedAgo(session, tokenAge));
 
@@ -94,7 +94,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void meWithTokenOfDeletedAccountIsUnauthorized() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         jdbc.update("DELETE FROM users WHERE id = ?", session.userId());
 
         var result = requestMe(session.token());
@@ -104,7 +104,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileChangesNameAndEmail() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, PAULA_NEW_NAME, PAULA_NEW_EMAIL, DEFAULT_PASSWORD);
 
@@ -116,8 +116,8 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileRejectsEmailOfAnotherAccount() {
-        signUp(ISABELA_NAME, ISABELA_EMAIL);
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(ISABELA_NAME, ISABELA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, PAULA_NAME, " ISABELA@fluiar.com.br", DEFAULT_PASSWORD);
 
@@ -127,7 +127,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileAcceptsOwnEmailInAnotherCase() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, PAULA_NAME, "PAULA@fluiar.com.br");
 
@@ -137,7 +137,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileReportsEachInvalidField() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, "", "paula@");
 
@@ -149,7 +149,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void changePasswordRequiresCurrentPassword() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestPasswordChange(session, WRONG_PASSWORD, NEW_PASSWORD);
 
@@ -160,7 +160,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void changePasswordReportsEachInvalidField() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestPasswordChange(session, "", "curta");
 
@@ -171,7 +171,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void changePasswordRevokesOldTokens() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestPasswordChange(session, DEFAULT_PASSWORD, NEW_PASSWORD);
 
@@ -183,7 +183,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void changePasswordIssuesRegularToken() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestPasswordChange(session, DEFAULT_PASSWORD, NEW_PASSWORD);
 
@@ -194,7 +194,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void profileUpdateDuringPasswordChangeKeepsTheNewPassword() throws Exception {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
         String newPasswordHash = passwordEncoder.encode(NEW_PASSWORD);
 
         var result = requestDuringConcurrentUserChange(session,
@@ -211,7 +211,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void passwordChangeDuringProfileUpdateKeepsTheNewName() throws Exception {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestDuringConcurrentUserChange(session,
                 user -> user.rename(PAULA_NEW_NAME),
@@ -228,7 +228,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileRequiresCurrentPasswordToChangeEmail() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, PAULA_NAME, PAULA_NEW_EMAIL);
 
@@ -240,8 +240,8 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileChecksThePasswordBeforeTellingTheEmailIsInUse() {
-        signUp(ISABELA_NAME, ISABELA_EMAIL);
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(ISABELA_NAME, ISABELA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, PAULA_NAME, ISABELA_EMAIL, WRONG_PASSWORD);
 
@@ -253,7 +253,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void updateProfileChangingOnlyTheNameNeedsNoPassword() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestProfileUpdate(session, PAULA_NEW_NAME, PAULA_EMAIL);
 
@@ -263,7 +263,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void changePasswordBlocksAfterTooManyGuesses() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             assertThat(requestPasswordChange(session, WRONG_PASSWORD, NEW_PASSWORD))
@@ -278,7 +278,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void emailChangeAndPasswordChangeShareTheAttemptBudget() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         for (int attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
             assertThat(requestProfileUpdate(session, PAULA_NAME, "paula." + attempt + "@fluiar.com.br", WRONG_PASSWORD))
@@ -294,7 +294,7 @@ class AccountControllerTest extends ApiIntegrationTest {
 
     @Test
     void successfulCurrentPasswordCheckClearsTheAttemptCount() {
-        var session = signUp(PAULA_NAME, PAULA_EMAIL);
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS - 1; attempt++) {
             assertThat(requestPasswordChange(session, WRONG_PASSWORD, NEW_PASSWORD))

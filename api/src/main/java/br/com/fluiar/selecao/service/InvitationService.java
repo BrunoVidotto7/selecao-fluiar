@@ -1,24 +1,19 @@
 package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.config.AppProperties;
-import br.com.fluiar.selecao.dto.AuthResponse;
-import br.com.fluiar.selecao.dto.InvitationAcceptRequest;
-import br.com.fluiar.selecao.dto.InvitationInfoResponse;
-import br.com.fluiar.selecao.dto.InvitationRequest;
-import br.com.fluiar.selecao.dto.InvitationResponse;
+import br.com.fluiar.selecao.dto.*;
+import br.com.fluiar.selecao.dto.ClientAccessResponse.Status;
 import br.com.fluiar.selecao.exception.ApiException;
+import br.com.fluiar.selecao.exception.ErrorMessages;
+import br.com.fluiar.selecao.model.Client;
 import br.com.fluiar.selecao.model.Office;
 import br.com.fluiar.selecao.model.OfficeInvitation;
 import br.com.fluiar.selecao.model.User;
-import br.com.fluiar.selecao.repository.OfficeInvitationRepository;
-import br.com.fluiar.selecao.repository.OfficeRepository;
-import br.com.fluiar.selecao.repository.UserRepository;
+import br.com.fluiar.selecao.repository.*;
 import br.com.fluiar.selecao.security.SecureTokens;
 import br.com.fluiar.selecao.security.TokenService;
 import java.time.Clock;
 import java.time.Duration;
-import java.time.Instant;
-import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,124 +23,127 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly = true)
 public class InvitationService {
-
     private static final Duration INVITATION_VALIDITY = Duration.ofDays(7);
-    private static final String INVITATION_PATH = "/convite?token=";
+    private static final String INVITATION_PATH = "/invitation?token=";
+    private static final String CLIENT_ID_FIELD = "clientId";
+    private static final String EMAIL_FIELD = "email";
 
-    private final OfficeInvitationRepository invitationRepository;
-    private final UserRepository userRepository;
-    private final OfficeRepository officeRepository;
+    private final OfficeInvitationRepository invitations;
+    private final ClientRepository clients;
+    private final UserRepository users;
+    private final OfficeRepository offices;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final Clock clock;
     private final String frontendUrl;
 
-    public InvitationService(
-            OfficeInvitationRepository invitationRepository,
-            UserRepository userRepository,
-            OfficeRepository officeRepository,
-            EmailService emailService,
-            PasswordEncoder passwordEncoder,
-            TokenService tokenService,
-            Clock clock,
-            AppProperties appProperties) {
-        this.invitationRepository = invitationRepository;
-        this.userRepository = userRepository;
-        this.officeRepository = officeRepository;
+    public InvitationService(OfficeInvitationRepository invitations, ClientRepository clients, UserRepository users,
+            OfficeRepository offices, EmailService emailService, PasswordEncoder passwordEncoder,
+            TokenService tokenService, Clock clock, AppProperties properties) {
+        this.invitations = invitations;
+        this.clients = clients;
+        this.users = users;
+        this.offices = offices;
         this.emailService = emailService;
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.clock = clock;
-        this.frontendUrl = appProperties.frontendUrl();
+        this.frontendUrl = properties.frontendUrl();
     }
 
-    /** A new invitation replaces the office's pending invitation for the same e-mail, so only the newest link works. */
+    public ClientAccessResponse getAccess(UUID officeId, UUID clientId) {
+        Client client = clients.findByIdAndOfficeId(clientId, officeId).orElseThrow(ApiException::notFound);
+        Optional<User> account = users.findByClientId(clientId);
+        if (account.isPresent()) {
+            return new ClientAccessResponse(Status.ACTIVE, account.get().getEmail(), null, null);
+        }
+        return invitations.findByClientId(clientId)
+                .map(invitation -> new ClientAccessResponse(invitation.isExpired(clock.instant()) ? Status.EXPIRED : Status.PENDING,
+                        client.getEmail(), invitation.getId(), invitation.getExpiresAt()))
+                .orElseGet(() -> new ClientAccessResponse(Status.NOT_INVITED, client.getEmail(), null, null));
+    }
+
     @Transactional
-    public InvitationResponse invite(UUID userId, UUID officeId, InvitationRequest request) {
-        invitationRepository.deleteByOfficeIdAndEmail(officeId, request.email());
-        // Checked after the delete: it waits for an acceptance of the old invitation, which creates the account.
-        rejectEmailWithAccount(request.email());
-
+    public InvitationResponse invite(UUID adminId, UUID officeId, UUID clientId) {
+        Client client = lockClient(officeId, clientId);
+        rejectActiveClient(clientId);
+        rejectEmailWithAccount(client.getEmail());
+        invitations.findByOfficeIdAndEmail(officeId, client.getEmail()).ifPresent(invitation -> {
+            if (!invitation.getClientId().equals(clientId)) {
+                throw ApiException.conflict(EMAIL_FIELD, ErrorMessages.INVITATION_EMAIL_IN_USE);
+            }
+        });
+        invitations.deleteByClientId(clientId);
         String token = SecureTokens.generate();
-        Instant expiresAt = clock.instant().plus(INVITATION_VALIDITY);
-        // Hibernate fills createdAt only when the insert runs; the response needs it now.
-        OfficeInvitation invitation = invitationRepository.saveAndFlush(
-                new OfficeInvitation(officeId, request.email(), userId, SecureTokens.hash(token), expiresAt));
-        sendInvitationEmail(invitation, token);
-
+        OfficeInvitation invitation = invitations.saveAndFlush(new OfficeInvitation(officeId, clientId,
+                client.getEmail(), adminId, SecureTokens.hash(token), clock.instant().plus(INVITATION_VALIDITY)));
+        Office office = offices.findById(officeId).orElseThrow(ApiException::notFound);
+        User inviter = users.findById(adminId).orElseThrow(ApiException::notFound);
+        emailService.sendInvitation(client.getEmail(), office.getName(), inviter.getName(), frontendUrl + INVITATION_PATH + token);
         return InvitationResponse.of(invitation);
     }
 
-    /** Expired invitations are listed too; the frontend shows their expiry date. */
-    public List<InvitationResponse> listPending(UUID officeId) {
-        return invitationRepository.findByOfficeIdOrderByCreatedAtDesc(officeId).stream()
-                .map(InvitationResponse::of)
-                .toList();
-    }
-
-    /** Answers 404 for an invitation of another office, and for one already accepted or revoked. */
     @Transactional
-    public void revoke(UUID officeId, UUID invitationId) {
-        int revoked = invitationRepository.deleteByIdAndOfficeId(invitationId, officeId);
-        if (revoked == 0) {
+    public void revoke(UUID officeId, UUID clientId, UUID invitationId) {
+        lockClient(officeId, clientId);
+        if (invitations.deleteForClient(invitationId, officeId, clientId) == 0) {
             throw ApiException.notFound();
         }
     }
 
     public InvitationInfoResponse inspect(String token) {
-        OfficeInvitation invitation = findValidInvitation(token);
-
-        return InvitationInfoResponse.of(invitation, officeOf(invitation), inviterOf(invitation));
+        OfficeInvitation invitation = requireValid(invitations.findByTokenHash(SecureTokens.hash(token)));
+        Client client = clients.findByIdAndOfficeId(invitation.getClientId(), invitation.getOfficeId())
+                .orElseThrow(ApiException::invalidLink);
+        requireCurrentRecipient(invitation, client);
+        Office office = offices.findById(invitation.getOfficeId()).orElseThrow(ApiException::invalidLink);
+        User inviter = users.findById(invitation.getInvitedByUserId()).orElseThrow(ApiException::invalidLink);
+        return InvitationInfoResponse.of(invitation, client, office, inviter);
     }
 
     @Transactional
     public AuthResponse accept(String token, InvitationAcceptRequest request) {
-        OfficeInvitation invitation = lockValidInvitation(token);
+        String hash = SecureTokens.hash(token);
+        var context = invitations.findClientContextByTokenHash(hash).orElseThrow(ApiException::invalidLink);
+        // Read only IDs first: the invitation must enter the persistence context after its lock is acquired.
+        Client client = clients.findByIdAndOfficeIdForUpdate(context.getClientId(), context.getOfficeId())
+                .orElseThrow(ApiException::invalidLink);
+        OfficeInvitation invitation = requireValid(invitations.findByTokenHashForUpdate(hash));
+        requireCurrentRecipient(invitation, client);
+        rejectActiveClient(client.getId());
         rejectEmailWithAccount(invitation.getEmail());
 
-        String passwordHash = passwordEncoder.encode(request.password());
-        User user = userRepository.save(
-                new User(invitation.getOfficeId(), request.name(), invitation.getEmail(), passwordHash));
-        invitationRepository.delete(invitation);
+        User user = users.save(User.client(invitation.getOfficeId(), client.getId(), client.getName(),
+                invitation.getEmail(), passwordEncoder.encode(request.password())));
+        invitations.delete(invitation);
+        Office office = offices.findById(invitation.getOfficeId()).orElseThrow(ApiException::invalidLink);
+        return AuthResponse.of(tokenService.issue(user, false), user, office);
+    }
 
-        return AuthResponse.of(tokenService.issue(user, false), user, officeOf(invitation));
+    private Client lockClient(UUID officeId, UUID clientId) {
+        return clients.findByIdAndOfficeIdForUpdate(clientId, officeId).orElseThrow(ApiException::notFound);
+    }
+
+    private void rejectActiveClient(UUID clientId) {
+        if (users.findByClientId(clientId).isPresent()) {
+            throw ApiException.conflict(CLIENT_ID_FIELD, ErrorMessages.CLIENT_ALREADY_ACTIVE);
+        }
     }
 
     private void rejectEmailWithAccount(String email) {
-        if (userRepository.existsByEmail(email)) {
+        if (users.existsByEmail(email)) {
             throw ApiException.emailInUse();
         }
     }
 
-    private void sendInvitationEmail(OfficeInvitation invitation, String token) {
-        emailService.sendInvitation(invitation.getEmail(), officeOf(invitation).getName(),
-                inviterOf(invitation).getName(), frontendUrl + INVITATION_PATH + token);
-    }
-
-    private OfficeInvitation findValidInvitation(String token) {
-        return requireValid(invitationRepository.findByTokenHash(SecureTokens.hash(token)));
-    }
-
-    /**
-     * Checks the invitation only after its lock is granted. An acceptance may wait behind another acceptance, a
-     * revoke or a new invitation, which can delete the invitation, and the invitation can expire during the wait.
-     */
-    private OfficeInvitation lockValidInvitation(String token) {
-        return requireValid(invitationRepository.findByTokenHashForUpdate(SecureTokens.hash(token)));
-    }
-
     private OfficeInvitation requireValid(Optional<OfficeInvitation> invitation) {
-        return invitation
-                .filter(found -> !found.isExpired(clock.instant()))
-                .orElseThrow(ApiException::invalidLink);
+        return invitation.filter(value -> !value.isExpired(clock.instant())).orElseThrow(ApiException::invalidLink);
     }
 
-    private Office officeOf(OfficeInvitation invitation) {
-        return officeRepository.findById(invitation.getOfficeId()).orElseThrow();
-    }
-
-    private User inviterOf(OfficeInvitation invitation) {
-        return userRepository.findById(invitation.getInvitedByUserId()).orElseThrow();
+    private static void requireCurrentRecipient(OfficeInvitation invitation, Client client) {
+        if (!invitation.getClientId().equals(client.getId()) || !invitation.getEmail().equals(client.getEmail())) {
+            throw ApiException.invalidLink();
+        }
     }
 }

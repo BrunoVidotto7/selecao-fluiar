@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.repository;
 
 import br.com.fluiar.selecao.dto.ListSummaryResponse;
+import br.com.fluiar.selecao.dto.ClientListSummaryResponse;
 import br.com.fluiar.selecao.model.ShoppingList;
 import jakarta.persistence.LockModeType;
 import java.util.List;
@@ -68,6 +69,18 @@ public interface ShoppingListRepository extends JpaRepository<ShoppingList, UUID
 
     @Query(SUMMARY_SELECT + "where c.officeId = :officeId and c.id = :clientId " + SUMMARY_GROUP_AND_ORDER)
     List<ListSummaryResponse> findSummariesByClient(UUID officeId, UUID clientId);
+
+    @Query("""
+            select new br.com.fluiar.selecao.dto.ClientListSummaryResponse(
+                l.id, l.name, l.description, count(p.id),
+                sum(case when p.bought = true then 1 else 0 end), l.updatedAt)
+            from ShoppingList l join l.client c
+            left join Room r on r.list = l left join Product p on p.room = r
+            where c.officeId = :officeId and c.id = :clientId
+            group by l.id, l.name, l.description, l.updatedAt
+            order by l.updatedAt desc
+            """)
+    List<ClientListSummaryResponse> findClientSummaries(UUID officeId, UUID clientId);
 
     /**
      * Deletes in one statement and returns how many lists it deleted. When a concurrent transaction deletes the same

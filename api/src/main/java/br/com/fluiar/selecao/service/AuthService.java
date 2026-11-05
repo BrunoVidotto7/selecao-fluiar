@@ -2,7 +2,6 @@ package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.AuthResponse;
 import br.com.fluiar.selecao.dto.LoginRequest;
-import br.com.fluiar.selecao.dto.SignupRequest;
 import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.model.Office;
 import br.com.fluiar.selecao.model.User;
@@ -23,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private static final Logger log = LoggerFactory.getLogger(AuthService.class);
-    private static final String DEFAULT_OFFICE_NAME_PREFIX = "Escritório de ";
     private static final String DUMMY_PASSWORD = "dummy-password";
 
     private final OfficeRepository officeRepository;
@@ -47,19 +45,6 @@ public class AuthService {
         this.dummyPasswordHash = passwordEncoder.encode(DUMMY_PASSWORD);
     }
 
-    @Transactional
-    public AuthResponse signUp(SignupRequest request) {
-        if (userRepository.existsByEmail(request.email())) {
-            throw ApiException.emailInUse();
-        }
-
-        Office office = officeRepository.save(new Office(defaultOfficeName(request.name())));
-        User user = userRepository.save(
-                new User(office.getId(), request.name(), request.email(), passwordEncoder.encode(request.password())));
-
-        return AuthResponse.of(tokenService.issue(user, false), user, office);
-    }
-
     public AuthResponse logIn(LoginRequest request) {
         if (!attemptLimiter.tryAcquire(Action.LOG_IN, request.email())) {
             log.info("Login blocked after too many attempts");
@@ -72,23 +57,6 @@ public class AuthService {
         Office office = officeRepository.findById(user.getOfficeId()).orElseThrow();
 
         return AuthResponse.of(tokenService.issue(user, request.rememberMe()), user, office);
-    }
-
-    /**
-     * The prefix plus a name of maximum length would not fit the office name column, so it is cut. The cut
-     * never splits an emoji or another character stored as two Java chars (a surrogate pair).
-     */
-    private static String defaultOfficeName(String userName) {
-        String officeName = DEFAULT_OFFICE_NAME_PREFIX + userName;
-        if (officeName.length() <= Office.NAME_MAX_LENGTH) {
-            return officeName;
-        }
-
-        int end = Office.NAME_MAX_LENGTH;
-        if (Character.isHighSurrogate(officeName.charAt(end - 1))) {
-            end--;
-        }
-        return officeName.substring(0, end);
     }
 
     private User authenticate(String email, String password) {

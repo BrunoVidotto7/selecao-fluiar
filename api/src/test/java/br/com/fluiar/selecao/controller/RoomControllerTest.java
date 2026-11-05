@@ -57,7 +57,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void createRoomAppendsAtTheEnd() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var kitchen = requestCreateRoom(paula, listId, KITCHEN);
@@ -75,7 +75,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void createRoomRejectsDuplicateNameIgnoringCase() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         createRoom(paula, listId, KITCHEN);
 
@@ -87,7 +87,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void sameRoomNameIsAllowedInAnotherList() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
         UUID otherListId = createList(paula, clientId, OTHER_LIST_NAME);
@@ -98,7 +98,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void createRoomReportsABlankName() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var result = requestCreateRoom(paula, listId, "  ");
@@ -109,7 +109,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void renameRoom() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -124,7 +124,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void renameRoomToNameOfAnotherRoomFails() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);
@@ -137,7 +137,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void renameRoomKeepingItsOwnNameSucceeds() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -149,7 +149,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void renameRoomReportsANameOverTheLimit() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -161,7 +161,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void deleteRoomRemovesItsProducts() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = productRepository.save(new Product(
@@ -179,7 +179,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void reorderRooms() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);
@@ -198,7 +198,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void reorderRejectsIncompleteOrRepeatedIds() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         createRoom(paula, listId, LAUNDRY);
@@ -215,7 +215,7 @@ class RoomControllerTest extends ApiIntegrationTest {
     /** The order has the right size and no repeats, but one id belongs to a room of another list. */
     @Test
     void reorderRejectsRoomOfAnotherList() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
@@ -230,7 +230,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void reorderRequiresRoomIds() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         createRoom(paula, listId, KITCHEN);
 
@@ -242,7 +242,7 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void roomChangesRefreshListUpdatedAt() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);
@@ -255,8 +255,8 @@ class RoomControllerTest extends ApiIntegrationTest {
 
     @Test
     void roomOfAnotherOfficeIsNotFound() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -276,7 +276,7 @@ class RoomControllerTest extends ApiIntegrationTest {
      */
     @Test
     void overlappingDeletesOfTheSameRoomDeleteItOnce() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -293,7 +293,7 @@ class RoomControllerTest extends ApiIntegrationTest {
     /** Another transaction deletes the room and commits only while the rename waits for it. */
     @Test
     void renameOfARoomDeletedMeanwhileIsNotFound() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
@@ -310,7 +310,7 @@ class RoomControllerTest extends ApiIntegrationTest {
     /** Both creations start while another transaction locks the list, so they overlap. */
     @Test
     void overlappingRoomCreationsGetConsecutivePositions() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var results = requestsDuringConcurrentTransaction(() -> jdbc.queryForList(LOCK_LISTS), List.of(
@@ -326,7 +326,7 @@ class RoomControllerTest extends ApiIntegrationTest {
     /** Both reorders start while another transaction locks the list, so they overlap. One of them wins entirely. */
     @Test
     void overlappingReordersLeaveEveryRoomInItsOwnPosition() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);
@@ -351,7 +351,7 @@ class RoomControllerTest extends ApiIntegrationTest {
      */
     @Test
     void renameDuringAReorderKeepsTheNewPositions() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         createRoom(paula, listId, LAUNDRY);
@@ -376,7 +376,7 @@ class RoomControllerTest extends ApiIntegrationTest {
      */
     @Test
     void deleteDuringAReorderFinishesWithoutDeadlock() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID laundryId = createRoom(paula, listId, LAUNDRY);

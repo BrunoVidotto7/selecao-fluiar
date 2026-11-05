@@ -10,6 +10,16 @@
 
 **Spec:** `docs/superpowers/specs/2026-11-04-client-access-design.md` (approved 2026-11-04).
 
+**Execution status:** Tasks 1–10 implemented inline in `feat/client-access`. See
+`.superpowers/sdd/2026-11-04-client-access/progress.md` for actual RED/GREEN and check evidence.
+The user explicitly waived integrated test execution after Docker socket access failed;
+these tests are authored and compiled, with database/runtime verification still pending.
+UI full tests, lint and build passed; available API tests passed. Independent source review
+finished without unresolved findings; overall verification remains NOT_VERIFIED for
+the unexecuted integrated and browser checks.
+The detailed checkboxes below preserve the original planned steps, rather than implying
+that every originally proposed integrated RED/GREEN command was executed.
+
 ## Global Constraints
 
 - Use English for code, routes, files, identifiers, comments and test names. Only user-facing UI strings, including validation/error copy, remain Brazilian Portuguese. The user's instruction overrides older UI naming rules.
@@ -298,4 +308,4 @@ expect(screen.queryByRole('button', { name: `Salvar observação de ${PRODUCT.na
 - Interfaces: clients use `clientNotes` everywhere; purchase PATCH and notes PUT are independent; client and admin DTOs intentionally differ; `role/clientId` survive all session-returning paths; the binary image adapter reuses the fixed origin without JSON parsing.
 - Review Focus: all five conditions above have explicit owning tests, including malformed identity, invitation races, post-lock ownership checks, local return paths and note draft preservation.
 - Scope: no dependencies, new auth platform, unrelated URL migration, real-time transport, audit model or production action. All new code paths/names are English; only UI copy is Portuguese.
-- Execution has not started. The user must review this plan and choose the execution method required by the writing-plans skill.
+- The user approved the plan and selected inline execution; current evidence is recorded in the execution status and durable ledger.

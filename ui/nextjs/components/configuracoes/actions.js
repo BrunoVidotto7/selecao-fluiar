@@ -1,6 +1,6 @@
 'use server';
 import { revalidatePath } from 'next/cache';
-import { actionResult, ApiError, apiRequest } from '@/lib/api.server';
+import { actionResult, ApiError, apiRequest, authenticatedUser, authenticatedSession } from '@/lib/api.server';
 import { setSession } from '@/lib/session.server';
 
 const HTTP_BAD_REQUEST = 400;
@@ -11,10 +11,6 @@ function requireStringFields(input, fields) {
       || fields.some((field) => typeof input[field] !== 'string')) {
     throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
   }
-}
-
-function sanitizedUser({ id, name, email, officeId, officeName }) {
-  return { id, name, email, officeId, officeName };
 }
 
 /**
@@ -34,7 +30,7 @@ export async function updateProfile(input) {
     });
     revalidatePath('/(app)', 'layout');
     revalidatePath('/listas/[id]', 'layout');
-    return sanitizedUser(user);
+    return authenticatedUser(user);
   });
 }
 
@@ -50,8 +46,9 @@ export async function changePassword(input) {
     const authResponse = await apiRequest('/api/me/password', {
       method: 'PUT', body: { currentPassword, newPassword },
     });
-    await setSession(authResponse, { persistent: false });
+    const session = authenticatedSession(authResponse);
+    await setSession(session, { persistent: false });
     revalidatePath('/(app)', 'layout');
-    return sanitizedUser(authResponse.user);
+    return session.user;
   });
 }

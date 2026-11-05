@@ -10,6 +10,7 @@ import br.com.fluiar.selecao.service.InvitationService;
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,14 +39,16 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     private InvitationService invitationService;
 
     private TestSession paula;
+    private UUID clientId;
     private String invitationId;
     private String token;
 
     @BeforeEach
     void paulaRenamesHerOfficeAndInvitesIsabela() {
-        paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         assertThat(requestRename(paula, OFFICE_NAME)).hasStatus(HttpStatus.OK);
-        var invitation = requestInvitation(paula, ISABELA_EMAIL);
+        clientId = createClient(paula, ISABELA_NAME, ISABELA_EMAIL);
+        var invitation = requestClientInvitation(paula, clientId);
         assertThat(invitation).hasStatus(HttpStatus.CREATED);
         invitationId = readJson(invitation, "$.id");
         token = extractToken(lastEmailTo(ISABELA_EMAIL).getText());
@@ -63,23 +66,23 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
 
     @Test
     void acceptCreatesMemberOfSameOffice() {
-        var result = requestInvitationAcceptance(token, ISABELA_NAME, ISABELA_PASSWORD);
+        var result = requestInvitationAcceptance(token, ISABELA_PASSWORD);
 
         assertThat(result).hasStatus(HttpStatus.CREATED);
         assertThat(result).bodyJson().extractingPath("$.user.officeId").isEqualTo(paula.officeId().toString());
         assertThat(result).bodyJson().extractingPath("$.user.name").isEqualTo(ISABELA_NAME);
         assertThat(result).bodyJson().extractingPath("$.user.email").isEqualTo(ISABELA_EMAIL);
         assertThat(requestOffice(paula)).bodyJson().extractingPath("$.members[*].name").asArray()
-                .containsExactly(ISABELA_NAME, PAULA_NAME);
-        assertThat(requestInvitations(paula)).bodyJson().extractingPath("$").asArray().isEmpty();
+                .containsExactly(PAULA_NAME);
+        assertThat(requestInvitations(paula)).bodyJson().extractingPath("$.status").isEqualTo("ACTIVE");
         assertThat(requestLogIn(ISABELA_EMAIL, ISABELA_PASSWORD)).hasStatus(HttpStatus.OK);
     }
 
     @Test
     void acceptFailsWhenEmailGotAnAccountMeanwhile() {
-        signUp(ISABELA_NAME, ISABELA_EMAIL);
+        createAdmin(ISABELA_NAME, ISABELA_EMAIL);
 
-        var result = requestInvitationAcceptance(token, ISABELA_NAME, ISABELA_PASSWORD);
+        var result = requestInvitationAcceptance(token, ISABELA_PASSWORD);
 
         assertThat(result).hasStatus(HttpStatus.CONFLICT);
         assertThat(result).bodyJson().extractingPath("$.errors.email").isEqualTo("Este e-mail já tem uma conta.");
@@ -87,10 +90,9 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
 
     @Test
     void acceptReportsEachInvalidField() {
-        var result = requestInvitationAcceptance(token, "", "curta");
+        var result = requestInvitationAcceptance(token, "curta");
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.errors.name").isEqualTo("Preencha este campo.");
         assertThat(result).bodyJson().extractingPath("$.errors.password").isEqualTo("Use entre 8 e 72 caracteres.");
     }
 
@@ -99,7 +101,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
         jdbc.update("update office_invitations set expires_at = now() - interval '1 minute'");
 
         var inspection = requestInspection(token);
-        var acceptance = requestInvitationAcceptance(token, ISABELA_NAME, ISABELA_PASSWORD);
+        var acceptance = requestInvitationAcceptance(token, ISABELA_PASSWORD);
 
         assertThat(inspection).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(inspection).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_LINK_MESSAGE);
@@ -115,8 +117,8 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     @Test
     void overlappingAcceptancesOfTheSameInvitationCreateOneAccount() throws Exception {
         var results = requestsDuringConcurrentTransaction(() -> jdbc.queryForList(LOCK_INVITATIONS), List.of(
-                () -> requestInvitationAcceptance(token, ISABELA_NAME, ISABELA_PASSWORD),
-                () -> requestInvitationAcceptance(token, ISABELA_NAME, CONCURRENT_PASSWORD)));
+                () -> requestInvitationAcceptance(token, ISABELA_PASSWORD),
+                () -> requestInvitationAcceptance(token, CONCURRENT_PASSWORD)));
 
         List<HttpStatus> statuses = statusesOf(results);
         assertThat(statuses).containsExactlyInAnyOrder(HttpStatus.CREATED, HttpStatus.BAD_REQUEST);
@@ -132,7 +134,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     @Test
     void acceptanceDuringRevokeIsRejected() throws Exception {
         var result = requestsDuringConcurrentTransaction(() -> jdbc.update(DELETE_INVITATIONS), List.of(
-                () -> requestInvitationAcceptance(token, ISABELA_NAME, ISABELA_PASSWORD))).getFirst();
+                () -> requestInvitationAcceptance(token, ISABELA_PASSWORD))).getFirst();
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_LINK_MESSAGE);
@@ -146,7 +148,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     @Test
     void invitationThatExpiresWhileTheAcceptanceWaitsIsRejected() throws Exception {
         var result = requestsDuringConcurrentTransaction(() -> jdbc.update(EXPIRE_INVITATIONS), List.of(
-                () -> requestInvitationAcceptance(token, ISABELA_NAME, ISABELA_PASSWORD))).getFirst();
+                () -> requestInvitationAcceptance(token, ISABELA_PASSWORD))).getFirst();
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_LINK_MESSAGE);
@@ -165,10 +167,10 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     @Test
     void invitingAgainWhileTheInvitationIsAcceptedIsRejected() throws Exception {
         var result = requestsDuringConcurrentTransaction(this::acceptIsabelasInvitation, List.of(
-                () -> requestInvitation(paula, ISABELA_EMAIL))).getFirst();
+                () -> requestClientInvitation(paula, clientId))).getFirst();
 
         assertThat(result).hasStatus(HttpStatus.CONFLICT);
-        assertThat(result).bodyJson().extractingPath("$.errors.email").isEqualTo("Este e-mail já tem uma conta.");
+        assertThat(result).bodyJson().extractingPath("$.errors.clientId").isEqualTo("Este cliente já tem acesso ativo.");
         assertThat(pendingInvitationsFor(ISABELA_EMAIL)).isZero();
         verify(mailSender, times(1)).send(any(SimpleMailMessage.class));
     }
@@ -178,7 +180,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
      * commits only after the request waits for that lock.
      */
     private void acceptIsabelasInvitation() {
-        invitationService.accept(token, new InvitationAcceptRequest(ISABELA_NAME, ISABELA_PASSWORD));
+        invitationService.accept(token, new InvitationAcceptRequest(ISABELA_PASSWORD));
     }
 
     private int accountsWithEmail(String email) {
@@ -190,7 +192,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     }
 
     private MvcTestResult requestRevoke(TestSession session, String invitationId) {
-        return mvc.delete().uri("/api/office/invitations/{id}", invitationId)
+        return mvc.delete().uri("/api/clients/{clientId}/invitations/{id}", clientId, invitationId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .exchange();
     }
@@ -212,7 +214,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
     }
 
     private MvcTestResult requestInvitations(TestSession session) {
-        return mvc.get().uri("/api/office/invitations").header(HttpHeaders.AUTHORIZATION, bearer(session)).exchange();
+        return mvc.get().uri("/api/clients/{clientId}/access", clientId).header(HttpHeaders.AUTHORIZATION, bearer(session)).exchange();
     }
 
     private MvcTestResult requestLogIn(String email, String password) {

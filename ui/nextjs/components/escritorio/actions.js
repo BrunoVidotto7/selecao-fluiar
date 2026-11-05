@@ -1,6 +1,5 @@
 'use server';
 import { actionResult, ApiError, apiRequest } from '@/lib/api.server';
-import { isUuid } from '@/lib/route-input';
 import { revalidatePath } from 'next/cache';
 
 const HTTP_BAD_REQUEST = 400;
@@ -25,30 +24,5 @@ export async function renameOffice(input) {
     const office = await apiRequest('/api/office', { method: 'PUT', body: { name: input.name } });
     revalidatePath('/(app)', 'layout');
     return office;
-  });
-}
-
-/**
- * @param {{ email: string }} input
- * @returns {Promise<import('@/lib/api.server').ActionResult<InvitationResponse>>}
- */
-export async function inviteMember(input) {
-  return actionResult(async () => {
-    requireStringField(input, 'email');
-    const invitation = await apiRequest('/api/office/invitations', { method: 'POST', body: { email: input.email } });
-    revalidatePath('/escritorio');
-    return invitation;
-  });
-}
-
-/**
- * @param {string} id
- * @returns {Promise<import('@/lib/api.server').ActionResult<undefined>>}
- */
-export async function revokeInvitation(id) {
-  return actionResult(async () => {
-    if (!isUuid(id)) throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
-    await apiRequest(`/api/office/invitations/${id}`, { method: 'DELETE' });
-    revalidatePath('/escritorio');
   });
 }

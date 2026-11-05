@@ -38,80 +38,15 @@ class AuthControllerTest extends ApiIntegrationTest {
     private JwtDecoder jwtDecoder;
 
     @Test
-    void signUpCreatesOfficeAndReturnsToken() {
+    void publicSignupCannotCreateAccounts() {
         var result = requestSignUp(PAULA_NAME, PAULA_EMAIL, DEFAULT_PASSWORD);
-
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        assertThat(result).bodyJson().extractingPath("$.accessToken").asString().isNotBlank();
-        assertThat(result).bodyJson().extractingPath("$.user.email").isEqualTo(PAULA_EMAIL);
-        assertThat(result).bodyJson().extractingPath("$.user.officeName").isEqualTo("Escritório de Paula Hooper");
-    }
-
-    @Test
-    void signUpWithLongestNameCutsDefaultOfficeNameToItsLimit() {
-        var result = requestSignUp("P".repeat(120), PAULA_EMAIL, DEFAULT_PASSWORD);
-
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        assertThat(result).bodyJson().extractingPath("$.user.officeName").isEqualTo("Escritório de " + "P".repeat(106));
-    }
-
-    @Test
-    void signUpNeverCutsTheDefaultOfficeNameInsideAnEmoji() {
-        var result = requestSignUp("P".repeat(105) + "\uD83D\uDE00", PAULA_EMAIL, DEFAULT_PASSWORD);
-
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-        assertThat(result).bodyJson().extractingPath("$.user.officeName").isEqualTo("Escritório de " + "P".repeat(105));
-    }
-
-    @Test
-    void signUpRejectsEmailAlreadyUsedIgnoringCaseAndSpaces() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
-
-        var result = requestSignUp(PAULA_NAME, " Paula@Fluiar.com.br ", DEFAULT_PASSWORD);
-
-        assertThat(result).hasStatus(HttpStatus.CONFLICT);
-        assertThat(result).bodyJson().extractingPath("$.errors.email").isEqualTo("Este e-mail já tem uma conta.");
-    }
-
-    @Test
-    void signUpReportsEachInvalidField() {
-        var result = requestSignUp("", "paula@", "curta");
-
-        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo("Revise os campos destacados.");
-        assertThat(result).bodyJson().extractingPath("$.errors.name").isEqualTo("Preencha este campo.");
-        assertThat(result).bodyJson().extractingPath("$.errors.email")
-                .isEqualTo("Digite um e-mail válido, como nome@email.com.");
-        assertThat(result).bodyJson().extractingPath("$.errors.password").isEqualTo("Use entre 8 e 72 caracteres.");
-    }
-
-    @Test
-    void signUpRejectsWhitespaceOnlyPassword() {
-        var result = requestSignUp(PAULA_NAME, PAULA_EMAIL, " ".repeat(8));
-
-        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.errors.password").isEqualTo("Preencha este campo.");
-    }
-
-    @Test
-    void signUpAcceptsPasswordOfExactly72Bytes() {
-        var result = requestSignUp(PAULA_NAME, PAULA_EMAIL, "ç".repeat(36));
-
-        assertThat(result).hasStatus(HttpStatus.CREATED);
-    }
-
-    @Test
-    void signUpRejectsPasswordLongerThan72Bytes() {
-        var result = requestSignUp(PAULA_NAME, PAULA_EMAIL, "ç".repeat(37));
-
-        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.errors.password")
-                .isEqualTo("Senha longa demais: letras com acento e emojis ocupam mais de um caractere.");
+        assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(jdbc.queryForObject("select count(*) from users", Integer.class)).isZero();
     }
 
     @Test
     void logInIgnoresEmailCase() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestLogIn("PAULA@fluiar.com.br", DEFAULT_PASSWORD);
 
@@ -121,7 +56,7 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Test
     void logInWithWrongPasswordFails() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestLogIn(PAULA_EMAIL, WRONG_PASSWORD);
 
@@ -140,7 +75,7 @@ class AuthControllerTest extends ApiIntegrationTest {
     @Test
     @ExtendWith(OutputCaptureExtension.class)
     void rejectedLogInsAreLoggedAlikeWithoutCredentials(CapturedOutput output) {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         requestLogIn(PAULA_EMAIL, WRONG_PASSWORD);
         requestLogIn(UNKNOWN_EMAIL, DEFAULT_PASSWORD);
@@ -151,7 +86,7 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Test
     void rememberMeIssuesLongerToken() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
         Instant now = Instant.now();
 
         var remembered = requestLogIn(PAULA_EMAIL, DEFAULT_PASSWORD, true);
@@ -166,7 +101,7 @@ class AuthControllerTest extends ApiIntegrationTest {
     @ParameterizedTest
     @CsvSource({"true, P30D", "false, PT12H"})
     void signedTokenExpiresAtTheReportedInstant(boolean rememberMe, Duration lifetime) {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestLogIn(PAULA_EMAIL, DEFAULT_PASSWORD, rememberMe);
 
@@ -178,7 +113,7 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Test
     void logInWithoutRememberMeIssuesRegularToken() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         var result = requestLogIn(PAULA_EMAIL, DEFAULT_PASSWORD);
 
@@ -197,8 +132,8 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Test
     void logInBlocksTheEmailAfterTooManyAttempts() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
-        signUp(ISABELA_NAME, ISABELA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(ISABELA_NAME, ISABELA_EMAIL);
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             assertThat(requestLogIn(PAULA_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.UNAUTHORIZED);
@@ -225,7 +160,7 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Test
     void successfulLogInClearsTheAttemptCount() {
-        signUp(PAULA_NAME, PAULA_EMAIL);
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
 
         for (int attempt = 0; attempt < MAX_ATTEMPTS - 1; attempt++) {
             assertThat(requestLogIn(PAULA_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.UNAUTHORIZED);

@@ -1,6 +1,6 @@
 'use server';
 import { redirect } from 'next/navigation';
-import { actionResult, ApiError, apiRequest } from '@/lib/api.server';
+import { actionResult, ApiError, apiRequest, authenticatedSession } from '@/lib/api.server';
 import { isLinkToken } from '@/lib/route-input';
 import { clearSession, setSession } from '@/lib/session.server';
 
@@ -27,25 +27,9 @@ export async function login(input) {
     const authResponse = await apiRequest('/api/auth/login', {
       method: 'POST', auth: 'public', body: { email, password, rememberMe },
     });
-    await setSession(authResponse, { persistent: rememberMe });
-    return authResponse.user;
-  });
-}
-
-/**
- * @param {{ name: string, email: string, password: string }} input
- * @returns {Promise<import('@/lib/api.server').ActionResult<import('@/lib/api.server').MeResponse>>}
- */
-export async function signup(input) {
-  return actionResult(async () => {
-    requireStringFields(input, ['name', 'email', 'password']);
-
-    const { name, email, password } = input;
-    const authResponse = await apiRequest('/api/auth/signup', {
-      method: 'POST', auth: 'public', body: { name, email, password },
-    });
-    await setSession(authResponse);
-    return authResponse.user;
+    const session = authenticatedSession(authResponse);
+    await setSession(session, { persistent: rememberMe });
+    return session.user;
   });
 }
 

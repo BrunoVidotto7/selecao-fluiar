@@ -1,3 +1,7 @@
 import { LoginForm } from '@/components/auth/AuthForms';
+import { safeReturnPath } from '@/lib/auth-routing';
 export const metadata = { title: 'Entrar' };
-export default function Page() { return <LoginForm />; }
+export default async function Page({ searchParams } = {}) {
+  const query = await searchParams;
+  return <LoginForm returnTo={safeReturnPath(query?.next)} />;
+}

@@ -17,9 +17,9 @@ public class EmailService {
             %s
 
             Se não foi você, ignore este e-mail.""";
-    private static final String INVITATION_SUBJECT = "Convite para o escritório %s — Seleção Fluiar";
+    private static final String INVITATION_SUBJECT = "Convite para suas listas — %s";
     private static final String INVITATION_TEXT = """
-            %s convidou você para participar do escritório %s na Seleção Fluiar.
+            %s convidou você para acessar suas listas de compras do escritório %s na Seleção Fluiar.
 
             Crie sua conta neste link (vale por 7 dias):
             %s""";

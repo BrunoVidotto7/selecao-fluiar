@@ -27,7 +27,7 @@ class DatabaseErrorLoggingTest extends ApiIntegrationTest {
     @Test
     @ExtendWith(OutputCaptureExtension.class)
     void duplicateEmailErrorIsLoggedWithoutTheEmail(CapturedOutput output) {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         User sameEmail = new User(paula.officeId(), PAULA_NAME, PAULA_EMAIL, PASSWORD_HASH);
 
         assertThatThrownBy(() -> userRepository.saveAndFlush(sameEmail))

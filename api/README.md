@@ -63,3 +63,33 @@ Os valores padrão servem só para o Docker Compose local. Em produção, defina
 | `MAIL_PASSWORD` | Senha do SMTP | vazio |
 | `MAIL_STARTTLS` | Liga o STARTTLS no SMTP: use `true` nos provedores que exigem (por exemplo, porta 587); o Mailpit fica com `false` | `false` |
 | `MAIL_FROM` | Remetente dos e-mails | `nao-responda@fluiar.com.br` |
+
+## Administrative account provisioning
+
+Admins are provisioned directly in PostgreSQL. Existing accounts migrate to `ADMIN`; existing sessions must log in again. There is no default administrative password.
+
+Run `ops/provision-admin.sql` using psql with `ON_ERROR_STOP` and parameters `office_id`, `user_id`, `office_name`, `name`, `email`, and `password_hash`. Supply an encoded `{bcrypt}` hash produced by the existing Spring `PasswordEncoder`; never supply a raw password. Pass operational values through a protected local parameter file/session, not versioned source or shell history. The script inserts an office only if missing, inserts one account, and rejects duplicate accounts instead of changing their credentials. Run it explicitly against the intended database; the application does not seed accounts on startup.
+
+Client accounts are created only when a client accepts an administrative email invitation.
+
+## Client access rollout
+
+Deploy the API migrations V5–V7 and matching Next.js application together. Existing
+accounts become ADMIN without changing passwords; their old sessions must log in
+again. Legacy office invitations are invalidated. Provision any new administrator
+explicitly before inviting clients from their administrative client detail page.
+
+Client invitations expire after seven days and bind to the stored client UUID and
+contact email. Acceptance creates one CLIENT account and accepts only a password.
+Changing contact email revokes a pending invitation; it does not change an active
+account's login email. Deleting a client cascades to its account and lists.
+
+Shared links now require authentication and current ownership. Images require an
+authorized account and return private/no-store responses through the Next proxy.
+Previously downloaded or publicly cached image copies cannot be recalled.
+
+Before release, run the complete API suite with Docker, including schema upgrade,
+operational provisioning, invitation races, list reassignment and image ownership
+checks. Then check the invitation email and client/admin flows in separate browser
+profiles at desktop and phone sizes. No migration or provisioning runs as part of
+a frontend build.

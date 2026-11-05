@@ -10,7 +10,7 @@ import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * A pending invitation to join an office. Only the hash of its token is stored; the token itself goes only in the
+ * A pending invitation to activate a client account. Only the hash of its token is stored; the token itself goes only in the
  * e-mail.
  */
 @Entity
@@ -22,6 +22,8 @@ public class OfficeInvitation {
     private UUID id;
 
     private UUID officeId;
+
+    private UUID clientId;
 
     private String email;
 
@@ -37,8 +39,9 @@ public class OfficeInvitation {
     protected OfficeInvitation() {
     }
 
-    public OfficeInvitation(UUID officeId, String email, UUID invitedByUserId, String tokenHash, Instant expiresAt) {
+    public OfficeInvitation(UUID officeId, UUID clientId, String email, UUID invitedByUserId, String tokenHash, Instant expiresAt) {
         this.officeId = officeId;
+        this.clientId = clientId;
         this.email = email;
         this.invitedByUserId = invitedByUserId;
         this.tokenHash = tokenHash;
@@ -47,6 +50,10 @@ public class OfficeInvitation {
 
     public UUID getId() {
         return id;
+    }
+
+    public UUID getClientId() {
+        return clientId;
     }
 
     public UUID getOfficeId() {

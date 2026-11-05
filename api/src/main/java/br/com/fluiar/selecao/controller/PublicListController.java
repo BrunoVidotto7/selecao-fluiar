@@ -1,25 +1,20 @@
 package br.com.fluiar.selecao.controller;
 
-import br.com.fluiar.selecao.dto.PublicListResponse;
-import br.com.fluiar.selecao.service.ShoppingListService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import br.com.fluiar.selecao.dto.ListAccessResponse;
+import br.com.fluiar.selecao.security.CurrentUserId;
+import br.com.fluiar.selecao.service.ListAccessService;
+import java.util.UUID;
+import org.springframework.web.bind.annotation.*;
 
-/** Public: the client opens the shared link without an account. */
 @RestController
 @RequestMapping("/api/public")
 public class PublicListController {
+    private final ListAccessService access;
 
-    private final ShoppingListService shoppingListService;
-
-    public PublicListController(ShoppingListService shoppingListService) {
-        this.shoppingListService = shoppingListService;
-    }
+    public PublicListController(ListAccessService access) { this.access = access; }
 
     @GetMapping("/lists/{shareToken}")
-    public PublicListResponse getPublicList(@PathVariable String shareToken) {
-        return shoppingListService.getPublic(shareToken);
+    public ListAccessResponse resolve(@CurrentUserId UUID userId, @PathVariable String shareToken) {
+        return access.resolve(userId, shareToken);
     }
 }

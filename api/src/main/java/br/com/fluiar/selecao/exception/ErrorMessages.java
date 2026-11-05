@@ -2,6 +2,10 @@ package br.com.fluiar.selecao.exception;
 
 public final class ErrorMessages {
 
+    public static final String AUTHENTICATION_REQUIRED = "Entre na sua conta para continuar.";
+    public static final String ACCESS_DENIED = "Você não tem permissão para acessar este recurso.";
+    public static final String CLIENT_ALREADY_ACTIVE = "Este cliente já tem acesso ativo.";
+    public static final String INVITATION_EMAIL_IN_USE = "Este e-mail já tem um convite para outro cliente.";
     public static final String VALIDATION_FAILED = "Revise os campos destacados.";
     public static final String INVALID_REQUEST = "Revise os dados enviados.";
     public static final String NOT_FOUND = "Não encontramos o que você procurava.";

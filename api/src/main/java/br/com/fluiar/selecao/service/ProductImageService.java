@@ -8,6 +8,8 @@ import br.com.fluiar.selecao.model.Product;
 import br.com.fluiar.selecao.model.ProductImage;
 import br.com.fluiar.selecao.model.ShoppingList;
 import br.com.fluiar.selecao.repository.ProductImageRepository;
+import br.com.fluiar.selecao.repository.UserRepository;
+import br.com.fluiar.selecao.security.ListAccessPolicy;
 import br.com.fluiar.selecao.repository.ProductRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
 import java.io.IOException;
@@ -36,9 +38,11 @@ public class ProductImageService {
     private final ProductImageRepository imageRepository;
     private final ProductRepository productRepository;
     private final ShoppingListRepository listRepository;
+    private final UserRepository users;
 
     public ProductImageService(ProductImageRepository imageRepository, ProductRepository productRepository,
-            ShoppingListRepository listRepository) {
+            ShoppingListRepository listRepository, UserRepository users) {
+        this.users = users;
         this.imageRepository = imageRepository;
         this.productRepository = productRepository;
         this.listRepository = listRepository;
@@ -75,7 +79,12 @@ public class ProductImageService {
         list.touch();
     }
 
-    public ImageContent load(UUID imageId) {
+    public ImageContent load(UUID userId, UUID imageId) {
+        var user = users.findById(userId).orElseThrow(ApiException::notFound);
+        var product = productRepository.findByImageInOffice(imageId, user.getOfficeId()).orElseThrow(ApiException::notFound);
+        if (!ListAccessPolicy.permits(user, product.getRoom().getList().getClient())) {
+            throw ApiException.notFound();
+        }
         return imageRepository.findById(imageId).map(ImageContent::of).orElseThrow(ApiException::notFound);
     }
 

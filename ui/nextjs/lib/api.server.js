@@ -2,8 +2,9 @@ import 'server-only';
 import { cache } from 'react';
 import { notFound, redirect } from 'next/navigation';
 import { getAccessToken } from './session.server';
+import { getLoginPath, parseAuthenticatedUser } from './auth-routing';
 
-const API_TIMEOUT_MS = 15_000;
+export const API_TIMEOUT_MS = 15_000;
 const HTTP_UNAUTHORIZED = 401;
 const HTTP_NOT_FOUND = 404;
 const HTTP_BAD_GATEWAY = 502;
@@ -12,16 +13,15 @@ const CONNECTION_DETAIL = 'Não conseguimos conectar à API. Tente novamente.';
 const INVALID_RESPONSE_DETAIL = 'A API retornou uma resposta inválida.';
 const REQUEST_FAILED_DETAIL = 'Não foi possível concluir a solicitação.';
 const API_CONFIGURATION_DETAIL = 'Configure NEXT_PUBLIC_API_URL com a origem HTTP(S) da API.';
-const PUBLIC_API_PATH = /^\/api\/(?:auth|public|images)(?:\/|$)/;
+const PUBLIC_API_PATH = /^\/api\/(?:auth)(?:\/|$)/;
 const API_LOGIN_PATH = '/api/auth/login';
-const LOGIN_PATH = '/login';
 
 /**
  * @template T
  * @typedef {{ ok: true, data: T } | { ok: false, status: number, detail: string, errors: Record<string, string> }} ActionResult
  */
 
-/** @typedef {{ id: string, name: string, email: string, officeId: string, officeName: string }} MeResponse */
+/** @typedef {{ id: string, name: string, email: string, officeId: string, officeName: string, role: 'ADMIN' | 'CLIENT', clientId: string | null }} MeResponse */
 
 export class ApiError extends Error {
   constructor(status, detail, errors = {}) {
@@ -33,7 +33,7 @@ export class ApiError extends Error {
   }
 }
 
-function requestUrl(path) {
+export function requestUrl(path) {
   let origin;
   try {
     origin = new URL(process.env.NEXT_PUBLIC_API_URL);
@@ -86,15 +86,15 @@ async function responseData(response) {
 /**
  * @template T
  * @param {string} path
- * @param {{ method?: string, body?: Object | FormData, auth?: 'required' | 'public' }} options
+ * @param {{ method?: string, body?: Object | FormData, auth?: 'required' | 'public', returnTo?: string }} options
  * @returns {Promise<T | undefined>}
  */
-export async function apiRequest(path, { method = 'GET', body, auth = 'required' } = {}) {
+export async function apiRequest(path, { method = 'GET', body, auth = 'required', returnTo } = {}) {
   const url = requestUrl(path);
   const headers = new Headers();
   if (auth !== 'public' && !PUBLIC_API_PATH.test(url.pathname)) {
     const token = await getAccessToken();
-    if (!token) redirect(LOGIN_PATH);
+    if (!token) redirect(getLoginPath(returnTo));
     headers.set('Authorization', `Bearer ${token}`);
   }
 
@@ -113,14 +113,14 @@ export async function apiRequest(path, { method = 'GET', body, auth = 'required'
   }
 
   const rejectedLogin = method === 'POST' && url.pathname === API_LOGIN_PATH;
-  if (response.status === HTTP_UNAUTHORIZED && !rejectedLogin) redirect(LOGIN_PATH);
+  if (response.status === HTTP_UNAUTHORIZED && !rejectedLogin) redirect(getLoginPath(returnTo));
   return responseData(response);
 }
 
 /**
  * @template T
  * @param {string} path
- * @param {{ method?: string, body?: Object | FormData, auth?: 'required' | 'public' }} [options]
+ * @param {{ method?: string, body?: Object | FormData, auth?: 'required' | 'public', returnTo?: string }} [options]
  * @returns {Promise<T | undefined>}
  */
 export async function readApi(path, options) {
@@ -147,4 +147,18 @@ export async function actionResult(work) {
 }
 
 /** @returns {Promise<MeResponse>} */
-export const getCurrentUser = cache(() => apiRequest('/api/me'));
+export function authenticatedUser(user) {
+  const parsed = parseAuthenticatedUser(user);
+  if (!parsed) throw new ApiError(HTTP_BAD_GATEWAY, INVALID_RESPONSE_DETAIL);
+  return parsed;
+}
+
+export function authenticatedSession(response) {
+  if (typeof response?.accessToken !== 'string' || !response.accessToken
+      || typeof response.expiresAt !== 'string' || !Number.isFinite(Date.parse(response.expiresAt))) {
+    throw new ApiError(HTTP_BAD_GATEWAY, INVALID_RESPONSE_DETAIL);
+  }
+  return { accessToken: response.accessToken, expiresAt: response.expiresAt, user: authenticatedUser(response.user) };
+}
+
+export const getCurrentUser = cache(async () => authenticatedUser(await apiRequest('/api/me')));

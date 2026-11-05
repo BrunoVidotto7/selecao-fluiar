@@ -44,7 +44,7 @@ test.each(commands)('%s sends the documented fixed request and returns persisted
   }));
   expect(fetchMock.mock.calls[0][1].headers.has('Authorization')).toBe(true);
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/my-lists'], ['/my-lists/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
 });
 

@@ -4,6 +4,7 @@ import br.com.fluiar.selecao.dto.OfficeResponse;
 import br.com.fluiar.selecao.dto.OfficeUpdateRequest;
 import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.model.Office;
+import br.com.fluiar.selecao.model.UserRole;
 import br.com.fluiar.selecao.repository.OfficeRepository;
 import br.com.fluiar.selecao.repository.UserRepository;
 import java.util.UUID;
@@ -39,6 +40,6 @@ public class OfficeService {
     }
 
     private OfficeResponse responseFor(Office office) {
-        return OfficeResponse.of(office, userRepository.findByOfficeIdOrderByNameAsc(office.getId()));
+        return OfficeResponse.of(office, userRepository.findByOfficeIdAndRoleOrderByNameAsc(office.getId(), UserRole.ADMIN));
     }
 }

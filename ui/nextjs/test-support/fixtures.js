@@ -7,6 +7,8 @@ const CLIENT_NAME = 'Mariana Souza';
 
 export const ME = {
   id: '88888888-8888-4888-8888-888888888888',
+  role: 'ADMIN',
+  clientId: null,
   officeId: '77777777-7777-4777-8777-777777777777',
   officeName: 'Escritório de Ana Lima',
   name: 'Ana Lima',
@@ -33,6 +35,7 @@ export const PRODUCT = {
   quantity: 2,
   unitPrice: 12.50,
   notes: 'Conferir as medidas.',
+  clientNotes: null,
   bought: false,
   imageUrl: null,
   links: [{ url: 'https://example.com/batedeira', note: null }],
@@ -111,4 +114,23 @@ export const PUBLIC_LIST = {
     products: [{ name: PRODUCT.name, quantity: PRODUCT.quantity, bought: PRODUCT.bought, links: PRODUCT.links }],
   }],
   signature: { officeName: ME.officeName, architectNames: [ME.name] },
+};
+
+export const CLIENT_ME = { ...ME, id: '88888888-8888-4888-8888-888888885555', role: 'CLIENT', clientId: CLIENT_ID, name: CLIENT_NAME, email: 'mariana@example.com' };
+
+export const CLIENT_ACCESS = { status: 'NOT_INVITED', email: CLIENT.email, invitationId: null, expiresAt: null };
+
+export const CLIENT_PRODUCT = {
+  id: PRODUCT.id, name: PRODUCT.name, quantity: PRODUCT.quantity, bought: false, clientNotes: null,
+  links: [{ url: 'https://example.com/batedeira', note: null }],
+};
+export const CLIENT_LIST = {
+  id: LIST.id, name: LIST.name, description: LIST.description, updatedAt: LIST.updatedAt,
+  stats: { totalProducts: 1, boughtProducts: 0, pendingProducts: 1 },
+  rooms: [{ id: ROOM.id, name: ROOM.name, position: 0, products: [CLIENT_PRODUCT] }],
+  signature: { officeName: ME.officeName, architectNames: [ME.name] },
+};
+export const CLIENT_LIST_SUMMARY = {
+  id: CLIENT_LIST.id, name: CLIENT_LIST.name, description: CLIENT_LIST.description, updatedAt: CLIENT_LIST.updatedAt,
+  totalProducts: 1, boughtProducts: 0, pendingProducts: 1, completed: false,
 };

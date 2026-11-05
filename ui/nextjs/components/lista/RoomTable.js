@@ -1,11 +1,12 @@
 'use client';
-// Tabela de um ambiente no modo edição (colunas da página original: ✓ | Qtd. | Item | Links e observações)
+// Administrative room table with purchase tracking and client observations.
 import { useEffect, useRef, useState } from 'react';
 import { unstable_rethrow } from 'next/navigation';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
 import { brl, imageSource } from '@/lib/format';
 import ItemLinks from './ItemLinks';
+import ProductClientNotesEditor from './ProductClientNotesEditor';
 import { validateField } from '@/lib/validation';
 
 const REMOVE_CONFIRMATION_MS = 2500;
@@ -19,7 +20,7 @@ const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity > 1
  * onToggle: (id: string, bought: boolean) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onQty: (id: string, quantity: number) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onRemove: (id: string) => Promise<import('@/lib/api.server').ActionResult<undefined>> }} props */
-export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove }) {
+export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onNotes }) {
   const done = room.products.filter((i) => i.bought).length;
   return (
     <>
@@ -29,7 +30,7 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
           <thead><tr><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
           <tbody>
             {products.map((it) => <ItemRow key={`${listBase}:${it.id}`} item={it} listBase={listBase}
-              pending={pendingIds.has(it.id)} onToggle={onToggle} onQty={onQty} onRemove={onRemove} />)}
+              pending={pendingIds.has(it.id)} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onNotes={onNotes} />)}
             {showAdd && (
               <tr className="new"><td className="ck" /><td colSpan={3}>
                 <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${room.id}`}><Icon name="plus" />novo item em {room.name}</Link>
@@ -42,13 +43,13 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
   );
 }
 
-function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove }) {
+function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes }) {
   const [quantityDraft, setQuantityDraft] = useState({ value: null, error: '' });
   const currentDraft = useRef(null);
   const inFlight = useRef(false);
   const mounted = useRef(true);
   const armedRef = useRef(false);
-  const [armed, setArmed] = useState(false); // remoção em dois toques, como na página original
+  const [armed, setArmed] = useState(false); // Two-tap removal confirmation.
   const armRemoval = (value) => { armedRef.current = value; setArmed(value); };
   const updateDraft = (value, error = '') => {
     currentDraft.current = value;
@@ -158,7 +159,10 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove }) {
           </div>
         </div>
       </td>
-      <td><ItemLinks links={item.links} empty="Sem links ainda" /></td>
+      <td><ItemLinks links={item.links} empty="Sem links ainda" />
+        <ProductClientNotesEditor productId={item.id} productName={item.name} clientNotes={item.clientNotes}
+          onSave={(value) => onNotes(item.id, value)} />
+      </td>
     </tr>
   );
 }

@@ -1,6 +1,5 @@
 'use client';
-// Página da lista de compras — mesma estrutura e visual da página original "Seleção Fluiar",
-// com os controles de integração ao sistema (filtro, resumo, editar lista, adicionar produto).
+// Administrative list with a read-only client preview.
 import { useEffect, useRef, useState } from 'react';
 import { unstable_rethrow, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -13,7 +12,7 @@ import RoomTable from './RoomTable';
 import ClientView from './ClientView';
 import ShareControls from './ShareControls';
 import { ListNote, ListSignature } from './ListFooter';
-import { patchProduct, deleteProduct } from '../produtos/actions';
+import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
 
 const WRITE_FAILED_DETAIL = 'Não conseguimos salvar agora. Tente novamente.';
 
@@ -24,7 +23,7 @@ export default function ShoppingList({ list, signature }) {
 
 function ShoppingListContent({ list, signature }) {
   const { rooms, stats } = list;
-  const [mode, setMode] = useState('edit'); // 'edit' | 'view' (visão do cliente)
+  const [mode, setMode] = useState('edit'); // 'edit' | 'view'
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
   const toast = useToast();
   const router = useRouter();
@@ -122,6 +121,11 @@ function ShoppingListContent({ list, signature }) {
             pendingIds={pendingIds}
             onToggle={(id, bought) => mutateProduct(id, () => patchProduct(list.id, id, { bought }),
               bought ? 'Marcado como comprado' : 'Voltou para pendentes')}
+            onNotes={async (id, value) => {
+              const result = await saveProductClientNotes(list.id, id, value);
+              if (mounted.current && result.ok) router.refresh();
+              return result;
+            }}
             onQty={(id, quantity) => mutateProduct(id, () => patchProduct(list.id, id, { quantity }), 'Salvo')}
             onRemove={(id) => mutateProduct(id, () => deleteProduct(list.id, id), 'Item removido')} />
         ))

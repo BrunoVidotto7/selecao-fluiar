@@ -2,10 +2,10 @@ import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import LoginPage from '@/app/(auth)/login/page';
 import ForgotPasswordPage from '@/app/(auth)/recuperar-senha/page';
-import { ForgotPasswordForm, LoginForm, ResetPasswordForm, SignupForm } from './AuthForms';
+import { ForgotPasswordForm, LoginForm, ResetPasswordForm } from './AuthForms';
 import { FeedbackProvider } from '../feedback/Feedback';
-import { ME } from '@/test-support/fixtures';
-import { confirmPasswordReset, login, requestPasswordReset, signup } from './actions';
+import { ME, CLIENT_ME } from '@/test-support/fixtures';
+import { confirmPasswordReset, login, requestPasswordReset } from './actions';
 
 const { push, refresh } = vi.hoisted(() => ({ push: vi.fn(), refresh: vi.fn() }));
 vi.mock('next/navigation', async (importOriginal) => {
@@ -27,7 +27,6 @@ beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
   login.mockReset().mockResolvedValue({ ok: true, data: ME });
-  signup.mockReset().mockResolvedValue({ ok: true, data: ME });
   requestPasswordReset.mockReset().mockResolvedValue({ ok: true, data: undefined });
   confirmPasswordReset.mockReset().mockResolvedValue({ ok: true, data: undefined });
 });
@@ -43,12 +42,6 @@ function deferred() {
 
 const renderForm = (Form, props = {}) => render(<FeedbackProvider><Form {...props} /></FeedbackProvider>);
 const fillLogin = (password = 'password123') => { type('E-mail', ME.email); type('Senha', password); };
-const fillSignup = (password = 'password123') => {
-  type('Nome completo', ME.name);
-  type('E-mail', ME.email);
-  type('Senha', password);
-  type('Confirme a senha', password);
-};
 const submitReal = async (name) => { await act(async () => { fireEvent.click(screen.getByRole('button', { name })); }); };
 
 test('login starts without fake credentials or prototype copy and remembers the device by default', () => {
@@ -108,75 +101,16 @@ test('invalid local login fields focus the first error without calling the actio
   expect(login).not.toHaveBeenCalled();
 });
 
-test('signup validates confirmation and maps only name, email and the raw password before navigating', async () => {
-  renderForm(SignupForm);
-  await submitReal('Criar conta');
-  expect(signup).not.toHaveBeenCalled();
-  expect(push).not.toHaveBeenCalled();
 
-  fillSignup('  Sênha1234 🔑  ');
-  type('Confirme a senha', 'different');
-  await submitReal('Criar conta');
-  expect(screen.getByText('As senhas não são iguais.')).toBeTruthy();
-  expect(signup).not.toHaveBeenCalled();
 
-  type('Confirme a senha', '  Sênha1234 🔑  ');
-  await submitReal('Criar conta');
-  expect(signup).toHaveBeenCalledExactlyOnceWith({ name: ME.name, email: ME.email, password: '  Sênha1234 🔑  ' });
-  expect(push).toHaveBeenCalledExactlyOnceWith('/dashboard');
-  expect(refresh).toHaveBeenCalledOnce();
-});
 
-test.each([
-  ['short password', '1234567', 'Use entre 8 e 72 caracteres.'],
-  ['BCrypt bytes', 'é'.repeat(37), 'Senha longa demais: letras com acento e emojis ocupam mais de um caractere.'],
-])('signup rejects a %s before calling the action', async (_, password, message) => {
-  renderForm(SignupForm);
-  fillSignup(password);
-  await submitReal('Criar conta');
-  expect(screen.getByText(message)).toBeTruthy();
-  expect(screen.getByLabelText('Senha').getAttribute('aria-invalid')).toBe('true');
-  expect(signup).not.toHaveBeenCalled();
-});
 
-test('signup conflict binds email inline, preserves it on unrelated edits and shows API detail', async () => {
-  signup.mockResolvedValue({
-    ok: false, status: 409, detail: 'Este e-mail já tem uma conta.', errors: { email: 'Este e-mail já tem uma conta.' },
-  });
-  renderForm(SignupForm);
-  fillSignup();
-  await submitReal('Criar conta');
-  const email = screen.getByLabelText('E-mail');
-  expect(email.getAttribute('aria-invalid')).toBe('true');
-  expect(document.activeElement).toBe(email);
-  expect(document.getElementById(email.getAttribute('aria-describedby')).textContent).toBe('Este e-mail já tem uma conta.');
-  expect(screen.getByRole('status').textContent).toContain('Este e-mail já tem uma conta.');
-  type('Nome completo', 'Ana Maria Lima');
-  fireEvent.blur(email);
-  expect(email.getAttribute('aria-invalid')).toBe('true');
-  type('E-mail', 'other@example.com');
-  expect(email.getAttribute('aria-invalid')).toBe('false');
-  expect(push).not.toHaveBeenCalled();
-});
 
-test('signup maps the server name and password errors to Portuguese input keys', async () => {
-  signup.mockResolvedValue({
-    ok: false, status: 400, detail: 'Revise os dados enviados.',
-    errors: { name: 'Preencha este campo.', password: 'Use entre 8 e 72 caracteres.' },
-  });
-  renderForm(SignupForm);
-  fillSignup();
-  await submitReal('Criar conta');
-  expect(document.activeElement).toBe(screen.getByLabelText('Nome completo'));
-  expect(screen.getByLabelText('Nome completo').getAttribute('aria-invalid')).toBe('true');
-  expect(screen.getByLabelText('Senha').getAttribute('aria-invalid')).toBe('true');
-  expect(screen.getByText('Use entre 8 e 72 caracteres.')).toBeTruthy();
-  expect(push).not.toHaveBeenCalled();
-});
+
+
 
 test.each([
   ['login', LoginForm, login, fillLogin, 'Entrar', 'Entrando…'],
-  ['signup', SignupForm, signup, fillSignup, 'Criar conta', 'Criando conta…'],
 ])('%s remains busy and prevents duplicate submits until the real action completes', async (_, Form, action, fill, label, pendingLabel) => {
   const pending = deferred();
   action.mockImplementation(() => pending.promise);
@@ -500,4 +434,13 @@ test('a late resend after leaving the sent screen produces no toast', async () =
   await act(async () => pending.resolve({ ok: true, data: undefined }));
   expect(screen.getByRole('status').textContent).toBe('');
   expect(push).not.toHaveBeenCalled();
+});
+
+test('client login opens private lists without offering public signup', async () => {
+  login.mockResolvedValue({ ok: true, data: CLIENT_ME });
+  renderForm(LoginForm);
+  fillLogin();
+  await submitReal('Entrar');
+  expect(push).toHaveBeenCalledWith('/my-lists');
+  expect(screen.queryByRole('link', { name: 'Criar conta' })).toBeNull();
 });

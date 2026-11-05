@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import NewListPage from '@/app/(app)/listas/nova/page';
-import ListsPage from '@/app/(app)/listas/page';
-import DashboardPage from '@/app/(app)/dashboard/page';
-import EditListPage from '@/app/(app)/listas/[id]/editar/page';
+import NewListPage from '@/app/(app)/(admin)/listas/nova/page';
+import ListsPage from '@/app/(app)/(admin)/listas/page';
+import DashboardPage from '@/app/(app)/(admin)/dashboard/page';
+import EditListPage from '@/app/(app)/(admin)/listas/[id]/editar/page';
 import { ListCards, ListForm, ListsTable } from './Listas';
 import { FeedbackProvider } from '../feedback/Feedback';
 import { CLIENT, DASHBOARD, LIST, ME } from '@/test-support/fixtures';
@@ -377,7 +377,7 @@ test('unmounting the form does not cancel the confirmed server delete or its suc
   view.rerender(feedback(<h2>Outra tela</h2>));
   await act(async () => release(new Response(null, { status: 204 })));
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/my-lists'], ['/my-lists/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
   expect(fetchMock).toHaveBeenCalledOnce();
   expect(push).not.toHaveBeenCalled();

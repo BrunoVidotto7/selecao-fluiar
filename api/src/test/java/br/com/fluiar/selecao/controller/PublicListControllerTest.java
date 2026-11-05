@@ -40,52 +40,40 @@ class PublicListControllerTest extends ApiIntegrationTest {
     private static final String OTHER_MIXER_LINK = "https://meli.la/2az7TXp";
     private static final String RENAME_LIST = "update shopping_lists set name = ? where id = ?";
 
+    private TestSession currentReader;
+
     @Autowired
     private ShoppingListService shoppingListService;
 
     @Test
-    void publicListShowsOnlyClientFacingData() {
-        signUp(MARINA_NAME, MARINA_EMAIL);
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        renameOffice(paula, OFFICE_NAME);
-        inviteMember(paula, ISABELA_NAME, ISABELA_EMAIL);
-        UUID listId = createListWithDescription(paula, createClient(paula, SERGIO_NAME));
-        createMixer(paula, listId, createRoom(paula, listId, KITCHEN));
-        createRoom(paula, listId, LAUNDRY);
-
-        var result = requestPublicList(shareTokenOf(paula, listId));
-
+    void sharedListRequiresLoginAndTheCurrentOwner() {
+        var admin = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID clientId = createClient(admin, SERGIO_NAME, "client@example.com");
+        UUID listId = createList(admin, clientId, LIST_NAME);
+        String token = shareTokenOf(admin, listId);
+        var owner = inviteClient(admin, clientId);
+        var other = createClientAccount(admin, createClient(admin, "Other", "other@example.com"), "other@example.com");
+        assertThat(mvc.get().uri("/api/public/lists/{token}", token).exchange()).hasStatus(HttpStatus.UNAUTHORIZED);
+        assertThat(mvc.get().uri("/api/public/lists/{token}", token).header(HttpHeaders.AUTHORIZATION, bearer(other)).exchange())
+                .hasStatus(HttpStatus.NOT_FOUND);
+        var result = mvc.get().uri("/api/public/lists/{token}", token).header(HttpHeaders.AUTHORIZATION, bearer(owner)).exchange();
         assertThat(result).hasStatus(HttpStatus.OK);
-        assertThat(result).bodyJson().extractingPath("$.name").isEqualTo(LIST_NAME);
-        assertThat(result).bodyJson().extractingPath("$.description").isEqualTo(LIST_DESCRIPTION);
-        assertThat(result).bodyJson().doesNotHavePath("$.id");
-        assertThat(result).bodyJson().extractingPath("$.rooms[*].name").asArray().containsExactly(KITCHEN);
-        assertThat(result).bodyJson().doesNotHavePath("$.rooms[0].id");
-
-        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].name").isEqualTo(MIXER);
-        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].quantity").isEqualTo(1);
-        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].bought").isEqualTo(false);
-        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].links[*].url").asArray()
-                .containsExactly(MIXER_LINK, OTHER_MIXER_LINK);
-        assertThat(result).bodyJson().doesNotHavePath("$.rooms[0].products[0].unitPrice");
-        assertThat(result).bodyJson().doesNotHavePath("$.rooms[0].products[0].notes");
-        assertThat(result).bodyJson().doesNotHavePath("$.rooms[0].products[0].id");
-
-        assertThat(result).bodyJson().extractingPath("$.signature.officeName").isEqualTo(OFFICE_NAME);
-        assertThat(result).bodyJson().extractingPath("$.signature.architectNames").asArray()
-                .containsExactly(ISABELA_NAME, PAULA_NAME);
+        assertThat(result).bodyJson().extractingPath("$.listId").isEqualTo(listId.toString());
+        assertThat(result).bodyJson().extractingPath("$.role").isEqualTo("CLIENT");
+        assertThat(result).bodyJson().doesNotHavePath("$.rooms");
     }
 
     @Test
     void unknownShareTokenIsNotFound() {
-        var result = requestPublicList(SecureTokens.generate());
+        currentReader = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var result = requestSharedList(SecureTokens.generate());
 
         assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
     }
 
     @Test
     void rotateShareTokenInvalidatesOldLink() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         String oldToken = shareTokenOf(paula, listId);
 
@@ -94,21 +82,21 @@ class PublicListControllerTest extends ApiIntegrationTest {
         assertThat(result).hasStatus(HttpStatus.OK);
         String newToken = readJson(result, "$.shareToken");
         assertThat(newToken).isNotBlank().isNotEqualTo(oldToken);
-        assertThat(requestPublicList(oldToken)).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(requestPublicList(newToken)).hasStatus(HttpStatus.OK);
+        assertThat(requestSharedList(oldToken)).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(requestSharedList(newToken)).hasStatus(HttpStatus.OK);
     }
 
     @Test
     void rotateShareTokenOfAnotherOfficeIsNotFound() {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
-        var marina = signUp(MARINA_NAME, MARINA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         String paulaToken = shareTokenOf(paula, listId);
 
         var result = requestRotate(marina, listId);
 
         assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(requestPublicList(paulaToken)).hasStatus(HttpStatus.OK);
+        assertThat(requestSharedList(paulaToken)).hasStatus(HttpStatus.OK);
     }
 
     /**
@@ -118,7 +106,7 @@ class PublicListControllerTest extends ApiIntegrationTest {
      */
     @Test
     void rotateShareTokenKeepsAConcurrentListChange() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
 
         var results = requestsDuringConcurrentTransaction(
@@ -139,7 +127,7 @@ class PublicListControllerTest extends ApiIntegrationTest {
      */
     @Test
     void listEditOverlappingARotationKeepsTheNewLink() throws Exception {
-        var paula = signUp(PAULA_NAME, PAULA_EMAIL);
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID clientId = createClient(paula, SERGIO_NAME);
         UUID listId = createList(paula, clientId, LIST_NAME);
         String oldToken = shareTokenOf(paula, listId);
@@ -150,10 +138,10 @@ class PublicListControllerTest extends ApiIntegrationTest {
                 List.of(() -> requestUpdate(paula, listId, Map.of("name", NEW_LIST_NAME, "clientId", clientId))));
 
         assertThat(statusesOf(results)).containsExactly(HttpStatus.OK);
-        var publicList = requestPublicList(newToken.get());
+        var publicList = requestSharedList(newToken.get());
         assertThat(publicList).hasStatus(HttpStatus.OK);
-        assertThat(publicList).bodyJson().extractingPath("$.name").isEqualTo(NEW_LIST_NAME);
-        assertThat(requestPublicList(oldToken)).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(requestList(paula, listId)).bodyJson().extractingPath("$.name").isEqualTo(NEW_LIST_NAME);
+        assertThat(requestSharedList(oldToken)).hasStatus(HttpStatus.NOT_FOUND);
     }
 
     private void renameOffice(TestSession session, String name) {
@@ -190,6 +178,7 @@ class PublicListControllerTest extends ApiIntegrationTest {
     }
 
     private String shareTokenOf(TestSession session, UUID listId) {
+        currentReader = session;
         var list = requestList(session, listId);
         assertThat(list).hasStatus(HttpStatus.OK);
 
@@ -214,8 +203,8 @@ class PublicListControllerTest extends ApiIntegrationTest {
                 .exchange();
     }
 
-    /** Sends no Authorization header, like the client who opens the shared link. */
-    private MvcTestResult requestPublicList(String shareToken) {
-        return mvc.get().uri("/api/public/lists/{shareToken}", shareToken).exchange();
+    private MvcTestResult requestSharedList(String shareToken) {
+        return mvc.get().uri("/api/public/lists/{shareToken}", shareToken)
+                .header(HttpHeaders.AUTHORIZATION, bearer(currentReader)).exchange();
     }
 }

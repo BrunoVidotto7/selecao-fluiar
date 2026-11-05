@@ -26,6 +26,7 @@ public class Product {
 
     public static final int NAME_MAX_LENGTH = 120;
     public static final int NOTES_MAX_LENGTH = 1000;
+    public static final int CLIENT_NOTES_MAX_LENGTH = 1000;
     public static final int MIN_QUANTITY = 1;
     public static final int MAX_QUANTITY = 999;
     public static final int MAX_LINKS = 10;
@@ -49,6 +50,8 @@ public class Product {
     private BigDecimal unitPrice;
 
     private String notes;
+
+    private String clientNotes;
 
     private boolean bought;
 
@@ -103,6 +106,14 @@ public class Product {
 
     public String getNotes() {
         return notes;
+    }
+
+    public String getClientNotes() {
+        return clientNotes;
+    }
+
+    public void changeClientNotes(String notes) {
+        this.clientNotes = notes;
     }
 
     public boolean isBought() {

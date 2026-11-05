@@ -96,51 +96,64 @@ public abstract class ApiIntegrationTest {
         return jsonMapper.writeValueAsString(body);
     }
 
-    protected TestSession signUp(String name, String email) {
-        var result = mvc.post().uri("/api/auth/signup")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("name", name, "email", email, "password", DEFAULT_PASSWORD)))
-                .exchange();
-        assertThat(result).hasStatus(HttpStatus.CREATED);
+    @Autowired
+    private org.springframework.security.crypto.password.PasswordEncoder passwordEncoder;
 
+    protected TestSession createAdmin(String name, String email) {
+        UUID officeId = UUID.randomUUID();
+        jdbc.update("insert into offices (id, name, created_at, updated_at) values (?, ?, now(), now())",
+                officeId, "Escritório de " + name);
+        return insertAccount(officeId, null, "ADMIN", name, email);
+    }
+
+    protected TestSession createAdminInOffice(TestSession owner, String name, String email) {
+        return insertAccount(owner.officeId(), null, "ADMIN", name, email);
+    }
+
+    protected TestSession createClientAccount(TestSession admin, UUID clientId, String email) {
+        String name = jdbc.queryForObject("select name from clients where id = ?", String.class, clientId);
+        return insertAccount(admin.officeId(), clientId, "CLIENT", name, email);
+    }
+
+    private TestSession insertAccount(UUID officeId, UUID clientId, String role, String name, String email) {
+        jdbc.update("""
+                insert into users (id, office_id, client_id, role, name, email, password_hash, created_at, updated_at)
+                values (?, ?, ?, ?, ?, ?, ?, now(), now())
+                """, UUID.randomUUID(), officeId, clientId, role, name, email, passwordEncoder.encode(DEFAULT_PASSWORD));
+        var result = mvc.post().uri("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", email, "password", DEFAULT_PASSWORD))).exchange();
+        assertThat(result).hasStatus(HttpStatus.OK);
         return sessionOf(result);
     }
 
-    /** The owner invites the e-mail through the API, and the invited person accepts with the link of the e-mail. */
-    protected TestSession inviteMember(TestSession owner, String name, String email) {
-        assertThat(requestInvitation(owner, email)).hasStatus(HttpStatus.CREATED);
-        String token = extractToken(lastEmailTo(email).getText());
-
-        var acceptance = requestInvitationAcceptance(token, name, DEFAULT_PASSWORD);
-        assertThat(acceptance).hasStatus(HttpStatus.CREATED);
-
-        return sessionOf(acceptance);
+    protected MvcTestResult requestClientInvitation(TestSession owner, UUID clientId) {
+        return mvc.post().uri("/api/clients/{clientId}/invitations", clientId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(owner)).exchange();
     }
 
-    protected MvcTestResult requestInvitation(TestSession owner, String email) {
-        return mvc.post().uri("/api/office/invitations")
-                .header(HttpHeaders.AUTHORIZATION, bearer(owner))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("email", email)))
-                .exchange();
-    }
-
-    protected MvcTestResult requestInvitationAcceptance(String token, String name, String password) {
+    protected MvcTestResult requestInvitationAcceptance(String token, String password) {
         return mvc.post().uri("/api/auth/invitations/{token}/acceptance", token)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("name", name, "password", password)))
-                .exchange();
+                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("password", password))).exchange();
+    }
+
+    protected TestSession inviteClient(TestSession owner, UUID clientId) {
+        assertThat(requestClientInvitation(owner, clientId)).hasStatus(HttpStatus.CREATED);
+        String email = jdbc.queryForObject("select email from clients where id = ?", String.class, clientId);
+        var result = requestInvitationAcceptance(extractToken(lastEmailTo(email).getText()), DEFAULT_PASSWORD);
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        return sessionOf(result);
     }
 
     /** Creates a client of the session's office through the API and returns its id. */
     protected UUID createClient(TestSession session, String name) {
-        var result = mvc.post().uri("/api/clients")
-                .header(HttpHeaders.AUTHORIZATION, bearer(session))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("name", name, "email", CLIENT_EMAIL, "phone", CLIENT_PHONE)))
-                .exchange();
-        assertThat(result).hasStatus(HttpStatus.CREATED);
+        return createClient(session, name, CLIENT_EMAIL);
+    }
 
+    protected UUID createClient(TestSession session, String name, String email) {
+        var result = mvc.post().uri("/api/clients").header(HttpHeaders.AUTHORIZATION, bearer(session))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("name", name, "email", email, "phone", CLIENT_PHONE))).exchange();
+        assertThat(result).hasStatus(HttpStatus.CREATED);
         return UUID.fromString(readJson(result, "$.id"));
     }
 

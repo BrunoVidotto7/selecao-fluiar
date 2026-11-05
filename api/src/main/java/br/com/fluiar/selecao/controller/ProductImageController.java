@@ -3,8 +3,8 @@ package br.com.fluiar.selecao.controller;
 import br.com.fluiar.selecao.dto.ImageContent;
 import br.com.fluiar.selecao.dto.ProductImageResponse;
 import br.com.fluiar.selecao.security.CurrentOfficeId;
+import br.com.fluiar.selecao.security.CurrentUserId;
 import br.com.fluiar.selecao.service.ProductImageService;
-import java.time.Duration;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -24,9 +24,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/api")
 public class ProductImageController {
 
-    /** The cache can be long because every upload gets a new image id, so a URL never shows another image. */
-    private static final Duration IMAGE_CACHE_MAX_AGE = Duration.ofDays(365);
-
     private final ProductImageService productImageService;
 
     public ProductImageController(ProductImageService productImageService) {
@@ -45,13 +42,12 @@ public class ProductImageController {
         productImageService.delete(officeId, productId);
     }
 
-    /** Public: an {@code <img src>} does not send the Authorization header. */
     @GetMapping("/images/{imageId}")
-    public ResponseEntity<byte[]> getImage(@PathVariable UUID imageId) {
-        ImageContent image = productImageService.load(imageId);
+    public ResponseEntity<byte[]> getImage(@CurrentUserId UUID userId, @PathVariable UUID imageId) {
+        ImageContent image = productImageService.load(userId, imageId);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))
-                .cacheControl(CacheControl.maxAge(IMAGE_CACHE_MAX_AGE).cachePublic())
+                .cacheControl(CacheControl.noStore().cachePrivate())
                 .body(image.data());
     }
 }

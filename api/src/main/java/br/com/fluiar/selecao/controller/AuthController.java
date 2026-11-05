@@ -7,7 +7,6 @@ import br.com.fluiar.selecao.dto.LoginRequest;
 import br.com.fluiar.selecao.dto.PasswordResetConfirmRequest;
 import br.com.fluiar.selecao.dto.PasswordResetInfoResponse;
 import br.com.fluiar.selecao.dto.PasswordResetRequest;
-import br.com.fluiar.selecao.dto.SignupRequest;
 import br.com.fluiar.selecao.service.AuthService;
 import br.com.fluiar.selecao.service.InvitationService;
 import br.com.fluiar.selecao.service.PasswordResetService;
@@ -34,12 +33,6 @@ public class AuthController {
         this.authService = authService;
         this.passwordResetService = passwordResetService;
         this.invitationService = invitationService;
-    }
-
-    @PostMapping("/signup")
-    @ResponseStatus(HttpStatus.CREATED)
-    public AuthResponse signUp(@Valid @RequestBody SignupRequest request) {
-        return authService.signUp(request);
     }
 
     @PostMapping("/login")

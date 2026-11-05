@@ -33,12 +33,12 @@ function ShareControlsContent({ listId, shareToken }) {
     return () => { mounted.current = false; };
   }, []);
 
-  // A confirmação mantém o callback de abertura; o aceite precisa da posse atual.
+  // Confirmation must use the currently owned token.
   useEffect(() => {
     currentOwnership.current = { localToken, token };
   }, [localToken, token]);
 
-  // Mantém o token retornado até a atualização do servidor confirmar esse valor.
+  // Keep the returned token until refreshed props acknowledge it.
   useEffect(() => {
     if (!busy && shareToken === localToken) setLocalToken(null);
   }, [busy, shareToken, localToken]);
@@ -104,8 +104,8 @@ function ShareControlsContent({ listId, shareToken }) {
 
   return (
     <section aria-label="Compartilhar lista" style={{ marginTop: 18 }}>
-      <TextInput id={`link-publico-${listId}`} label="Link público" value={url} readOnly
-        hint="Quem tiver este link poderá ver a lista, sem editar."
+      <TextInput id={`list-link-${listId}`} label="Link da lista" value={url} readOnly
+        hint="O acesso exige login e permissão para esta lista."
         onFocus={(event) => event.target.select()} onClick={(event) => event.currentTarget.select()} />
       <div className="listbar">
         <div className="btns">

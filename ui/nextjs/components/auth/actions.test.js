@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { confirmPasswordReset, login, logout, requestPasswordReset, signup } from './actions';
+import { confirmPasswordReset, login, logout, requestPasswordReset } from './actions';
 import { ME } from '@/test-support/fixtures';
 
 const { cookieStore, cookies, fetchMock, redirect } = vi.hoisted(() => ({
@@ -16,7 +16,6 @@ const API_ORIGIN = 'http://localhost:8080';
 const EXPIRES_AT = '2026-11-30T12:00:00Z';
 const INVALID_INPUT = { ok: false, status: 400, detail: 'Revise os dados enviados.', errors: {} };
 const LOGIN_VALUES = { email: ME.email, password: 'password123', rememberMe: true };
-const SIGNUP_VALUES = { name: ME.name, email: ME.email, password: 'password123' };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
 
 beforeEach(() => {
@@ -56,26 +55,9 @@ test.each([true, false])('login stores its token privately with rememberMe=%s', 
   expect(redirect).not.toHaveBeenCalled();
 });
 
-test('signup whitelists its body and writes a session cookie before returning only the user', async () => {
-  fetchMock.mockResolvedValue(json({ accessToken: 'jwt', expiresAt: EXPIRES_AT, user: ME }, 201));
-  const result = await signup({
-    ...SIGNUP_VALUES, passwordConfirmation: 'ignored', rememberMe: true, userId: ME.id, officeId: ME.officeId,
-  });
 
-  expect(result).toEqual({ ok: true, data: ME });
-  expect(JSON.stringify(result)).not.toContain('jwt');
-  expect(fetchMock).toHaveBeenCalledExactlyOnceWith(API_ORIGIN + '/api/auth/signup', expect.objectContaining({
-    method: 'POST', body: JSON.stringify(SIGNUP_VALUES), cache: 'no-store',
-  }));
-  expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBeNull();
-  expect(fetchMock.mock.calls[0][1].headers.get('Cookie')).toBeNull();
-  expect(cookieStore.get).not.toHaveBeenCalled();
-  expect(cookieStore.set).toHaveBeenCalledExactlyOnceWith('fluiar_session', 'jwt', {
-    httpOnly: true, sameSite: 'lax', path: '/', secure: true,
-  });
-});
 
-test.each([['login', login, LOGIN_VALUES], ['signup', signup, SIGNUP_VALUES]])(
+test.each([['login', login, LOGIN_VALUES]])(
   '%s preserves leading/trailing spaces and non-ASCII password characters', async (_, action, values) => {
     await action({ ...values, password: '  Sênha1234 🔑  ' });
     expect(fetchMock).toHaveBeenCalledOnce();
@@ -99,29 +81,13 @@ test.each([undefined, null, 'false', 0, []].map((input) => [input]))('login reje
   expect(cookies).not.toHaveBeenCalled();
 });
 
-test.each([...malformedInputs, { ...SIGNUP_VALUES, name: null }, { ...SIGNUP_VALUES, name: [] }].map((input) => [input]))(
-  'signup rejects malformed input %j without HTTP or cookie writes', async (input) => {
-    expect(await signup(input)).toEqual(INVALID_INPUT);
-    expect(fetchMock).not.toHaveBeenCalled();
-    expect(cookies).not.toHaveBeenCalled();
-  },
-);
 
-test.each([
-  { ...SIGNUP_VALUES, email: null }, { ...SIGNUP_VALUES, email: [] },
-  { ...SIGNUP_VALUES, password: null }, { ...SIGNUP_VALUES, password: [] },
-  { ...SIGNUP_VALUES, password: 123 },
-])('signup rejects non-string fields even when name is valid: %j', async (input) => {
-  expect(await signup(input)).toEqual(INVALID_INPUT);
-  expect(fetchMock).not.toHaveBeenCalled();
-  expect(cookies).not.toHaveBeenCalled();
-});
+
+
 
 test.each([
   ['login credentials', login, LOGIN_VALUES, 401, 'E-mail ou senha incorretos.', {}],
   ['login rate limit', login, LOGIN_VALUES, 429, 'Muitas tentativas. Tente novamente em alguns minutos.', {}],
-  ['signup conflict', signup, SIGNUP_VALUES, 409, 'Este e-mail já tem uma conta.', { email: 'Este e-mail já tem uma conta.' }],
-  ['signup validation', signup, SIGNUP_VALUES, 400, 'Revise os dados enviados.', { name: 'Preencha este campo.' }],
 ])('%s preserves API detail and field errors without creating a session', async (_, action, values, status, detail, errors) => {
   fetchMock.mockResolvedValue(json({ type: 'about:blank', status, detail, errors }, status));
   expect(await action(values)).toEqual({ ok: false, status, detail, errors });
@@ -144,7 +110,7 @@ test('unexpected session failures remain exceptions instead of reported success 
   await expect(login(LOGIN_VALUES)).rejects.toBe(failure);
 });
 
-test.each([['login', login, LOGIN_VALUES], ['signup', signup, SIGNUP_VALUES]])(
+test.each([['login', login, LOGIN_VALUES]])(
   '%s waits for the private session to be writable before returning success', async (_, action, values) => {
     let releaseCookies;
     cookies.mockImplementationOnce(() => new Promise((resolve) => { releaseCookies = resolve; }));
@@ -159,12 +125,7 @@ test.each([['login', login, LOGIN_VALUES], ['signup', signup, SIGNUP_VALUES]])(
   },
 );
 
-test('a navigation signal remains a navigation signal', async () => {
-  fetchMock.mockResolvedValue(new Response(null, { status: 401 }));
-  await expect(signup(SIGNUP_VALUES)).rejects.toThrow('NEXT_REDIRECT');
-  expect(redirect).toHaveBeenCalledExactlyOnceWith('/login');
-  expect(cookieStore.set).not.toHaveBeenCalled();
-});
+
 
 test('logout clears the cookie before redirecting without an API request', async () => {
   await expect(logout()).rejects.toThrow('NEXT_REDIRECT');

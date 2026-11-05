@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.security;
 
 import br.com.fluiar.selecao.repository.UserRepository;
+import java.util.Objects;
 import java.util.UUID;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.OAuth2ErrorCodes;
@@ -24,15 +25,31 @@ public class CredentialsVersionValidator implements OAuth2TokenValidator<Jwt> {
 
     @Override
     public OAuth2TokenValidatorResult validate(Jwt jwt) {
-        UUID userId = UUID.fromString(jwt.getSubject());
-        int tokenVersion = ((Number) jwt.getClaim(TokenService.CREDENTIALS_VERSION_CLAIM)).intValue();
-
-        boolean tokenIsCurrent = userRepository.findCredentialsVersion(userId)
-                .map(currentVersion -> currentVersion == tokenVersion)
-                .orElse(false);
-        if (tokenIsCurrent) {
-            return OAuth2TokenValidatorResult.success();
+        try {
+            Object subject = jwt.getClaims().get("sub");
+            if (!(subject instanceof String value)) {
+                return invalidToken();
+            }
+            UUID userId = UUID.fromString(value);
+            Object version = jwt.getClaim(TokenService.CREDENTIALS_VERSION_CLAIM);
+            boolean current = userRepository.findById(userId).map(user ->
+                    version instanceof Number number && number.longValue() == user.getCredentialsVersion()
+                    && number.doubleValue() == user.getCredentialsVersion()
+                    && Objects.equals(jwt.getClaims().get(TokenService.OFFICE_ID_CLAIM), user.getOfficeId().toString())
+                    && Objects.equals(jwt.getClaims().get(TokenService.ROLE_CLAIM), user.getRole().name())
+                    && Objects.equals(jwt.getClaims().get(TokenService.CLIENT_ID_CLAIM),
+                            user.getClientId() == null ? null : user.getClientId().toString()))
+                    .orElse(false);
+            if (current) {
+                return OAuth2TokenValidatorResult.success();
+            }
+        } catch (IllegalArgumentException | ClassCastException exception) {
+            return invalidToken();
         }
+        return invalidToken();
+    }
+
+    private static OAuth2TokenValidatorResult invalidToken() {
         return OAuth2TokenValidatorResult.failure(new OAuth2Error(OAuth2ErrorCodes.INVALID_TOKEN));
     }
 }
