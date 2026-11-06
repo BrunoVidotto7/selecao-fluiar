@@ -95,7 +95,7 @@ test.each([undefined, null, [], {}, '', 'slug', LIST.id + '?other=1'].map((id) =
 
 test.each([
   undefined, null, [], 'body', {}, { ...BODY, roomId: 'room' }, { ...BODY, name: [] },
-  { ...BODY, quantity: '2' }, { ...BODY, quantity: 1.5 }, { ...BODY, quantity: NaN },
+  { ...BODY, quantity: '2' }, { ...BODY, quantity: NaN }, { ...BODY, unit: 'KG' },
   { ...BODY, unitPrice: '2.50' }, { ...BODY, unitPrice: Infinity }, { ...BODY, notes: [] },
   { ...BODY, bought: 'false' }, { ...BODY, links: {} }, { ...BODY, links: [null] },
   { ...BODY, links: Array(1) }, { ...BODY, links: [{ url: 1 }] }, { ...BODY, links: [{ url: 'https://loja.com', note: [] }] },
@@ -103,6 +103,19 @@ test.each([
   expect(await saveProduct(LIST.id, null, body)).toEqual(INVALID);
   expect(await saveProduct(LIST.id, PRODUCT.id, body)).toEqual(INVALID);
   expect(fetchMock).not.toHaveBeenCalled();
+});
+
+test('decimal quantity and unit are forwarded to create and update; patch carries only quantity', async () => {
+  fetchMock.mockImplementation(async (url) => String(url).endsWith('/api/lists/' + LIST.id) ? json(LIST) : json(PRODUCT));
+  const body = { ...BODY, quantity: 12.5, unit: 'SQUARE_METER' };
+  expect((await saveProduct(LIST.id, null, body)).ok).toBe(true);
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toMatchObject({ quantity: 12.5, unit: 'SQUARE_METER' });
+  expect((await saveProduct(LIST.id, PRODUCT.id, body)).ok).toBe(true);
+  const updateCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
+  expect(JSON.parse(updateCall[1].body)).toMatchObject({ quantity: 12.5, unit: 'SQUARE_METER' });
+  expect((await patchProduct(LIST.id, PRODUCT.id, { quantity: 1.5, unit: 'KG' })).ok).toBe(true);
+  const patchCall = fetchMock.mock.calls.find(([, init]) => init?.method === 'PATCH');
+  expect(JSON.parse(patchCall[1].body)).toEqual({ quantity: 1.5 });
 });
 
 test('optional DTO fields normalize to the API defaults', async () => {
@@ -187,7 +200,7 @@ test.each([
 });
 
 test.each([undefined, null, [], '', { bought: 1 }, { bought: 'false' },
-  { quantity: '' }, { quantity: '2' }, { quantity: 1.5 }, { quantity: NaN }, { quantity: Infinity },
+  { quantity: '' }, { quantity: '2' }, { quantity: NaN }, { quantity: Infinity },
 ].map((patch) => [patch]))('PATCH rejects malformed status input %j before reading or writing', async (patch) => {
   expect(await patchProduct(LIST.id, PRODUCT.id, patch)).toEqual(INVALID);
   expect(fetchMock).not.toHaveBeenCalled();

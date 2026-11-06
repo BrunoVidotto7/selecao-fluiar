@@ -8,6 +8,7 @@ import { LIST, ROOM, PRODUCT, SECOND_ROOM, CATEGORIES } from '@/test-support/fix
 import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
 import { getList } from '../listas/queries.server';
 import { readApi } from '@/lib/api.server';
+import { QUANTITY_AREA_INVALID, QUANTITY_UNIT_INVALID } from '@/lib/validation';
 
 const { push, refresh, createUrl, revokeUrl } = vi.hoisted(() => ({
   push: vi.fn(), refresh: vi.fn(), createUrl: vi.fn(), revokeUrl: vi.fn(),
@@ -152,7 +153,7 @@ test('the product form requires a name and persists a valid product back to its 
   fireEvent.change(screen.getByLabelText('Categoria'), { target: { value: CATEGORIES[0].id } });
   await submit();
   expect(saveProduct).toHaveBeenCalledWith(LIST.id, null, {
-    name: 'Batedeira', roomId: ROOM.id, categoryId: CATEGORIES[0].id, quantity: 1, unitPrice: null, notes: null, bought: false, links: [],
+    name: 'Batedeira', roomId: ROOM.id, categoryId: CATEGORIES[0].id, quantity: 1, unit: 'UNIT', unitPrice: null, notes: null, bought: false, links: [],
   });
   expect(push).toHaveBeenCalledWith(`/listas/${LIST.id}`);
   expect(refresh).toHaveBeenCalledOnce();
@@ -277,7 +278,7 @@ test('editing shows API values, object links, image path and bought state withou
   await submit();
   expect(saveProduct.mock.calls[0][1]).toBe(PRODUCT.id);
   expect(saveProduct.mock.calls[0][2]).toEqual({
-    name: PRODUCT.name, roomId: ROOM.id, categoryId: PRODUCT.category.id, quantity: 2, unitPrice: 12.5, notes: PRODUCT.notes, bought: true, links: PRODUCT.links,
+    name: PRODUCT.name, roomId: ROOM.id, categoryId: PRODUCT.category.id, quantity: 2, unit: 'UNIT', unitPrice: 12.5, notes: PRODUCT.notes, bought: true, links: PRODUCT.links,
   });
   expect(uploadProductImage).not.toHaveBeenCalled();
   expect(deleteProductImage).not.toHaveBeenCalled();
@@ -663,4 +664,56 @@ test('the product pages load the office categories', async () => {
   view.unmount();
   render(await editProductPage());
   expect(screen.getByLabelText('Categoria').value).toBe(PRODUCT.category.id);
+});
+
+const QUANTITY_UNIT_INVALID_TEXT = QUANTITY_UNIT_INVALID;
+
+test('the unit selector starts at Unidades and square meters accept a decimal quantity', async () => {
+  mount();
+  fillNew();
+  expect(screen.getByLabelText('Unidade').value).toBe('UNIT');
+  fireEvent.change(screen.getByLabelText('Unidade'), { target: { value: 'SQUARE_METER' } });
+  expect(screen.queryByRole('button', { name: 'Aumentar' })).toBeNull();
+  fireEvent.change(screen.getByLabelText('Quantidade'), { target: { value: '12,5' } });
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).toMatchObject({ quantity: 12.5, unit: 'SQUARE_METER' });
+});
+
+test('switching back to Unidades revalidates a decimal quantity and blocks saving', async () => {
+  mount();
+  fillNew();
+  fireEvent.change(screen.getByLabelText('Unidade'), { target: { value: 'SQUARE_METER' } });
+  fireEvent.change(screen.getByLabelText('Quantidade'), { target: { value: '12,5' } });
+  fireEvent.change(screen.getByLabelText('Unidade'), { target: { value: 'UNIT' } });
+  expect(screen.getByText(QUANTITY_UNIT_INVALID_TEXT)).toBeTruthy();
+  expect(screen.getByLabelText('Quantidade').value).toBe('12,5');
+  expect(screen.getByLabelText('Quantidade').type).toBe('text');
+  await submit();
+  expect(saveProduct).not.toHaveBeenCalled();
+});
+
+test('the stepper always yields an integer after switching back from a decimal', () => {
+  mount();
+  fillNew();
+  fireEvent.change(screen.getByLabelText('Unidade'), { target: { value: 'SQUARE_METER' } });
+  fireEvent.change(screen.getByLabelText('Quantidade'), { target: { value: '12,5' } });
+  fireEvent.change(screen.getByLabelText('Unidade'), { target: { value: 'UNIT' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Aumentar' }));
+  expect(screen.getByLabelText('Quantidade').value).toBe('13');
+});
+
+test('a dot decimal is rejected for square meters', async () => {
+  mount();
+  fillNew();
+  fireEvent.change(screen.getByLabelText('Unidade'), { target: { value: 'SQUARE_METER' } });
+  fireEvent.change(screen.getByLabelText('Quantidade'), { target: { value: '12.5' } });
+  await submit();
+  expect(screen.getByText(QUANTITY_AREA_INVALID)).toBeTruthy();
+  expect(saveProduct).not.toHaveBeenCalled();
+});
+
+test('an existing square meter product opens with its unit and pt-BR quantity', () => {
+  mount({ product: { ...PRODUCT, unit: 'SQUARE_METER', quantity: 12.5 } });
+  expect(screen.getByLabelText('Unidade').value).toBe('SQUARE_METER');
+  expect(screen.getByLabelText('Quantidade').value).toBe('12,5');
 });

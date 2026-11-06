@@ -6,6 +6,7 @@ import static org.assertj.core.api.InstanceOfAssertFactories.BIG_DECIMAL;
 import br.com.fluiar.selecao.model.Product;
 import br.com.fluiar.selecao.model.ProductImage;
 import br.com.fluiar.selecao.model.ProductLink;
+import br.com.fluiar.selecao.model.ProductUnit;
 import br.com.fluiar.selecao.model.Room;
 import br.com.fluiar.selecao.repository.ProductImageRepository;
 import br.com.fluiar.selecao.repository.ProductRepository;
@@ -214,11 +215,11 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         Room laundry = storeRoom(listId, LAUNDRY, 1);
         Room kitchen = storeRoom(listId, KITCHEN, 0);
-        Product mixer = productRepository.save(new Product(kitchen, defaultCategory(paula.officeId()), MIXER, 1, new BigDecimal("459.00"), MIXER_NOTES,
+        Product mixer = productRepository.save(new Product(kitchen, defaultCategory(paula.officeId()), MIXER, BigDecimal.ONE, ProductUnit.UNIT, new BigDecimal("459.00"), MIXER_NOTES,
                 false, List.of(new ProductLink(MIXER_STORE_LINK, MIXER_STORE_NOTE),
                         new ProductLink(MIXER_OTHER_LINK, null))));
-        productRepository.save(new Product(kitchen, defaultCategory(paula.officeId()), CAKE_PAN, 2, new BigDecimal("39.90"), null, true, List.of()));
-        productRepository.save(new Product(laundry, defaultCategory(paula.officeId()), STORAGE_BOX, 3, null, null, false, List.of()));
+        productRepository.save(new Product(kitchen, defaultCategory(paula.officeId()), CAKE_PAN, new BigDecimal("2"), ProductUnit.UNIT, new BigDecimal("39.90"), null, true, List.of()));
+        productRepository.save(new Product(laundry, defaultCategory(paula.officeId()), STORAGE_BOX, new BigDecimal("3"), ProductUnit.UNIT, null, null, false, List.of()));
 
         var result = requestList(paula, listId);
 
@@ -232,7 +233,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].id").isEqualTo(mixer.getId().toString());
         assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].roomId")
                 .isEqualTo(kitchen.getId().toString());
-        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].quantity").isEqualTo(1);
+        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("1");
         assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].unitPrice").convertTo(BIG_DECIMAL)
                 .isEqualByComparingTo("459.00");
         assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].notes").isEqualTo(MIXER_NOTES);
@@ -257,7 +258,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         Product mixer = productRepository.save(
-                new Product(storeRoom(listId, KITCHEN, 0), defaultCategory(paula.officeId()), MIXER, 1, null, null, false, List.of()));
+                new Product(storeRoom(listId, KITCHEN, 0), defaultCategory(paula.officeId()), MIXER, BigDecimal.ONE, ProductUnit.UNIT, null, null, false, List.of()));
         UUID imageId = productImageRepository.save(new ProductImage(mixer.getId(), IMAGE_CONTENT_TYPE, IMAGE_BYTES))
                 .getId();
 
@@ -406,7 +407,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
     private void storeProductWithLink(Room room, br.com.fluiar.selecao.model.ProductCategory category, String name) {
         productRepository.save(
-                new Product(room, category, name, 1, null, null, false, List.of(new ProductLink(STORE_LINK, null))));
+                new Product(room, category, name, BigDecimal.ONE, ProductUnit.UNIT, null, null, false, List.of(new ProductLink(STORE_LINK, null))));
     }
 
     /** Stores a known past update time, so any later write by Hibernate is certainly newer, without waiting. */

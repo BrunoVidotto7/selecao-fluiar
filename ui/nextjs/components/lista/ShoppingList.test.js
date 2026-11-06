@@ -62,7 +62,7 @@ test('the API room products render quantities and the persisted estimated and re
   expect(screen.getAllByLabelText('Quantidade').map((input) => input.value)).toEqual(['2', '1', '1']);
   expect(screen.getByRole('link', { name: 'Batedeira' }).getAttribute('href'))
     .toBe(`/listas/${LIST.id}/produtos/${PRODUCT.id}/editar`);
-  expect(screen.getByText(/2 × R\$\s10,00/)).toBeTruthy();
+  expect(screen.getByText(/2 un. × R\$\s10,00/)).toBeTruthy();
 });
 
 test('a failed purchase update does not change the saved checkbox or totals', async () => {
@@ -92,7 +92,7 @@ test.each(['', '0', '0.5', '1.5', '1000'])('invalid quantity draft %j is flagged
 
 test.each(['', '0', '0.5', '1.5', '1000'])('an invalid quantity draft %j cannot become a successful purchase after blur', async (draft) => {
   const view = renderFull();
-  const qty = screen.getAllByRole('spinbutton', { name: 'Quantidade' })[0];
+  const qty = screen.getAllByRole('textbox', { name: 'Quantidade' })[0];
   const checkbox = screen.getByRole('checkbox', { name: 'Comprado: Batedeira' });
   fireEvent.change(qty, { target: { value: draft } });
   fireEvent.blur(qty);
@@ -112,7 +112,7 @@ test('correcting an invalid draft permits purchase only after the quantity write
   patchProduct.mockReturnValueOnce(quantityWrite.promise)
     .mockResolvedValueOnce({ ok: true, data: { ...PRODUCT, quantity: 3, bought: true } });
   const view = render(viewOf(LIST));
-  const qty = screen.getByRole('spinbutton', { name: 'Quantidade' });
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
   const checkbox = screen.getByRole('checkbox', { name: 'Comprado: Batedeira' });
   fireEvent.change(qty, { target: { value: '' } });
   fireEvent.blur(qty);
@@ -181,7 +181,7 @@ test('read-only tables accept the public API subset without fabricated identifie
     }],
   }];
   render(<ClientView rooms={rooms} />);
-  expect(screen.queryByText('2')).not.toBeNull();
+  expect(screen.queryByText('2 un.')).not.toBeNull();
   expect(screen.queryByRole('link', { name: /loja.com/ })?.getAttribute('href')).toBe('https://loja.com/item');
   expect(screen.getByText('Azul')).toBeTruthy();
   expect(screen.queryByRole('checkbox')).toBeNull();
@@ -269,7 +269,7 @@ test.each([
   patchProduct.mockReturnValue(write.promise);
   const view = renderFull();
   const checkbox = screen.getByRole('checkbox', { name: 'Comprado: Batedeira' });
-  const qty = screen.getAllByRole('spinbutton', { name: 'Quantidade' })[0];
+  const qty = screen.getAllByRole('textbox', { name: 'Quantidade' })[0];
   if (operation === 'purchase') fireEvent.click(checkbox);
   else {
     fireEvent.change(qty, { target: { value: '3' } });
@@ -310,7 +310,7 @@ test('failed quantity persistence restores the server value and displays the API
   patchProduct.mockResolvedValue({ ok: false, status: 400, detail: 'Revise os campos destacados.',
     errors: { quantity: 'Use um valor até 999.' } });
   renderFull();
-  const qty = screen.getAllByRole('spinbutton', { name: 'Quantidade' })[0];
+  const qty = screen.getAllByRole('textbox', { name: 'Quantidade' })[0];
   fireEvent.change(qty, { target: { value: '3' } });
   fireEvent.blur(qty);
   await act(async () => {});
@@ -432,7 +432,7 @@ test('populated lists expose room management without changing product controls o
   renderFull();
   expect(screen.getByRole('link', { name: 'Gerenciar ambientes' }).getAttribute('href')).toBe(`/listas/${LIST.id}/ambientes`);
   expect(screen.getByRole('link', { name: 'Adicionar produto' }).getAttribute('href')).toBe(`/listas/${LIST.id}/produtos/novo`);
-  expect(screen.getAllByRole('checkbox')).toHaveLength(3);
+  expect(screen.getAllByRole('checkbox', { name: /^Comprado:/ })).toHaveLength(3);
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
   expect(screen.queryByRole('link', { name: 'Gerenciar ambientes' })).toBeNull();
 });
@@ -555,4 +555,48 @@ test('client preview has no category filter', () => {
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
   expect(screen.queryByRole('combobox', { name: 'Categoria' })).toBeNull();
   expect(screen.getAllByText('Luminotécnica', { selector: '.ro-cat' })).toHaveLength(1);
+});
+
+const printSheet = () => document.body.querySelector(':scope > .print-sheet');
+const printBox = (name) => screen.getByRole('checkbox', { name: `Imprimir: ${name}` });
+const sheetItems = (container) => [...printSheet(container).querySelectorAll('tbody td:nth-child(2)')].map((td) => td.textContent);
+
+test('print selection shows the count, prints only the marked item and does not change purchases', () => {
+  window.print = vi.fn();
+  const { container } = renderFull();
+  fireEvent.click(printBox('Varal'));
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  expect(sheetItems(container)).toEqual(['Varal']);
+  expect(printSheet(container).textContent).toContain(`Cliente: ${fullList.clientName}`);
+  fireEvent.click(screen.getByRole('button', { name: 'Imprimir selecionados' }));
+  expect(window.print).toHaveBeenCalledOnce();
+  expect(patchProduct).not.toHaveBeenCalled();
+  expect(screen.getByRole('checkbox', { name: 'Comprado: Varal' }).checked).toBe(false);
+});
+
+test('the room checkbox selects every item of that room', () => {
+  const { container } = renderFull();
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar todos de Cozinha' }));
+  expect(screen.getByText('2 itens selecionados')).toBeTruthy();
+  expect(sheetItems(container)).toEqual(['Batedeira', 'Capacho']);
+});
+
+test('print selection survives a filter change and a refreshed list, and drops removed products', () => {
+  const { container, rerender } = renderFull();
+  fireEvent.click(printBox('Capacho'));
+  fireEvent.click(screen.getByRole('button', { name: /Pendentes/ }));
+  expect(screen.queryByRole('checkbox', { name: 'Imprimir: Capacho' })).toBeNull();
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  expect(sheetItems(container)).toEqual(['Capacho']);
+  rerender(viewOf({ ...fullList, updatedAt: '2026-11-06T10:00:00Z' }));
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  const without = { ...fullList, rooms: [{ ...fullList.rooms[0], products: [fullList.rooms[0].products[0]] }, fullList.rooms[1]] };
+  rerender(viewOf(without));
+  expect(screen.queryByText('1 item selecionado')).toBeNull();
+});
+
+test('the client preview has no print selection', () => {
+  renderFull();
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  expect(screen.queryByRole('checkbox', { name: /^Imprimir:/ })).toBeNull();
 });

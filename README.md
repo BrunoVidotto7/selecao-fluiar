@@ -238,8 +238,10 @@ curl -sS 'http://localhost:8080/api/lists/<list-id>/rooms' \
 curl -sS 'http://localhost:8080/api/lists/<list-id>/products' \
   -H 'Authorization: Bearer <admin-token>' \
   -H 'Content-Type: application/json' \
-  -d '{"roomId":"<room-id>","name":"Poltrona de leitura","quantity":2,"unitPrice":1290.00,"notes":"Conferir medidas antes da compra","links":[]}'
+  -d '{"roomId":"<room-id>","name":"Poltrona de leitura","quantity":2,"unit":"UNIT","unitPrice":1290.00,"notes":"Conferir medidas antes da compra","links":[]}'
 ```
+
+The `unit` field is either `UNIT` (the default) or `SQUARE_METER`. For `UNIT`, `quantity` is an integer from 1 to 999; for `SQUARE_METER`, it is a decimal from 0.01 to 999.99 with up to 2 decimal places.
 
 Once invited and authenticated, the client uses a separate API surface:
 

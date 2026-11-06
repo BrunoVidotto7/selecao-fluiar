@@ -110,7 +110,7 @@ test('new and edit product routes read actual list rooms and client identity, ne
   fetchMock.mockImplementation(serveList(LIST));
   const view = render(await NewProductPage({ ...props({ id: LIST.id }), searchParams: Promise.resolve({ ambiente: ROOM.id }) }));
   expect(screen.getByLabelText('Ambiente').value).toBe(ROOM.id);
-  expect(screen.getAllByRole('option').map((option) => option.value)).toEqual(['', ROOM.id, '', ...CATEGORIES.map((category) => category.id)]);
+  expect(screen.getAllByRole('option').map((option) => option.value)).toEqual(['', ROOM.id, '', ...CATEGORIES.map((category) => category.id), 'UNIT', 'SQUARE_METER']);
   expect(screen.getByText('Casa nova · Mariana Souza')).toBeTruthy();
   view.rerender(await EditProductPage(props({ id: LIST.id, produtoId: PRODUCT.id })));
   expect(screen.getByLabelText('Nome do produto').value).toBe(PRODUCT.name);
@@ -300,7 +300,7 @@ test('the list page starts list and office reads in parallel and displays only A
   releases.get('http://localhost:8080/api/lists/' + LIST.id)(new Response(JSON.stringify(LIST)));
   releases.get('http://localhost:8080/api/office')(new Response(JSON.stringify(office)));
   render(await loading);
-  expect(screen.getByRole('heading', { name: LIST.name })).toBeTruthy();
+  expect(screen.getAllByRole('heading', { name: LIST.name })[0]).toBeTruthy();
   expect(screen.getByRole('checkbox', { name: 'Comprado: Batedeira' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'novo item em Cozinha' }).getAttribute('href'))
     .toBe(`/listas/${LIST.id}/produtos/novo?ambiente=${ROOM.id}`);

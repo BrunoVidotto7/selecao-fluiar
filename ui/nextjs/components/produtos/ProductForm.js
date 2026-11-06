@@ -9,6 +9,7 @@ import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useApiForm from '../forms/useApiForm';
 import { brl, imageSource, parseBRL } from '@/lib/format';
 import { CATEGORY_REQUIRED, PRODUCT_IMAGE_TYPES, validateField, validateProductImage } from '@/lib/validation';
+import { UNIT_OPTIONS, parseQuantity, quantityRule } from '@/lib/quantity';
 import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
 import StoreSyncStatus from './StoreSyncStatus';
 import { toProductRequest, validateProductLinks, productFieldMap, storeSyncChange } from './product-values';
@@ -24,7 +25,6 @@ const PRODUCT_RULES = {
   nome: { required: true, maxLength: 120 },
   amb: { required: 'Escolha o ambiente do produto.' },
   categoryId: { required: CATEGORY_REQUIRED },
-  qtd: { required: true, integer: true, min: MIN_QUANTITY, max: MAX_QUANTITY },
   preco: { money: true },
   obs: { maxLength: 1000 },
 };
@@ -74,14 +74,17 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
   const f = useApiForm({
     initial: {
       nome: product?.name || '', amb: product?.roomId || defaultRoomId, categoryId: product?.category?.id || '',
-      qtd: String(product?.quantity ?? MIN_QUANTITY), preco: fmtPrice(product?.unitPrice),
+      qtd: String(product?.quantity ?? MIN_QUANTITY).replace('.', ','), unidade: product?.unit ?? 'UNIT', preco: fmtPrice(product?.unitPrice),
       obs: product?.notes || '', bought: product?.bought ?? false,
       links: product?.links?.length
         ? product.links.map((link, index) => ({ id: `row${index}`, url: link.url, note: link.note || '' }))
         : [{ id: 'row0', url: '', note: '' }],
     },
     rules: PRODUCT_RULES,
-    validate: validateProductLinks,
+    validate: (values) => ({
+      ...validateProductLinks(values),
+      ...Object.fromEntries([['qtd', validateField('qtd', values, quantityRule(values.unidade))]].filter(([, message]) => message)),
+    }),
     fieldMap: productFieldMap,
     action: async (values) => {
       const request = toProductRequest(values);
@@ -120,8 +123,9 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
   });
 
   const busy = f.busy || deleting || searchingImages || searchingProduct;
-  const qty = Number(f.values.qtd);
-  const setQty = (n) => f.setValue('qtd', String(Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, n))));
+  const isUnit = f.values.unidade === 'UNIT';
+  const qty = parseQuantity(f.values.qtd);
+  const setQty = (n) => f.setValue('qtd', String(Math.min(MAX_QUANTITY, Math.max(MIN_QUANTITY, Math.trunc(n)))));
   const image = file ? previewUrl : importedImage || (removeImage ? null : imageSource(persistedImageUrl));
   const links = f.values.links;
   const updateLink = (id, name, value) => f.setValue('links', links.map((link) => link.id === id ? { ...link, [name]: value } : link));
@@ -284,14 +288,22 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
 
       <div className="row2">
         <Field id="qtd" label="Quantidade" error={f.errors.qtd}>
-          <div className="stepper">
-            <button type="button" onClick={() => setQty((Number.isFinite(qty) ? qty : MIN_QUANTITY) - 1)} aria-label="Diminuir">−</button>
-            <input id="qtd" type="number" min={MIN_QUANTITY} max={MAX_QUANTITY} step="1" inputMode="numeric" value={f.values.qtd}
+          {isUnit ? (
+            <div className="stepper">
+              <button type="button" onClick={() => setQty((Number.isFinite(qty) ? qty : MIN_QUANTITY) - 1)} aria-label="Diminuir">−</button>
+              <input id="qtd" type="text" inputMode="numeric" value={f.values.qtd}
+                aria-invalid={f.errors.qtd ? 'true' : 'false'} aria-describedby={f.errors.qtd ? 'qtd-err' : undefined}
+                onChange={(event) => f.setValue('qtd', event.target.value)} onBlur={f.field('qtd').onBlur} />
+              <button type="button" onClick={() => setQty((Number.isFinite(qty) ? qty : MIN_QUANTITY) + 1)} aria-label="Aumentar">+</button>
+            </div>
+          ) : (
+            <input id="qtd" className="input num" inputMode="decimal" placeholder="0,00" value={f.values.qtd}
               aria-invalid={f.errors.qtd ? 'true' : 'false'} aria-describedby={f.errors.qtd ? 'qtd-err' : undefined}
               onChange={(event) => f.setValue('qtd', event.target.value)} onBlur={f.field('qtd').onBlur} />
-            <button type="button" onClick={() => setQty((Number.isFinite(qty) ? qty : MIN_QUANTITY) + 1)} aria-label="Aumentar">+</button>
-          </div>
+          )}
         </Field>
+        <Select label="Unidade" options={UNIT_OPTIONS} {...f.field('unidade')}
+          onChange={(event) => { f.setValue('unidade', event.target.value); f.field('qtd').onBlur(); }} />
         <TextInput label="Preço unitário" prefix="R$" inputMode="decimal" placeholder="0,00" className="input num" {...preco}
           onBlur={() => {
             if (!validateField('preco', f.values, PRODUCT_RULES.preco) && f.values.preco.trim()) {

@@ -1,3 +1,4 @@
+import { formatQuantity } from '@/lib/quantity';
 import ItemLinks from './ItemLinks';
 
 // Read-only preview of the client-facing content.
@@ -13,7 +14,7 @@ export default function ClientView({ rooms }) {
             {r.products.map((it, productIndex) => (
               <tr key={it.id ?? productIndex} className={it.bought ? 'done' : ''}>
                 <td className="ck"><span className={'mark ' + (it.bought ? 'on' : 'off')} role="img" aria-label={it.bought ? 'Comprado' : 'Ainda não comprado'} /></td>
-                <td className="qt"><span className="ro-qty">{it.quantity}</span></td>
+                <td className="qt"><span className="ro-qty">{formatQuantity(it.quantity, it.unit)}</span></td>
                 <td className="it"><span className="ro-name">{it.name}</span><span className="ro-cat">{it.category.name}</span></td>
                 <td><ItemLinks links={it.links} empty="Opções em breve" />
                   {it.clientNotes && <p className="meta"><b>Observação do cliente:</b> {it.clientNotes}</p>}

@@ -3,6 +3,7 @@ package br.com.fluiar.selecao.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductUnit;
 import br.com.fluiar.selecao.repository.ProductRepository;
 import br.com.fluiar.selecao.repository.RoomRepository;
 import br.com.fluiar.selecao.service.RoomService;
@@ -165,7 +166,7 @@ class RoomControllerTest extends ApiIntegrationTest {
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
         UUID mixerId = productRepository.save(new Product(
-                roomRepository.findById(kitchenId).orElseThrow(), defaultCategory(paula.officeId()), MIXER, 1, null, null, false, List.of())).getId();
+                roomRepository.findById(kitchenId).orElseThrow(), defaultCategory(paula.officeId()), MIXER, java.math.BigDecimal.ONE, ProductUnit.UNIT, null, null, false, List.of())).getId();
 
         var result = requestDeleteRoom(paula, kitchenId);
 

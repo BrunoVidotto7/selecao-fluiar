@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.dto;
 
 import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductUnit;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -10,7 +11,8 @@ public record ProductResponse(
         UUID roomId,
         ProductCategoryRef category,
         String name,
-        int quantity,
+        BigDecimal quantity,
+        ProductUnit unit,
         BigDecimal unitPrice,
         String notes,
         String clientNotes,
@@ -21,7 +23,7 @@ public record ProductResponse(
     public static ProductResponse of(Product product) {
         return new ProductResponse(product.getId(), product.getRoom().getId(),
                 ProductCategoryRef.of(product.getCategory()), product.getName(),
-                product.getQuantity(), product.getUnitPrice(), product.getNotes(), product.getClientNotes(), product.isBought(),
+                product.getQuantity(), product.getUnit(), product.getUnitPrice(), product.getNotes(), product.getClientNotes(), product.isBought(),
                 ImageUrls.of(product.getImageId()), product.getLinks().stream().map(ProductLinkDto::of).toList(), ProductStoreSyncResponse.of(product.getStoreSync()));
     }
 }

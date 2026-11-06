@@ -19,7 +19,7 @@ test('detail and metadata use the same protected client query', async () => {
   const props = { params: Promise.resolve({ id: CLIENT_LIST.id }) };
   expect(await generateMetadata(props)).toEqual({ title: CLIENT_LIST.name });
   render(<FeedbackProvider>{await DetailPage(props)}</FeedbackProvider>);
-  expect(screen.getByRole('heading', { name: CLIENT_LIST.name })).toBeTruthy();
+  expect(screen.getAllByRole('heading', { name: CLIENT_LIST.name })[0]).toBeTruthy();
   expect(getClientList).toHaveBeenCalledWith(CLIENT_LIST.id);
 });
 test('outages are propagated rather than presented as no lists', async () => {

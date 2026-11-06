@@ -3,6 +3,8 @@ package br.com.fluiar.selecao.model;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -27,8 +29,6 @@ public class Product {
     public static final int NAME_MAX_LENGTH = 120;
     public static final int NOTES_MAX_LENGTH = 1000;
     public static final int CLIENT_NOTES_MAX_LENGTH = 1000;
-    public static final int MIN_QUANTITY = 1;
-    public static final int MAX_QUANTITY = 999;
     public static final int MAX_LINKS = 10;
     /** The unit price column is {@code numeric(12, 2)}: 10 digits before the decimal point and 2 after it. */
     public static final int PRICE_INTEGER_DIGITS = 10;
@@ -54,7 +54,10 @@ public class Product {
 
     private String name;
 
-    private int quantity;
+    private BigDecimal quantity;
+
+    @Enumerated(EnumType.STRING)
+    private ProductUnit unit;
 
     private BigDecimal unitPrice;
 
@@ -82,12 +85,13 @@ public class Product {
     protected Product() {
     }
 
-    public Product(Room room, ProductCategory category, String name, int quantity, BigDecimal unitPrice, String notes, boolean bought,
+    public Product(Room room, ProductCategory category, String name, BigDecimal quantity, ProductUnit unit, BigDecimal unitPrice, String notes, boolean bought,
             List<ProductLink> links) {
         this.room = room;
         this.category = category;
         this.name = name;
         this.quantity = quantity;
+        this.unit = unit;
         this.unitPrice = unitPrice;
         this.notes = notes;
         this.bought = bought;
@@ -131,8 +135,12 @@ public class Product {
         return name;
     }
 
-    public int getQuantity() {
+    public BigDecimal getQuantity() {
         return quantity;
+    }
+
+    public ProductUnit getUnit() {
+        return unit;
     }
 
     public BigDecimal getUnitPrice() {
@@ -163,12 +171,13 @@ public class Product {
         return imageId;
     }
 
-    public void update(Room room, ProductCategory category, String name, int quantity, BigDecimal unitPrice, String notes, boolean bought,
+    public void update(Room room, ProductCategory category, String name, BigDecimal quantity, ProductUnit unit, BigDecimal unitPrice, String notes, boolean bought,
             List<ProductLink> links) {
         this.room = room;
         this.category = category;
         this.name = name;
         this.quantity = quantity;
+        this.unit = unit;
         this.unitPrice = unitPrice;
         this.notes = notes;
         markBought(bought);
@@ -181,7 +190,7 @@ public class Product {
         this.bought = bought;
     }
 
-    public void changeQuantity(int quantity) {
+    public void changeQuantity(BigDecimal quantity) {
         this.quantity = quantity;
     }
 
@@ -190,6 +199,6 @@ public class Product {
         if (unitPrice == null) {
             return BigDecimal.ZERO;
         }
-        return unitPrice.multiply(BigDecimal.valueOf(quantity));
+        return unitPrice.multiply(quantity);
     }
 }

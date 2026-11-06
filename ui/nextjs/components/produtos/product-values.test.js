@@ -3,26 +3,26 @@ import { toProductRequest, validateProductLinks, productFieldMap } from './produ
 import { ROOM } from '@/test-support/fixtures';
 
 const values = {
-  nome: ' Batedeira ', amb: ROOM.id, qtd: '2', preco: '0,00', obs: '', bought: false,
+  nome: ' Batedeira ', amb: ROOM.id, qtd: '2', unidade: 'UNIT', preco: '0,00', obs: '', bought: false,
   links: [{ id: 'row0', url: '', note: '' }, { id: 'row1', url: ' https://loja.com/item ', note: ' Azul ' }],
 };
 
 test('payloads preserve zero and omit only entirely blank link rows', () => {
   expect(toProductRequest(values)).toEqual({
-    name: 'Batedeira', roomId: ROOM.id, quantity: 2, unitPrice: 0, notes: null, bought: false,
+    name: 'Batedeira', roomId: ROOM.id, quantity: 2, unit: 'UNIT', unitPrice: 0, notes: null, bought: false,
     links: [{ url: 'https://loja.com/item', note: 'Azul' }],
   });
   expect(toProductRequest({ ...values, preco: '' }).unitPrice).toBeNull();
   expect(toProductRequest({ ...values, preco: '1.234,56', obs: ' Medidas ', bought: true,
     links: [{ id: 'row7', url: 'https://loja.com', note: ' ' }] })).toEqual({
-    name: 'Batedeira', roomId: ROOM.id, quantity: 2, unitPrice: 1234.56, notes: 'Medidas', bought: true,
+    name: 'Batedeira', roomId: ROOM.id, quantity: 2, unit: 'UNIT', unitPrice: 1234.56, notes: 'Medidas', bought: true,
     links: [{ url: 'https://loja.com', note: null }],
   });
 });
 
 test('API indices map to stable visible IDs after blank rows are filtered', () => {
   expect(productFieldMap(values)).toMatchObject({
-    name: 'nome', roomId: 'amb', quantity: 'qtd', unitPrice: 'preco', notes: 'obs',
+    name: 'nome', roomId: 'amb', quantity: 'qtd', unit: 'unidade', unitPrice: 'preco', notes: 'obs',
     'links[0].url': 'link-row1-url', 'links[0].note': 'link-row1-note',
   });
   expect(productFieldMap({ ...values, links: [values.links[1], { id: 'row8', url: 'https://loja.com/2', note: '' }] })['links[1].url'])
@@ -59,4 +59,8 @@ test('the ten-link limit counts only filled rows', () => {
 test('payloads carry the chosen category', () => {
   expect(toProductRequest({ ...values, categoryId: 'c1' }).categoryId).toBe('c1');
   expect(productFieldMap(values).categoryId).toBe('categoryId');
+});
+
+test('square meter quantities parse the pt-BR decimal and send the unit', () => {
+  expect(toProductRequest({ ...values, qtd: '12,5', unidade: 'SQUARE_METER' })).toMatchObject({ quantity: 12.5, unit: 'SQUARE_METER' });
 });

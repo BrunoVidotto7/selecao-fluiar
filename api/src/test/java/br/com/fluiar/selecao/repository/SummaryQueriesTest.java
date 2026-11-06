@@ -11,6 +11,7 @@ import br.com.fluiar.selecao.model.Product;
 import br.com.fluiar.selecao.model.ProductCategory;
 import br.com.fluiar.selecao.model.ProductImage;
 import br.com.fluiar.selecao.model.ProductLink;
+import br.com.fluiar.selecao.model.ProductUnit;
 import br.com.fluiar.selecao.model.Room;
 import br.com.fluiar.selecao.model.ShoppingList;
 import br.com.fluiar.selecao.support.TestcontainersConfiguration;
@@ -87,6 +88,21 @@ class SummaryQueriesTest {
             assertThat(summary.estimatedTotal()).isEqualByComparingTo("36.50");
             assertThat(summary.isCompleted()).isFalse();
         });
+    }
+
+    @Test
+    void listSummaryMultipliesDecimalSquareMeterQuantitiesByUnitPrice() {
+        UUID officeId = office();
+        ShoppingList list = list(client(officeId, "Ana Souza"), "Apartamento");
+        Room room = room(list, "Sala", 0);
+        squareMeterProduct(room, new BigDecimal("12.5"), new BigDecimal("100.00"));
+        squareMeterProduct(room, new BigDecimal("0.01"), new BigDecimal("19.99"));
+        flushAndClear();
+
+        List<ListSummaryResponse> summaries = shoppingListRepository.findSummaries(officeId);
+
+        assertThat(summaries).singleElement().satisfies(summary ->
+                assertThat(summary.estimatedTotal()).isEqualByComparingTo("1250.1999"));
     }
 
     @Test
@@ -251,7 +267,7 @@ class SummaryQueriesTest {
         UUID officeId = office();
         Client client = client(officeId, "Ana Souza");
         Room room = room(list(client, "Apartamento"), "Sala", 0);
-        Product product = productRepository.save(new Product(room, categoryOf(room), "Sofá", 1, null, null, false, List.of(
+        Product product = productRepository.save(new Product(room, categoryOf(room), "Sofá", BigDecimal.ONE, ProductUnit.UNIT, null, null, false, List.of(
                 new ProductLink("https://loja.example/sofa", "Cor cinza"),
                 new ProductLink("https://loja.example/sofa-azul", null))));
         productImageRepository.save(new ProductImage(product.getId(), "image/png", IMAGE_BYTES));
@@ -294,7 +310,11 @@ class SummaryQueriesTest {
     }
 
     private Product product(Room room, int quantity, BigDecimal unitPrice, boolean bought) {
-        return productRepository.save(new Product(room, categoryOf(room), "Produto", quantity, unitPrice, null, bought, List.of()));
+        return productRepository.save(new Product(room, categoryOf(room), "Produto", BigDecimal.valueOf(quantity), ProductUnit.UNIT, unitPrice, null, bought, List.of()));
+    }
+
+    private Product squareMeterProduct(Room room, BigDecimal quantity, BigDecimal unitPrice) {
+        return productRepository.save(new Product(room, categoryOf(room), "Piso", quantity, ProductUnit.SQUARE_METER, unitPrice, null, false, List.of()));
     }
 
     private void flushAndClear() {

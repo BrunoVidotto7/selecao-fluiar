@@ -1,6 +1,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import RoomTable from './RoomTable';
+import { QUANTITY_UNIT_INVALID } from '@/lib/validation';
 import { LIST, PRODUCT, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
 
 vi.mock('next/navigation', () => ({ unstable_rethrow: vi.fn() }));
@@ -24,14 +25,14 @@ test('the room-add link uses the actual room UUID and null price remains Sem pre
 test('pendingIds disable every mutation control of that row only', () => {
   renderRoom({ products: [PRODUCT, SECOND_PRODUCT], pendingIds: new Set([PRODUCT.id]) });
   expect(screen.getByRole('checkbox', { name: 'Comprado: Batedeira' }).disabled).toBe(true);
-  expect(screen.getAllByRole('spinbutton', { name: 'Quantidade' })[0].disabled).toBe(true);
+  expect(screen.getAllByRole('textbox', { name: 'Quantidade' })[0].disabled).toBe(true);
   expect(screen.getByRole('button', { name: 'Remover Batedeira' }).disabled).toBe(true);
   expect(screen.getByRole('checkbox', { name: 'Comprado: Sofá' }).disabled).toBe(false);
 });
 
 test('a purchase tap validates an unfinished quantity even before blur', async () => {
   const { props } = renderRoom();
-  const qty = screen.getByRole('spinbutton', { name: 'Quantidade' });
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
   fireEvent.change(qty, { target: { value: '' } });
   fireEvent.click(screen.getByRole('checkbox', { name: 'Comprado: Batedeira' }));
   await act(async () => {});
@@ -45,7 +46,7 @@ test('a purchase tap persists a valid unblurred quantity draft without buying ye
   let resolve;
   const onQty = vi.fn(() => new Promise((done) => { resolve = done; }));
   const { props } = renderRoom({ onQty });
-  const qty = screen.getByRole('spinbutton', { name: 'Quantidade' });
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
   const checkbox = screen.getByRole('checkbox', { name: 'Comprado: Batedeira' });
   fireEvent.change(qty, { target: { value: '3' } });
   fireEvent.click(checkbox);
@@ -74,7 +75,7 @@ test('Enter followed by blur saves once and a failed ActionResult restores saved
   let resolve;
   const onQty = vi.fn(() => new Promise((done) => { resolve = done; }));
   const { props } = renderRoom({ onQty });
-  const qty = screen.getByRole('spinbutton', { name: 'Quantidade' });
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
   fireEvent.change(qty, { target: { value: '3' } });
   qty.focus();
   fireEvent.keyDown(qty, { key: 'Enter' });
@@ -93,7 +94,7 @@ test('Enter followed by blur saves once and a failed ActionResult restores saved
 
 test('a confirmed server quantity replaces an unfinished draft without resetting on unchanged server props', () => {
   const view = renderRoom();
-  const qty = screen.getByRole('spinbutton', { name: 'Quantidade' });
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
   fireEvent.change(qty, { target: { value: '' } });
   fireEvent.blur(qty);
   view.rerender(<RoomTable {...view.props} products={[{ ...PRODUCT, bought: true }]} />);
@@ -120,4 +121,55 @@ test('admin item shows store source and partial sync status', () => {
   expect(screen.getByRole('link', { name: 'Origem: Moveca' }).getAttribute('href')).toBe('https://moveca.com.br/products/chair');
   expect(screen.getByText(/Atualização parcial/)).toBeTruthy();
   expect(screen.getByText(/Última atualização completa:/)).toBeTruthy();
+});
+
+const AREA = { ...PRODUCT, unit: 'SQUARE_METER', quantity: 12.5, unitPrice: 100 };
+
+test('a square meter item shows the pt-BR quantity, the unit label and the area price text', () => {
+  renderRoom({ products: [AREA] });
+  expect(screen.getByRole('textbox', { name: 'Quantidade' }).value).toBe('12,5');
+  expect(screen.getByText('m²')).toBeTruthy();
+  expect(screen.getByText(/12,5 m² × R\$\s100,00/)).toBeTruthy();
+});
+
+test('editing a square meter quantity with a comma saves the decimal number', async () => {
+  const { props } = renderRoom({ products: [AREA] });
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
+  fireEvent.change(qty, { target: { value: '13,5' } });
+  fireEvent.blur(qty);
+  await act(async () => {});
+  expect(props.onQty).toHaveBeenCalledExactlyOnceWith(PRODUCT.id, 13.5);
+});
+
+test('a decimal quantity on a unit item shows the unit message and does not save', async () => {
+  const { props } = renderRoom();
+  expect(screen.getByText('un.')).toBeTruthy();
+  const qty = screen.getByRole('textbox', { name: 'Quantidade' });
+  fireEvent.change(qty, { target: { value: '1,5' } });
+  fireEvent.blur(qty);
+  await act(async () => {});
+  expect(screen.getByText(QUANTITY_UNIT_INVALID)).toBeTruthy();
+  expect(props.onQty).not.toHaveBeenCalled();
+});
+
+test('print checkboxes report item and room selection without touching purchase', () => {
+  const onSelect = vi.fn();
+  const onSelectRoom = vi.fn();
+  const { props } = renderRoom({ products: [PRODUCT, SECOND_PRODUCT], selected: new Set([SECOND_PRODUCT.id]),
+    onSelect, onSelectRoom, roomSelected: false });
+  expect(screen.getByRole('checkbox', { name: 'Imprimir: Batedeira' }).checked).toBe(false);
+  expect(screen.getByRole('checkbox', { name: 'Imprimir: Sofá' }).checked).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Imprimir: Batedeira' }));
+  expect(onSelect).toHaveBeenCalledExactlyOnceWith(PRODUCT.id);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar todos de Cozinha' }));
+  expect(onSelectRoom).toHaveBeenCalledOnce();
+  expect(props.onToggle).not.toHaveBeenCalled();
+});
+
+test('the room print checkbox reflects roomSelected and the new-item row spans the extra column', () => {
+  const { container } = renderRoom({ selected: new Set(), onSelect: vi.fn(), onSelectRoom: vi.fn(), roomSelected: true });
+  expect(screen.getByRole('checkbox', { name: 'Selecionar todos de Cozinha' }).checked).toBe(true);
+  expect(container.querySelector('tr.new td[colspan]').getAttribute('colspan')).toBe('4');
+  expect(container.querySelectorAll('thead th')).toHaveLength(5);
+  expect(container.querySelectorAll('tr.new td')).toHaveLength(2);
 });

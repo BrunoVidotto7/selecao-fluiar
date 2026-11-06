@@ -33,6 +33,7 @@ export const PRODUCT = {
   roomId: ROOM_ID,
   name: 'Batedeira',
   quantity: 2,
+  unit: 'UNIT',
   unitPrice: 12.50,
   notes: 'Conferir as medidas.',
   clientNotes: null,
@@ -128,7 +129,7 @@ export const CLIENT_ME = { ...ME, id: '88888888-8888-4888-8888-888888885555', ro
 export const CLIENT_ACCESS = { status: 'NOT_INVITED', email: CLIENT.email, invitationId: null, expiresAt: null };
 
 export const CLIENT_PRODUCT = {
-  id: PRODUCT.id, name: PRODUCT.name, quantity: PRODUCT.quantity, bought: false, clientNotes: null, category: PRODUCT.category,
+  id: PRODUCT.id, name: PRODUCT.name, quantity: PRODUCT.quantity, unit: PRODUCT.unit, bought: false, clientNotes: null, category: PRODUCT.category,
   links: [{ url: 'https://example.com/batedeira', note: null }],
 };
 export const CLIENT_LIST = {

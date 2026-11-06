@@ -9,32 +9,34 @@ import ClientChangeDetails from '../client-changes/ClientChangeDetails';
 import ItemLinks from './ItemLinks';
 import StoreSyncStatus from '../produtos/StoreSyncStatus';
 import ProductClientNotesEditor from './ProductClientNotesEditor';
-import { validateField } from '@/lib/validation';
+import { validateQuantity } from '@/lib/validation';
+import { formatQuantity, parseQuantity } from '@/lib/quantity';
 
 const REMOVE_CONFIRMATION_MS = 2500;
-const MIN_QUANTITY = 1;
-const MAX_QUANTITY = 999;
-const QUANTITY_RULE = { required: true, integer: true, min: MIN_QUANTITY, max: MAX_QUANTITY };
-const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity > 1 ? `${it.quantity} × ${brl(it.unitPrice)}` : brl(it.unitPrice));
+const UNIT_LABEL = { UNIT: 'un.', SQUARE_METER: 'm²' };
+const quantityText = (quantity) => formatQuantity(quantity).split(' ')[0];
+const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity !== 1 ? `${formatQuantity(it.quantity, it.unit)} × ${brl(it.unitPrice)}` : brl(it.unitPrice));
 
 /** @param {{ room: import('../listas/queries.server').RoomResponse, products: import('../listas/queries.server').ProductResponse[],
  * showAdd: boolean, listBase: string, pendingIds: Set<string>,
  * onToggle: (id: string, bought: boolean) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onQty: (id: string, quantity: number) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onRemove: (id: string) => Promise<import('@/lib/api.server').ActionResult<undefined>> }} props */
-export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onNotes, changesByProduct }) {
+export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onNotes, changesByProduct,
+  selected = new Set(), onSelect, onSelectRoom, roomSelected = false }) {
   const done = room.products.filter((i) => i.bought).length;
   return (
     <>
       <div className="roomhead"><h2>{room.name}</h2><span>{done} de {room.products.length} comprados</span></div>
       <div className="tbl">
         <table>
-          <thead><tr><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
+          <thead><tr><th className="pr"><input type="checkbox" className="check" checked={roomSelected}
+            onChange={onSelectRoom} aria-label={`Selecionar todos de ${room.name}`} /></th><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
           <tbody>
             {products.map((it) => <ItemRow key={`${listBase}:${it.id}`} item={it} listBase={listBase}
-              change={changesByProduct?.get(it.id)} pending={pendingIds.has(it.id)} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onNotes={onNotes} />)}
+              change={changesByProduct?.get(it.id)} pending={pendingIds.has(it.id)} printed={selected.has(it.id)} onPrint={onSelect} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onNotes={onNotes} />)}
             {showAdd && (
-              <tr className="new"><td className="ck" /><td colSpan={3}>
+              <tr className="new"><td className="ck" /><td colSpan={4}>
                 <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${room.id}`}><Icon name="plus" />novo item em {room.name}</Link>
               </td></tr>
             )}
@@ -45,7 +47,7 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
   );
 }
 
-function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, change }) {
+function ItemRow({ item, listBase, pending, printed, onPrint, onToggle, onQty, onRemove, onNotes, change }) {
   const [quantityDraft, setQuantityDraft] = useState({ value: null, error: '' });
   const currentDraft = useRef(null);
   const inFlight = useRef(false);
@@ -78,7 +80,7 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, 
   const editHref = `${listBase}/produtos/${item.id}/editar`;
   const errorId = `quantity-${item.id}-err`;
   const { error } = quantityDraft;
-  const qty = quantityDraft.value ?? String(item.quantity);
+  const qty = quantityDraft.value ?? quantityText(item.quantity);
 
   const mutate = async (write, onResult) => {
     if (pending || inFlight.current) return;
@@ -97,10 +99,10 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, 
   };
 
   const validateQuantityDraft = () => {
-    const value = currentDraft.current ?? String(item.quantity);
-    const message = validateField('quantity', { quantity: value }, QUANTITY_RULE);
+    const value = currentDraft.current ?? quantityText(item.quantity);
+    const message = validateQuantity(value, item.unit);
     setQuantityDraft((previous) => ({ ...previous, error: message }));
-    return message ? null : Number(value);
+    return message ? null : parseQuantity(value);
   };
 
   const commitQty = () => {
@@ -132,10 +134,12 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, 
 
   return (
     <tr className={[item.bought ? 'done' : '', change ? 'client-changed' : ''].filter(Boolean).join(' ')}>
+      <td className="pr"><input type="checkbox" className="check" checked={printed}
+        onChange={() => onPrint(item.id)} aria-label={`Imprimir: ${item.name}`} /></td>
       <td className="ck"><input type="checkbox" className="check" disabled={pending} checked={item.bought}
         onChange={(e) => toggle(e.target.checked)} aria-label={`Comprado: ${item.name}`} /></td>
       <td className="qt">
-        <input type="number" min={MIN_QUANTITY} max={MAX_QUANTITY} step="1" inputMode="numeric" className="qty"
+        <input type="text" inputMode="decimal" className="qty"
           disabled={pending} value={qty} placeholder="1" aria-label="Quantidade"
           aria-invalid={error ? 'true' : 'false'} aria-describedby={error ? errorId : undefined}
           onChange={(e) => {
@@ -144,6 +148,7 @@ function ItemRow({ item, listBase, pending, onToggle, onQty, onRemove, onNotes, 
           }} onBlur={commitQty} onKeyDown={(e) => {
             if (e.key === 'Enter') { e.preventDefault(); commitQty(); e.currentTarget.blur(); }
           }} />
+        <span className="qty-unit">{UNIT_LABEL[item.unit] ?? UNIT_LABEL.UNIT}</span>
         {error && <p className="errmsg" id={errorId}>{error}</p>}
       </td>
       <td className="it">

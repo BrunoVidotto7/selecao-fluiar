@@ -2,11 +2,10 @@ package br.com.fluiar.selecao.dto;
 
 import br.com.fluiar.selecao.exception.ErrorMessages;
 import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductUnit;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Digits;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -22,7 +21,8 @@ public record ProductRequest(
         @NotNull(message = ErrorMessages.ROOM_REQUIRED) UUID roomId,
         @NotNull(message = ErrorMessages.CATEGORY_REQUIRED) UUID categoryId,
         @NotBlank @Size(max = Product.NAME_MAX_LENGTH) String name,
-        @NotNull @Min(Product.MIN_QUANTITY) @Max(Product.MAX_QUANTITY) Integer quantity,
+        @NotNull BigDecimal quantity,
+        ProductUnit unit,
         @DecimalMin(Product.MIN_UNIT_PRICE)
         @Digits(integer = Product.PRICE_INTEGER_DIGITS, fraction = Product.PRICE_FRACTION_DIGITS) BigDecimal unitPrice,
         @Size(max = Product.NOTES_MAX_LENGTH) String notes,
@@ -33,6 +33,7 @@ public record ProductRequest(
     public ProductRequest {
         name = Inputs.text(name);
         notes = Inputs.optionalText(notes);
+        unit = unit == null ? ProductUnit.UNIT : unit;
         bought = Boolean.TRUE.equals(bought);
         links = links == null ? List.of() : links;
     }

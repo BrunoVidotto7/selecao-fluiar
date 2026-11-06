@@ -38,6 +38,8 @@ public final class ErrorMessages {
     public static final String CATEGORY_NAME_IN_USE = "Já existe uma categoria com esse nome.";
     public static final String CATEGORY_NOT_IN_OFFICE = "Escolha uma categoria do escritório.";
     public static final String ROOM_NOT_IN_LIST = "Escolha um ambiente desta lista.";
+    public static final String QUANTITY_UNIT_INVALID = "Use um número inteiro de 1 a 999.";
+    public static final String QUANTITY_AREA_INVALID = "Use um valor de 0,01 a 999,99, com até 2 casas decimais.";
     public static final String LINK_URL_INVALID = "Cole o link completo, começando com https://";
     public static final String LINKS_TOO_MANY = "Adicione no máximo 10 links.";
     public static final String INVALID_IMAGE = "Escolha um arquivo de imagem (JPG ou PNG).";

@@ -1,5 +1,6 @@
 package br.com.fluiar.selecao.dto;
 import br.com.fluiar.selecao.model.*;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -17,11 +18,12 @@ public record ClientListDetailResponse(UUID id, String name, String description,
 
     public record Stats(int totalProducts, int boughtProducts, int pendingProducts) { }
     public record ClientRoom(UUID id, String name, int position, List<ClientProduct> products) { }
-    public record ClientProduct(UUID id, String name, ProductCategoryRef category, int quantity, boolean bought,
+    public record ClientProduct(UUID id, String name, ProductCategoryRef category, BigDecimal quantity,
+            ProductUnit unit, boolean bought,
             String clientNotes, List<ProductLinkDto> links) {
         public static ClientProduct of(Product product) {
             return new ClientProduct(product.getId(), product.getName(), ProductCategoryRef.of(product.getCategory()),
-                    product.getQuantity(), product.isBought(),
+                    product.getQuantity(), product.getUnit(), product.isBought(),
                     product.getClientNotes(), product.getLinks().stream().map(ProductLinkDto::of).toList());
         }
     }

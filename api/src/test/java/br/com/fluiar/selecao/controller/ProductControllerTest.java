@@ -3,6 +3,7 @@ package br.com.fluiar.selecao.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.InstanceOfAssertFactories.BIG_DECIMAL;
 
+import br.com.fluiar.selecao.exception.ErrorMessages;
 import br.com.fluiar.selecao.service.RoomService;
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
 import java.math.BigDecimal;
@@ -55,8 +56,8 @@ class ProductControllerTest extends ApiIntegrationTest {
     private static final String LINK_URL_INVALID = "Cole o link completo, começando com https://";
     private static final String LINKS_TOO_MANY = "Adicione no máximo 10 links.";
     private static final String REQUIRED = "Preencha este campo.";
-    private static final String QUANTITY_TOO_LOW = "Use um valor a partir de 1.";
-    private static final String QUANTITY_TOO_HIGH = "Use um valor até 999.";
+    private static final String QUANTITY_UNIT_INVALID = ErrorMessages.QUANTITY_UNIT_INVALID;
+    private static final String QUANTITY_AREA_INVALID = ErrorMessages.QUANTITY_AREA_INVALID;
     private static final String PRICE_TOO_LOW = "Use um valor a partir de 0.00.";
     private static final String INVALID_REQUEST = "Revise os dados enviados.";
     private static final Instant OLDER_UPDATE = Instant.parse("2020-01-01T00:00:00Z");
@@ -78,7 +79,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(result).bodyJson().extractingPath("$.id").asString().isNotBlank();
         assertThat(result).bodyJson().extractingPath("$.roomId").isEqualTo(kitchenId.toString());
         assertThat(result).bodyJson().extractingPath("$.name").isEqualTo(MIXER);
-        assertThat(result).bodyJson().extractingPath("$.quantity").isEqualTo(1);
+        assertThat(result).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("1");
         assertThat(result).bodyJson().extractingPath("$.unitPrice").convertTo(BIG_DECIMAL)
                 .isEqualByComparingTo(MIXER_PRICE);
         assertThat(result).bodyJson().extractingPath("$.notes").isEqualTo(MIXER_NOTES);
@@ -143,16 +144,27 @@ class ProductControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void zeroQuantityIsRejectedForUnitProduct() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        var result = requestCreate(paula, listId, withUnit(mixer(kitchenId), 0, "UNIT"));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
+    }
+
+    @Test
     void createProductValidatesInput() {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID kitchenId = createRoom(paula, listId, KITCHEN);
 
-        var result = requestCreate(paula, listId, Map.of("roomId", kitchenId, "name", MIXER, "quantity", 0,
+        var result = requestCreate(paula, listId, Map.of("roomId", kitchenId, "name", MIXER, "quantity", 1,
                 "unitPrice", -1, "links", List.of(Map.of("url", UNSAFE_LINK))));
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_TOO_LOW);
         assertThat(result).bodyJson().extractingPath("$.errors.unitPrice").isEqualTo(PRICE_TOO_LOW);
         assertThat(result).bodyJson().extractingPath("$.errors['links[0].url']").isEqualTo(LINK_URL_INVALID);
     }
@@ -200,7 +212,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(result).bodyJson().extractingPath("$.roomId").isEqualTo(laundryId.toString());
         assertThat(result).bodyJson().extractingPath("$.name").isEqualTo(STAND_MIXER);
-        assertThat(result).bodyJson().extractingPath("$.quantity").isEqualTo(2);
+        assertThat(result).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("2");
         assertThat(result).bodyJson().extractingPath("$.unitPrice").isNull();
         assertThat(result).bodyJson().extractingPath("$.links[*].url").asArray().containsExactly(OTHER_MIXER_LINK);
 
@@ -242,6 +254,126 @@ class ProductControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void createsSquareMeterProductWithDecimalQuantity() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        var result = requestCreate(paula, listId, withUnit(mixer(kitchenId), 12.5, "SQUARE_METER"));
+
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        assertThat(result).bodyJson().extractingPath("$.unit").isEqualTo("SQUARE_METER");
+        assertThat(result).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL)
+                .isEqualByComparingTo("12.5");
+    }
+
+    @Test
+    void quantityIsSerializedAsANumericJsonValue() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        var area = requestCreate(paula, listId, withUnit(mixer(kitchenId), 12.5, "SQUARE_METER"));
+        var unit = requestCreate(paula, listId, withUnit(mixer(kitchenId), 2, "UNIT"));
+
+        assertThat(area).hasStatus(HttpStatus.CREATED);
+        assertThat(unit).hasStatus(HttpStatus.CREATED);
+        assertThat(rawQuantity(area)).isEqualTo("12.5");
+        assertThat(rawQuantity(unit)).isEqualTo("2");
+    }
+
+    private String rawQuantity(MvcTestResult result) {
+        String content = new String(result.getResponse().getContentAsByteArray(), java.nio.charset.StandardCharsets.UTF_8);
+        var matcher = java.util.regex.Pattern.compile("\"quantity\":(-?[0-9.]+)[,}]").matcher(content);
+        assertThat(matcher.find()).as(content).isTrue();
+        return matcher.group(1);
+    }
+
+    @Test
+    void listStatsMultiplyDecimalQuantitiesByUnitPrice() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        var body = withUnit(mixer(kitchenId), 12.5, "SQUARE_METER");
+        body.put("unitPrice", new BigDecimal("100.00"));
+        assertThat(requestCreate(paula, listId, body)).hasStatus(HttpStatus.CREATED);
+        var tiny = withUnit(mixer(kitchenId), 0.01, "SQUARE_METER");
+        tiny.put("unitPrice", new BigDecimal("19.99"));
+        assertThat(requestCreate(paula, listId, tiny)).hasStatus(HttpStatus.CREATED);
+
+        var list = requestList(paula, listId);
+
+        assertThat(list).bodyJson().extractingPath("$.stats.estimatedTotal").convertTo(BIG_DECIMAL)
+                .isEqualByComparingTo("1250.1999");
+        assertThat(list).bodyJson().extractingPath("$.stats.remainingTotal").convertTo(BIG_DECIMAL)
+                .isEqualByComparingTo("1250.1999");
+    }
+
+    @Test
+    void createWithoutUnitDefaultsToUnit() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        var result = requestCreate(paula, listId, mixer(kitchenId));
+
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        assertThat(result).bodyJson().extractingPath("$.unit").isEqualTo("UNIT");
+    }
+
+    @Test
+    void rejectsDecimalQuantityForUnitProduct() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        var result = requestCreate(paula, listId, withUnit(mixer(kitchenId), 1.5, "UNIT"));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
+    }
+
+    @Test
+    void rejectsQuantityOutOfRangeForSquareMeter() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+
+        for (Number quantity : List.of(0, 1000, 1.234)) {
+            var result = requestCreate(paula, listId, withUnit(mixer(kitchenId), quantity, "SQUARE_METER"));
+
+            assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+            assertThat(result).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_AREA_INVALID);
+        }
+    }
+
+    @Test
+    void statusPatchAppliesProductUnit() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
+        UUID kitchenId = createRoom(paula, listId, KITCHEN);
+        UUID unitId = createProduct(paula, listId, kitchenId, MIXER);
+        var areaCreated = requestCreate(paula, listId, withUnit(mixer(kitchenId), 2, "SQUARE_METER"));
+        UUID areaId = UUID.fromString(readJson(areaCreated, "$.id"));
+
+        var onUnit = requestStatusChange(paula, unitId, Map.of("quantity", 0.5));
+        var onArea = requestStatusChange(paula, areaId, Map.of("quantity", 0.5));
+
+        assertThat(onUnit).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(onUnit).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
+        assertThat(onArea).hasStatus(HttpStatus.OK);
+        assertThat(onArea).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL)
+                .isEqualByComparingTo("0.5");
+    }
+
+    private Map<String, Object> withUnit(Map<String, Object> base, Number quantity, String unit) {
+        var body = new java.util.HashMap<>(base);
+        body.put("quantity", quantity);
+        body.put("unit", unit);
+        return body;
+    }
+
+    @Test
     void patchChangesOnlyTheGivenField() {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
@@ -252,10 +384,10 @@ class ProductControllerTest extends ApiIntegrationTest {
 
         assertThat(markedBought).hasStatus(HttpStatus.OK);
         assertThat(markedBought).bodyJson().extractingPath("$.bought").isEqualTo(true);
-        assertThat(markedBought).bodyJson().extractingPath("$.quantity").isEqualTo(1);
+        assertThat(markedBought).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("1");
         assertThat(quantityChanged).hasStatus(HttpStatus.OK);
         assertThat(quantityChanged).bodyJson().extractingPath("$.bought").isEqualTo(true);
-        assertThat(quantityChanged).bodyJson().extractingPath("$.quantity").isEqualTo(3);
+        assertThat(quantityChanged).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("3");
     }
 
     @Test
@@ -267,7 +399,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         var result = requestStatusChange(paula, mixerId, Map.of("quantity", 1000));
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(result).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_TOO_HIGH);
+        assertThat(result).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
     }
 
     /** A fractional quantity is refused instead of being cut down to a whole number. */
@@ -285,15 +417,15 @@ class ProductControllerTest extends ApiIntegrationTest {
 
         assertThat(created).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(created).bodyJson().extractingPath("$.status").isEqualTo(400);
-        assertThat(created).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_REQUEST);
+        assertThat(created).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
         assertThat(updated).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(updated).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_REQUEST);
+        assertThat(updated).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
         assertThat(patched).hasStatus(HttpStatus.BAD_REQUEST);
-        assertThat(patched).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_REQUEST);
+        assertThat(patched).bodyJson().extractingPath("$.errors.quantity").isEqualTo(QUANTITY_UNIT_INVALID);
         var stored = requestProduct(paula, mixerId);
         assertThat(stored).hasStatus(HttpStatus.OK);
         assertThat(stored).bodyJson().extractingPath("$.name").isEqualTo(MIXER);
-        assertThat(stored).bodyJson().extractingPath("$.quantity").isEqualTo(1);
+        assertThat(stored).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("1");
         var list = requestList(paula, listId);
         assertThat(list).hasStatus(HttpStatus.OK);
         assertThat(list).bodyJson().extractingPath("$.stats.totalProducts").isEqualTo(1);
@@ -434,7 +566,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         var stored = requestProduct(paula, mixerId);
         assertThat(stored).hasStatus(HttpStatus.OK);
         assertThat(stored).bodyJson().extractingPath("$.bought").isEqualTo(true);
-        assertThat(stored).bodyJson().extractingPath("$.quantity").isEqualTo(3);
+        assertThat(stored).bodyJson().extractingPath("$.quantity").convertTo(BIG_DECIMAL).isEqualByComparingTo("3");
     }
 
     /** Another transaction deletes the kitchen and commits only while the creation waits for it. */

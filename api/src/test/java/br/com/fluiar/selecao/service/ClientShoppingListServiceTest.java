@@ -41,7 +41,7 @@ class ClientShoppingListServiceTest {
         ReflectionTestUtils.setField(list, "id", listId);
         var room = new Room(list, "Kitchen", 0);
         ReflectionTestUtils.setField(room, "id", UUID.randomUUID());
-        product = new Product(room, new ProductCategory(officeId, "Outros"), "Chair", 2, BigDecimal.TEN, "Internal instruction", false, List.of());
+        product = new Product(room, new ProductCategory(officeId, "Outros"), "Chair", new BigDecimal("2"), ProductUnit.UNIT, BigDecimal.TEN, "Internal instruction", false, List.of());
         ReflectionTestUtils.setField(product, "id", productId);
         list.getRooms().add(room);
         room.getProducts().add(product);
@@ -102,7 +102,7 @@ class ClientShoppingListServiceTest {
         assertThat(cleared.clientNotes()).isNull();
         assertThat(cleared.bought()).isTrue();
         assertThat(product.getNotes()).isEqualTo("Internal instruction");
-        assertThat(product.getQuantity()).isEqualTo(2);
+        assertThat(product.getQuantity()).isEqualByComparingTo("2");
     }
 
     @Test

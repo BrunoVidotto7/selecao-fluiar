@@ -11,6 +11,9 @@ import { brl, splitTitle } from '@/lib/format';
 import { matchesCategory, useCategoryFilter } from '@/lib/category-filter';
 import RoomTable from './RoomTable';
 import ClientView from './ClientView';
+import PrintBar from './PrintBar';
+import PrintSheet from './PrintSheet';
+import usePrintSelection from './usePrintSelection';
 import ShareControls from './ShareControls';
 import { ListNote, ListSignature } from './ListFooter';
 import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
@@ -30,6 +33,7 @@ function ShoppingListContent({ list, signature }) {
   const [mode, setMode] = useState('edit'); // 'edit' | 'view'
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
   const [categoryId, setCategoryId, categories] = useCategoryFilter(rooms);
+  const print = usePrintSelection(rooms); // Unfiltered rooms: the selection survives filters.
   const toast = useToast();
   const router = useRouter();
   const mounted = useRef(true);
@@ -132,7 +136,9 @@ function ShoppingListContent({ list, signature }) {
       ) : visibleRooms.length ? (
         visibleRooms.map((r) => (
           <RoomTable key={r.id} room={r} products={r.shown} showAdd={unfiltered} listBase={base}
-            pendingIds={pendingIds} changesByProduct={visit.changesByProduct}
+            pendingIds={pendingIds} selected={print.selected} onSelect={print.toggle}
+            onSelectRoom={() => print.toggleRoom({ ...r, products: r.shown })}
+            roomSelected={print.isRoomSelected({ ...r, products: r.shown })} changesByProduct={visit.changesByProduct}
             onToggle={(id, bought) => mutateProduct(id, () => patchProduct(list.id, id, { bought }),
               bought ? 'Marcado como comprado' : 'Voltou para pendentes')}
             onNotes={async (id, value) => {
@@ -147,6 +153,11 @@ function ShoppingListContent({ list, signature }) {
         <p className="filtered-empty">{categoryId ? 'Nenhum item desta categoria com esse status.'
           : filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>
       )}
+
+      {mode === 'edit' && <>
+        <PrintBar count={print.selected.size} onPrint={() => window.print()} onClear={print.clear} />
+        <PrintSheet title={list.name} clientName={list.clientName} rooms={rooms} selected={print.selected} />
+      </>}
 
       <ListNote />
       <ListSignature signature={signature} />

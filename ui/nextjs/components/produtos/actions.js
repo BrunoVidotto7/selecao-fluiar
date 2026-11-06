@@ -12,6 +12,8 @@ const INVALID_INPUT_DETAIL = 'Revise os dados enviados.';
 const NOT_FOUND_DETAIL = 'Não encontramos o que você procurava.';
 const MAX_LINK_LENGTH = 2048;
 
+const isUnit = (unit) => unit === 'UNIT' || unit === 'SQUARE_METER';
+
 function requireId(id) {
   if (!isUuid(id)) throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
 }
@@ -19,7 +21,7 @@ function requireId(id) {
 function statusBody(patch) {
   if (!patch || typeof patch !== 'object' || Array.isArray(patch)
       || (patch.bought != null && typeof patch.bought !== 'boolean')
-      || (patch.quantity != null && !Number.isInteger(patch.quantity))) {
+      || (patch.quantity != null && !Number.isFinite(patch.quantity))) {
     throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
   }
   return { bought: patch.bought, quantity: patch.quantity };
@@ -38,7 +40,8 @@ function storeSyncBody(value) {
 function productBody(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)
       || typeof input.name !== 'string' || !isUuid(input.roomId)
-      || !Number.isInteger(input.quantity)
+      || !Number.isFinite(input.quantity)
+      || (input.unit != null && !isUnit(input.unit))
       || (input.unitPrice != null && (typeof input.unitPrice !== 'number' || !Number.isFinite(input.unitPrice)))
       || (input.notes != null && typeof input.notes !== 'string')
       || (input.bought != null && typeof input.bought !== 'boolean')
@@ -50,6 +53,7 @@ function productBody(input) {
   return {
     ...(Object.hasOwn(input, 'storeSync') ? { storeSync: storeSyncBody(input.storeSync) } : {}),
     roomId: input.roomId, name: input.name, quantity: input.quantity,
+    ...(input.unit == null ? {} : { unit: input.unit }),
     unitPrice: input.unitPrice ?? null, notes: input.notes ?? null, bought: input.bought ?? false,
     links: (input.links ?? []).map((link) => ({ url: link.url, note: link.note ?? null })),
   };

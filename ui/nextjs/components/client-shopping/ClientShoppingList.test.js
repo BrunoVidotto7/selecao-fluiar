@@ -59,3 +59,42 @@ test('falls back to all when the category disappears', () => {
   rendered.rerender(<FeedbackProvider><ClientShoppingList list={only} /></FeedbackProvider>);
   expect(screen.getByRole('combobox', { name: 'Categoria' }).value).toBe('');
 });
+test('quantities show the pt-BR number with the unit label', () => {
+  const area = { ...CLIENT_PRODUCT, id: '44444444-4444-4444-8444-444444448888', name: 'Tapete', unit: 'SQUARE_METER', quantity: 12.5 };
+  const list = { ...CLIENT_LIST, rooms: [{ ...CLIENT_LIST.rooms[0], products: [{ ...CLIENT_PRODUCT, quantity: 2 }, area] }] };
+  render(<FeedbackProvider><ClientShoppingList list={list} /></FeedbackProvider>);
+  expect(screen.getByText('2 un.')).toBeTruthy();
+  expect(screen.getByText('12,5 m²')).toBeTruthy();
+});
+const OTHER = { ...CLIENT_PRODUCT, id: '44444444-4444-4444-8444-444444448888', name: 'Capacho', bought: true };
+const twoItems = { ...CLIENT_LIST, stats: { totalProducts: 2, boughtProducts: 1, pendingProducts: 1 },
+  rooms: [{ ...CLIENT_LIST.rooms[0], products: [CLIENT_PRODUCT, OTHER] }] };
+const view = (list) => <FeedbackProvider><ClientShoppingList list={list} /></FeedbackProvider>;
+const sheetItems = () => [...document.body.querySelectorAll('.print-sheet tbody td:nth-child(2)')].map((td) => td.textContent);
+test('print selection prints only marked items, without client header or purchase changes', () => {
+  window.print = vi.fn();
+  render(view(twoItems));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Imprimir: Capacho' }));
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  expect(sheetItems()).toEqual(['Capacho']);
+  expect(document.body.querySelector('.print-sheet').textContent).not.toContain('Cliente:');
+  fireEvent.click(screen.getByRole('button', { name: 'Imprimir selecionados' }));
+  expect(window.print).toHaveBeenCalledOnce();
+  expect(setClientPurchase).not.toHaveBeenCalled();
+});
+test('the room checkbox selects every item of the room', () => {
+  render(view(twoItems));
+  fireEvent.click(screen.getByRole('checkbox', { name: `Selecionar todos de ${CLIENT_LIST.rooms[0].name}` }));
+  expect(screen.getByText('2 itens selecionados')).toBeTruthy();
+  expect(sheetItems()).toEqual([CLIENT_PRODUCT.name, 'Capacho']);
+});
+test('print selection survives a filter change and a refreshed list, and drops removed products', () => {
+  const { rerender } = render(view(twoItems));
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Imprimir: Capacho' }));
+  fireEvent.click(screen.getByRole('button', { name: /Pendentes/ }));
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  rerender(view({ ...twoItems, updatedAt: '2026-11-06T10:00:00Z' }));
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  rerender(view({ ...twoItems, rooms: [{ ...twoItems.rooms[0], products: [CLIENT_PRODUCT] }] }));
+  expect(screen.queryByText('1 item selecionado')).toBeNull();
+});

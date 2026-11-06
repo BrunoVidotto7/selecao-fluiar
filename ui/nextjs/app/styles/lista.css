@@ -11,15 +11,20 @@
 .listdoc .tbl tbody tr:hover{background:transparent}
 .listdoc th.ck,.listdoc td.ck{width:44px;padding-right:0;text-align:center}
 .listdoc td.ck{padding-top:12px}
+/* novo: coluna de seleção para impressão */
+.listdoc th.pr,.listdoc td.pr{width:36px;padding-right:0;text-align:center}
+.listdoc td.pr{padding-top:12px}
 .listdoc th.it{width:38%}
 .listdoc th.qt,.listdoc td.qt{width:64px;text-align:center;padding-left:6px;padding-right:6px}
 .listdoc td.qt{padding-top:7px}
 .listdoc td.it{padding-top:7px;transition:color .25s}
-.qty{width:44px;font:inherit;font-family:var(--display);font-size:13px;font-weight:500;text-align:center;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 2px;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
+.qty{width:52px;font:inherit;font-family:var(--display);font-size:13px;font-weight:500;text-align:center;color:var(--ink);background:transparent;border:1px solid transparent;border-radius:6px;padding:3px 2px;font-variant-numeric:tabular-nums;-moz-appearance:textfield}
 .qty::-webkit-outer-spin-button,.qty::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .qty:hover{border-color:var(--line)}
 .qty:focus{outline:none;border-color:var(--brass)}
 .ro-qty{display:block;padding-top:4px;font-family:var(--display);font-size:13px;font-weight:500;font-variant-numeric:tabular-nums}
+/* novo: rótulo da unidade ao lado da quantidade */
+.qty-unit{display:block;font-size:11px;color:var(--muted)}
 .nmw{display:flex;align-items:center;gap:4px}
 .del{flex:none;background:none;border:none;color:var(--muted);cursor:pointer;font-size:15px;line-height:1;padding:3px 6px;border-radius:6px;opacity:0;transition:opacity .2s}
 .listdoc tr:hover .del,.del:focus-visible,.del.armed{opacity:1}
@@ -90,3 +95,27 @@
 /* novo: rótulo de categoria sob o nome do item e select de categoria na barra */
 .ro-cat{display:block;font-size:12px;color:var(--muted)}
 .listbar .field{margin:0}
+/* novo: seleção para impressão e folha A4 (sempre branca, mesmo no tema escuro) */
+.print-bar{position:fixed;inset:auto 0 0 0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--paper);border-top:1px solid var(--line);box-shadow:var(--shadow);color:var(--ink)}
+.print-bar-actions{display:flex;gap:8px}
+/* novo: mantém o fim da lista (nota/assinatura) alcançável enquanto a barra fixa aparece */
+@media screen{.listdoc:has(.print-bar){padding-bottom:88px}}
+.print-sheet{display:none}
+.print-sheet h1{font-size:20px;margin:0 0 4px}
+.print-sheet h2{font-size:15px;margin:16px 0 6px}
+.print-sheet p{margin:0 0 2px}
+.print-sheet table{width:100%;border-collapse:collapse;font-size:12px}
+.print-sheet th,.print-sheet td{border:1px solid var(--print-fg);padding:4px 6px;text-align:left;vertical-align:top}
+/* o título herdaria var(--sage) (claro no tema escuro); a folha usa sempre a cor de impressão */
+.print-sheet h1,.print-sheet h2{color:var(--print-fg)}
+/* a folha é filha direta do body (portal) e só existe com itens selecionados:
+   as regras abaixo só valem enquanto ela existe, então Ctrl+P normal não muda */
+@media print{
+  @page{size:A4;margin:15mm}
+  :root:has(> body > .print-sheet){background:var(--print-bg);color-scheme:light}
+  body:has(> .print-sheet){background:var(--print-bg)}
+  body:has(> .print-sheet) > *:not(.print-sheet){display:none !important}
+  .print-sheet{display:block;position:static;width:100%;background:var(--print-bg);color:var(--print-fg)}
+  .print-sheet tr{break-inside:avoid}
+  .print-sheet thead{display:table-header-group}
+}

@@ -6,6 +6,8 @@ import br.com.fluiar.selecao.dto.ProductRequest;
 import br.com.fluiar.selecao.dto.ProductResponse;
 import br.com.fluiar.selecao.dto.ProductStatusRequest;
 import br.com.fluiar.selecao.exception.ApiException;
+import java.math.BigDecimal;
+import br.com.fluiar.selecao.model.ProductUnit;
 import br.com.fluiar.selecao.exception.ErrorMessages;
 import br.com.fluiar.selecao.model.Product;
 import br.com.fluiar.selecao.model.ProductCategory;
@@ -56,13 +58,14 @@ public class ProductService {
 
     @Transactional
     public ProductResponse create(UUID officeId, UUID listId, ProductRequest request) {
+        requireValidQuantity(request.unit(), request.quantity());
         listRepository.findInOffice(listId, officeId).orElseThrow(ApiException::notFound);
         var confirmation = bindings.confirm(request);
         entityManager.clear();
         ShoppingList list = lockList(officeId, listId);
         Room room = roomOfList(request.roomId(), list);
 
-        Product product = productRepository.save(new Product(room, categoryFor(officeId, request.categoryId(), null), request.name(), request.quantity(),
+        Product product = productRepository.save(new Product(room, categoryFor(officeId, request.categoryId(), null), request.name(), request.quantity(), request.unit(),
                 request.unitPrice(), request.notes(), request.bought(), linksOf(request)));
         bindings.apply(product, request, confirmation, false);
         list.touch();
@@ -78,6 +81,7 @@ public class ProductService {
     /** The product only moves between rooms of its own list. */
     @Transactional
     public ProductResponse update(UUID officeId, UUID productId, ProductRequest request) {
+        requireValidQuantity(request.unit(), request.quantity());
         loadProduct(officeId, productId);
         var confirmation = bindings.confirm(request);
         entityManager.clear();
@@ -88,12 +92,18 @@ public class ProductService {
                 || !samePrice(product.getUnitPrice(), request.unitPrice());
         bindings.apply(product, request, confirmation, manualChange);
 
-        product.update(room, categoryFor(officeId, request.categoryId(), product), request.name(), request.quantity(), request.unitPrice(), request.notes(),
+        product.update(room, categoryFor(officeId, request.categoryId(), product), request.name(), request.quantity(), request.unit(), request.unitPrice(), request.notes(),
                 request.bought(), linksOf(request));
         list.touch();
         activity.record(list.getId());
 
         return ProductResponse.of(product);
+    }
+
+    private static void requireValidQuantity(ProductUnit unit, BigDecimal quantity) {
+        if (!unit.accepts(quantity)) {
+            throw ApiException.invalidField("quantity", unit.invalidQuantityMessage());
+        }
     }
 
     @Transactional
@@ -105,6 +115,7 @@ public class ProductService {
             product.markBought(request.bought());
         }
         if (request.quantity() != null) {
+            requireValidQuantity(product.getUnit(), request.quantity());
             product.changeQuantity(request.quantity());
         }
         list.touch();

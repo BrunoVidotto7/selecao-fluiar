@@ -1,5 +1,6 @@
 // Field rules: { required: true | 'message', email: true, url: true, minLength: 8,
 //   maxLength: 120, maxLengthMessage: 'custom text', min: 1, max: 999, integer: true, phone: true, password: true, money: true,
+//   quantity: 'UNIT' | 'SQUARE_METER',
 //   match: 'otherField', requiredIf: 'otherField',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
@@ -10,6 +11,8 @@ export const CATEGORY_NAME_RULE = {
   maxLength: CATEGORY_NAME_MAX_LENGTH,
   maxLengthMessage: `Use até ${CATEGORY_NAME_MAX_LENGTH} caracteres.`,
 };
+export const QUANTITY_UNIT_INVALID = 'Use um número inteiro de 1 a 999.';
+export const QUANTITY_AREA_INVALID = 'Use um valor de 0,01 a 999,99, com até 2 casas decimais.';
 export const PRODUCT_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
 const INVALID_IMAGE_MESSAGE = 'Escolha um arquivo de imagem (JPG ou PNG).';
@@ -45,6 +48,15 @@ function validateMoney(value) {
   return negative ? MONEY_NEGATIVE_MESSAGE : '';
 }
 
+export function validateQuantity(text, unit) {
+  const value = String(text ?? '').trim();
+  if (unit === 'SQUARE_METER') {
+    const valid = /^\d{1,3}(?:,\d{1,2})?$/.test(value) && Number(value.replace(',', '.')) >= 0.01;
+    return valid ? '' : QUANTITY_AREA_INVALID;
+  }
+  return /^\d{1,3}$/.test(value) && Number(value) >= 1 ? '' : QUANTITY_UNIT_INVALID;
+}
+
 export function validateProductImage(file) {
   if (!(file instanceof File) || !file.size || !PRODUCT_IMAGE_TYPES.includes(file.type)) return INVALID_IMAGE_MESSAGE;
   return file.size > MAX_PRODUCT_IMAGE_BYTES ? IMAGE_TOO_LARGE_MESSAGE : '';
@@ -70,6 +82,10 @@ export function validateField(name, values, rule = {}) {
   if (v && rule.max != null && Number(v) > rule.max) return `Use um valor até ${rule.max}.`;
   if (rule.money) {
     const message = validateMoney(v);
+    if (message) return message;
+  }
+  if (v && rule.quantity) {
+    const message = validateQuantity(v, rule.quantity);
     if (message) return message;
   }
   if (rule.match && String(values[name] ?? '') !== String(values[rule.match] ?? '')) return 'As senhas não são iguais.';
