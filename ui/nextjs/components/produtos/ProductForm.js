@@ -129,6 +129,11 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
   const image = file ? previewUrl : importedImage || (removeImage ? null : imageSource(persistedImageUrl));
   const links = f.values.links;
   const updateLink = (id, name, value) => f.setValue('links', links.map((link) => link.id === id ? { ...link, [name]: value } : link));
+  const withPurchaseLink = (values, url) => {
+    const empty = values.links.find((link) => !link.url.trim());
+    if (!empty || values.links.some((link) => link.url.trim() === url)) return values;
+    return { ...values, links: values.links.map((link) => link.id === empty.id ? { ...link, url } : link) };
+  };
 
   const pickImage = (selected) => {
     if (busy || !selected) return;
@@ -156,7 +161,7 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
         return;
       }
       setVariantId(preview.variantId || '');
-      f.setValues((values) => ({ ...values, nome: preview.name, preco: fmtPrice(preview.unitPrice) }));
+      f.setValues((values) => withPurchaseLink({ ...values, nome: preview.name, preco: fmtPrice(preview.unitPrice) }, preview.sourceUrl));
       setImportedImage(preview.imageUrl);
       setFile(null);
       setRemoveImage(false);

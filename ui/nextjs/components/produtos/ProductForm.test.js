@@ -533,6 +533,41 @@ test('resolved product preview fills fields and saves an explicit binding withou
   expect(saveProduct.mock.calls[0][2]).toMatchObject({ name: 'Cadeira', unitPrice: 1250, storeSync: { sourceUrl: STORE_PREVIEW.sourceUrl, variantId: 'oak' } });
   expect(uploadProductImageFromUrl).not.toHaveBeenCalled();
 });
+test('a resolved product preview fills the purchase link with the found page', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  expect(screen.getByLabelText('Link da loja').value).toBe(STORE_PREVIEW.sourceUrl);
+});
+test('the found page fills an empty purchase option without changing existing links', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ product: PRODUCT });
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar outra opção de loja' }));
+  await searchProduct();
+  expect(screen.getAllByLabelText('Link da loja').map((input) => input.value))
+    .toEqual([PRODUCT.links[0].url, STORE_PREVIEW.sourceUrl]);
+});
+test('an unresolved preview does not touch the purchase link', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: { ...STORE_PREVIEW, resolution: 'unresolved' } });
+  mount({ defaultRoomId: ROOM.id });
+  await searchProduct();
+  expect(screen.getByLabelText('Link da loja').value).toBe('');
+});
+test('searching with every purchase option filled keeps the existing link', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ product: PRODUCT });
+  await searchProduct();
+  expect(screen.getAllByLabelText('Link da loja').map((input) => input.value)).toEqual([PRODUCT.links[0].url]);
+});
+test('the found page already in the purchase links is not duplicated', async () => {
+  previewStoreProduct.mockResolvedValue({ ok: true, data: STORE_PREVIEW });
+  mount({ product: { ...PRODUCT, links: [{ url: STORE_PREVIEW.sourceUrl, note: null }] } });
+  await searchProduct();
+  expect(screen.getAllByLabelText('Link da loja').map((input) => input.value)).toEqual([STORE_PREVIEW.sourceUrl]);
+  fireEvent.click(screen.getByRole('button', { name: 'Adicionar outra opção de loja' }));
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Buscar produto' })); });
+  expect(screen.getAllByLabelText('Link da loja').map((input) => input.value)).toEqual([STORE_PREVIEW.sourceUrl, '']);
+});
 test('variant preview requires an explicit choice before binding', async () => {
   previewStoreProduct.mockResolvedValueOnce({ ok: true, data: { ...STORE_PREVIEW, resolution: 'variant_required', variants: [{ id: 'oak', label: 'Carvalho' }] } }).mockResolvedValueOnce({ ok: true, data: STORE_PREVIEW });
   mount({ defaultRoomId: ROOM.id });
