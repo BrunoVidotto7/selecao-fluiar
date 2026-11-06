@@ -96,10 +96,11 @@
 .ro-cat{display:block;font-size:12px;color:var(--muted)}
 .listbar .field{margin:0}
 /* novo: seleção para impressão e folha A4 (sempre branca, mesmo no tema escuro) */
-.print-bar{position:fixed;inset:auto 0 0 0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--paper);border-top:1px solid var(--line);box-shadow:var(--shadow);color:var(--ink)}
-.print-bar-actions{display:flex;gap:8px}
+.print-bar{position:fixed;inset:auto 0 0 0;z-index:20;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:var(--paper);border-top:1px solid var(--line);box-shadow:var(--shadow);color:var(--ink)}
+.print-bar-actions{display:flex;flex-wrap:wrap;gap:8px}
 /* novo: mantém o fim da lista (nota/assinatura) alcançável enquanto a barra fixa aparece */
 @media screen{.listdoc:has(.print-bar){padding-bottom:88px}}
+@media screen and (max-width:620px){.listdoc:has(.print-bar){padding-bottom:120px}}
 .print-sheet{display:none}
 .print-sheet h1{font-size:20px;margin:0 0 4px}
 .print-sheet h2{font-size:15px;margin:16px 0 6px}
