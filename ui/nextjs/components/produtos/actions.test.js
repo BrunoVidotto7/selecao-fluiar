@@ -19,7 +19,8 @@ vi.mock('@/lib/auth.server', () => ({ requireAdmin }));
 const ORIGIN = 'http://localhost:8080';
 const INVALID = { ok: false, status: 400, detail: 'Revise os dados enviados.', errors: {} };
 const NOT_FOUND = { ok: false, status: 404, detail: 'Não encontramos o que você procurava.', errors: {} };
-const BODY = { name: 'Batedeira', roomId: ROOM.id, quantity: 2, unitPrice: 0, notes: null, bought: false,
+const CATEGORY_ID = '44444444-4444-4444-8444-444444444444';
+const BODY = { name: 'Batedeira', roomId: ROOM.id, categoryId: CATEGORY_ID, quantity: 2, unitPrice: 0, notes: null, bought: false,
   links: [{ url: 'https://loja.com', note: null }] };
 const MAX_BYTES = 5 * 1024 * 1024;
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
@@ -59,6 +60,15 @@ test('create sends only ProductRequest fields and returns the saved API UUID', a
   expect(revalidatePath).toHaveBeenCalledWith('/listas/[id]', 'layout');
 });
 
+test('create and update send categoryId to the API', async () => {
+  await saveProduct(LIST.id, null, BODY);
+  expect(JSON.parse(fetchMock.mock.calls[0][1].body).categoryId).toBe(CATEGORY_ID);
+  fetchMock.mockClear();
+  await saveProduct(LIST.id, PRODUCT.id, BODY);
+  const put = fetchMock.mock.calls.find(([, init]) => init?.method === 'PUT');
+  expect(JSON.parse(put[1].body).categoryId).toBe(CATEGORY_ID);
+});
+
 test.each(commands)('%s checks list membership before the fixed product write', async (_, command, method, path, data) => {
   fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST)
     : data === undefined ? new Response(null, { status: 204 }) : json(data));
@@ -94,7 +104,8 @@ test.each([undefined, null, [], {}, '', 'slug', LIST.id + '?other=1'].map((id) =
 );
 
 test.each([
-  undefined, null, [], 'body', {}, { ...BODY, roomId: 'room' }, { ...BODY, name: [] },
+  undefined, null, [], 'body', {}, { ...BODY, roomId: 'room' },
+  { ...BODY, categoryId: undefined }, { ...BODY, categoryId: 'category' }, { ...BODY, name: [] },
   { ...BODY, quantity: '2' }, { ...BODY, quantity: NaN }, { ...BODY, unit: 'KG' },
   { ...BODY, unitPrice: '2.50' }, { ...BODY, unitPrice: Infinity }, { ...BODY, notes: [] },
   { ...BODY, bought: 'false' }, { ...BODY, links: {} }, { ...BODY, links: [null] },
@@ -119,9 +130,9 @@ test('decimal quantity and unit are forwarded to create and update; patch carrie
 });
 
 test('optional DTO fields normalize to the API defaults', async () => {
-  expect((await saveProduct(LIST.id, null, { name: 'Item', roomId: ROOM.id, quantity: 1 })).ok).toBe(true);
+  expect((await saveProduct(LIST.id, null, { name: 'Item', roomId: ROOM.id, categoryId: CATEGORY_ID, quantity: 1 })).ok).toBe(true);
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-    name: 'Item', roomId: ROOM.id, quantity: 1, unitPrice: null, notes: null, links: [],
+    name: 'Item', roomId: ROOM.id, categoryId: CATEGORY_ID, quantity: 1, unitPrice: null, notes: null, links: [],
   });
 });
 

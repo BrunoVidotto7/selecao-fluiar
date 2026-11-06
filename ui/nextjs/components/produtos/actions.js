@@ -39,7 +39,7 @@ function storeSyncBody(value) {
 
 function productBody(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)
-      || typeof input.name !== 'string' || !isUuid(input.roomId)
+      || typeof input.name !== 'string' || !isUuid(input.roomId) || !isUuid(input.categoryId)
       || !Number.isFinite(input.quantity)
       || (input.unit != null && !isUnit(input.unit))
       || (input.unitPrice != null && (typeof input.unitPrice !== 'number' || !Number.isFinite(input.unitPrice)))
@@ -52,7 +52,7 @@ function productBody(input) {
   }
   return {
     ...(Object.hasOwn(input, 'storeSync') ? { storeSync: storeSyncBody(input.storeSync) } : {}),
-    roomId: input.roomId, name: input.name, quantity: input.quantity,
+    roomId: input.roomId, categoryId: input.categoryId, name: input.name, quantity: input.quantity,
     ...(input.unit == null ? {} : { unit: input.unit }),
     unitPrice: input.unitPrice ?? null, notes: input.notes ?? null,
     ...(input.bought == null ? {} : { bought: input.bought }),
@@ -71,7 +71,7 @@ async function requireProductInList(listId, productId) {
 /**
  * @param {string} listId
  * @param {null | string} productId
- * @param {{ roomId: string, name: string, quantity: number, unitPrice?: number | null, notes?: string | null, bought?: boolean | null, links?: { url: string, note?: string | null }[] | null }} input
+ * @param {{ roomId: string, categoryId: string, name: string, quantity: number, unitPrice?: number | null, notes?: string | null, bought?: boolean | null, links?: { url: string, note?: string | null }[] | null }} input
  * @returns {Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>}
  */
 export async function saveProduct(listId, productId, input) {
