@@ -54,7 +54,8 @@ function productBody(input) {
     ...(Object.hasOwn(input, 'storeSync') ? { storeSync: storeSyncBody(input.storeSync) } : {}),
     roomId: input.roomId, name: input.name, quantity: input.quantity,
     ...(input.unit == null ? {} : { unit: input.unit }),
-    unitPrice: input.unitPrice ?? null, notes: input.notes ?? null, bought: input.bought ?? false,
+    unitPrice: input.unitPrice ?? null, notes: input.notes ?? null,
+    ...(input.bought == null ? {} : { bought: input.bought }),
     links: (input.links ?? []).map((link) => ({ url: link.url, note: link.note ?? null })),
   };
 }

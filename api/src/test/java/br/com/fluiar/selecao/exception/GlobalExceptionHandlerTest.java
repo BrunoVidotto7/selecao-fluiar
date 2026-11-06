@@ -12,6 +12,7 @@ import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -26,6 +27,7 @@ class GlobalExceptionHandlerTest {
     private static final long SERVER_UPLOAD_LIMIT_BYTES = 5 * 1024 * 1024;
     private static final String UPLOAD_TEMP_FILE_PATH = "/tmp/upload_123.tmp";
     private static final String INTERNAL_DETAIL = "internal detail";
+    private static final String SECRET_PATH_VALUE = "s3cret-token";
 
     private final MockMvcTester mvc = MockMvcTester.of(
             List.of(new DuplicateWritingController(), new OversizedUploadController(),
@@ -63,7 +65,7 @@ class GlobalExceptionHandlerTest {
     @Test
     @ExtendWith(OutputCaptureExtension.class)
     void unexpectedErrorIsReportedWithoutItsInternalDetail(CapturedOutput output) {
-        var result = mvc.post().uri("/failing").exchange();
+        var result = mvc.post().uri("/failing/{secret}", SECRET_PATH_VALUE).exchange();
 
         assertThat(result).hasStatus(HttpStatus.INTERNAL_SERVER_ERROR);
         assertThat(result).bodyJson().extractingPath("$.detail")
@@ -73,6 +75,15 @@ class GlobalExceptionHandlerTest {
                 output.getOut().lines().filter(line -> line.contains("Unexpected error")).toList();
         assertThat(unexpectedErrorLogs).singleElement().asString().contains("ERROR");
         assertThat(output.getOut()).contains(INTERNAL_DETAIL);
+    }
+
+    /** The log names the route, not the URL, because path values can be secrets such as share or invitation tokens. */
+    @Test
+    @ExtendWith(OutputCaptureExtension.class)
+    void unexpectedErrorLogNamesTheMethodAndRouteWithoutPathValues(CapturedOutput output) {
+        mvc.post().uri("/failing/{secret}", SECRET_PATH_VALUE).exchange();
+
+        assertThat(output.getOut()).contains("POST /failing/{secret}").doesNotContain(SECRET_PATH_VALUE);
     }
 
     @RestController
@@ -108,8 +119,8 @@ class GlobalExceptionHandlerTest {
     @RestController
     static class FailingController {
 
-        @PostMapping("/failing")
-        void fail() {
+        @PostMapping("/failing/{secret}")
+        void fail(@PathVariable String secret) {
             throw new IllegalStateException(INTERNAL_DETAIL);
         }
     }

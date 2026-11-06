@@ -121,7 +121,7 @@ test('decimal quantity and unit are forwarded to create and update; patch carrie
 test('optional DTO fields normalize to the API defaults', async () => {
   expect((await saveProduct(LIST.id, null, { name: 'Item', roomId: ROOM.id, quantity: 1 })).ok).toBe(true);
   expect(JSON.parse(fetchMock.mock.calls[0][1].body)).toEqual({
-    name: 'Item', roomId: ROOM.id, quantity: 1, unitPrice: null, notes: null, bought: false, links: [],
+    name: 'Item', roomId: ROOM.id, quantity: 1, unitPrice: null, notes: null, links: [],
   });
 });
 

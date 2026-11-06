@@ -1,8 +1,10 @@
 package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ProductImportPreview;
+import br.com.fluiar.selecao.dto.ProductImportPreview.Resolution;
 import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.exception.ErrorMessages;
+import br.com.fluiar.selecao.model.Store;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -30,18 +32,18 @@ public class StoreProductCollector {
             String selectedVariant = variantId == null ? StoreProductExtractor.queryVariant(url) : variantId;
             var response = client.get(url, true, MAX_PAGE_BYTES);
             String sourceUrl = response.finalUrl() == null ? url : response.finalUrl();
-            String store = SafeStoreHttpClient.store(sourceUrl);
+            Store store = SafeStoreHttpClient.store(sourceUrl);
             ProductImportPreview preview = extractor.extract(sourceUrl, store, selectedVariant, new String(response.body(), StandardCharsets.UTF_8));
             if (preview.imageUrl() != null) {
                 try { client.validateImageDestination(preview.imageUrl()); }
                 catch (IOException | IllegalArgumentException exception) {
                     return new ProductImportPreview(preview.sourceUrl(), preview.store(), preview.productId(), preview.variantId(), preview.variants(), preview.name(), preview.unitPrice(), null,
-                            "variant_required".equals(preview.resolution()) ? "variant_required" : "unresolved");
+                            preview.resolution() == Resolution.VARIANT_REQUIRED ? Resolution.VARIANT_REQUIRED : Resolution.UNRESOLVED);
                 }
             }
             return preview;
         } catch (IOException | IllegalArgumentException exception) {
-            throw ApiException.invalidField("url", ErrorMessages.PRODUCT_COLLECTION_FAILED);
+            throw ApiException.invalidField("url", ErrorMessages.PRODUCT_COLLECTION_FAILED).causedBy(exception);
         }
     }
 
@@ -58,12 +60,12 @@ public class StoreProductCollector {
                     if (!format.equals("jpeg") && !format.equals("png")) throw ApiException.invalidImage();
                     reader.setInput(input, true, true);
                     long pixels = (long) reader.getWidth(0) * reader.getHeight(0);
-                    if (pixels <= 0 || pixels > MAX_IMAGE_PIXELS || reader.read(0) == null) throw ApiException.invalidImage();
+                    if (pixels <= 0 || pixels > MAX_IMAGE_PIXELS) throw ApiException.invalidImage();
                     return new DownloadedImage(data, format.equals("jpeg") ? "image/jpeg" : "image/png");
                 } finally { reader.dispose(); }
             }
         } catch (IOException | IllegalArgumentException exception) {
-            throw ApiException.invalidImage();
+            throw ApiException.invalidImage().causedBy(exception);
         }
     }
 }

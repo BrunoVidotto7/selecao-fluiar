@@ -5,6 +5,7 @@ import br.com.fluiar.selecao.dto.ProductImageResponse;
 import br.com.fluiar.selecao.security.CurrentOfficeId;
 import br.com.fluiar.selecao.security.CurrentUserId;
 import br.com.fluiar.selecao.service.ProductImageService;
+import java.time.Duration;
 import java.util.UUID;
 import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
@@ -47,7 +48,7 @@ public class ProductImageController {
         ImageContent image = productImageService.load(userId, imageId);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType(image.contentType()))
-                .cacheControl(CacheControl.noStore().cachePrivate())
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(365)).cachePrivate().immutable())
                 .body(image.data());
     }
 }

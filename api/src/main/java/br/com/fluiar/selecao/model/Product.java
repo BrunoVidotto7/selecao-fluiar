@@ -14,6 +14,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
@@ -199,6 +200,6 @@ public class Product {
         if (unitPrice == null) {
             return BigDecimal.ZERO;
         }
-        return unitPrice.multiply(quantity);
+        return unitPrice.multiply(quantity).setScale(PRICE_FRACTION_DIGITS, RoundingMode.HALF_UP);
     }
 }

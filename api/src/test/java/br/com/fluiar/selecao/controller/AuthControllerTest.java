@@ -3,6 +3,10 @@ package br.com.fluiar.selecao.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Map;
@@ -13,6 +17,7 @@ import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -29,6 +34,11 @@ class AuthControllerTest extends ApiIntegrationTest {
     private static final String UNKNOWN_EMAIL = "ninguem@fluiar.com.br";
     private static final String WRONG_PASSWORD = "errada123";
     private static final int MAX_ATTEMPTS = 5;
+    private static final int MAX_ATTEMPTS_PER_IP = 30;
+    private static final int MAX_ATTEMPTS_PER_EMAIL = 50;
+    private static final String ATTACKER_IP = "203.0.113.7";
+    private static final String OWNER_IP = "198.51.100.20";
+    private static final String PRIVATE_IP = "10.0.0.5";
     private static final String INVALID_CREDENTIALS_MESSAGE = "E-mail ou senha incorretos.";
     private static final String TOO_MANY_ATTEMPTS_MESSAGE = "Muitas tentativas. Tente novamente em alguns minutos.";
     private static final String EMAIL_TOO_LONG_MESSAGE = "Use no máximo 254 caracteres.";
@@ -36,6 +46,9 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Autowired
     private JwtDecoder jwtDecoder;
+
+    @LocalServerPort
+    private int port;
 
     @Test
     void publicSignupCannotCreateAccounts() {
@@ -74,14 +87,16 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     @Test
     @ExtendWith(OutputCaptureExtension.class)
-    void rejectedLogInsAreLoggedAlikeWithoutCredentials(CapturedOutput output) {
+    void logInsAreLoggedAsAuditEventsWithoutCredentials(CapturedOutput output) {
         createAdmin(PAULA_NAME, PAULA_EMAIL);
 
-        requestLogIn(PAULA_EMAIL, WRONG_PASSWORD);
-        requestLogIn(UNKNOWN_EMAIL, DEFAULT_PASSWORD);
+        requestLogInFrom(ATTACKER_IP, PAULA_EMAIL, WRONG_PASSWORD);
+        requestLogInFrom(ATTACKER_IP, UNKNOWN_EMAIL, DEFAULT_PASSWORD);
 
-        assertThat(StringUtils.countOccurrencesOf(output.getOut(), "Login rejected")).isEqualTo(2);
-        assertThat(output.getOut()).doesNotContain(PAULA_EMAIL, UNKNOWN_EMAIL, WRONG_PASSWORD, DEFAULT_PASSWORD);
+        assertThat(output.getOut()).contains("auth.login result=rejected userId=none");
+        assertThat(StringUtils.countOccurrencesOf(output.getOut(), "auth.login result=rejected")).isEqualTo(2);
+        assertThat(output.getOut()).doesNotContain(PAULA_EMAIL, UNKNOWN_EMAIL, WRONG_PASSWORD, DEFAULT_PASSWORD,
+                ATTACKER_IP);
     }
 
     @Test
@@ -147,6 +162,77 @@ class AuthControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void anotherAddressCanStillLogInToAnAccountLockedFromElsewhere() {
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            assertThat(requestLogInFrom(ATTACKER_IP, PAULA_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.UNAUTHORIZED);
+        }
+
+        assertThat(requestLogInFrom(ATTACKER_IP, PAULA_EMAIL, DEFAULT_PASSWORD)).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(requestLogInFrom(OWNER_IP, PAULA_EMAIL, DEFAULT_PASSWORD)).hasStatus(HttpStatus.OK);
+    }
+
+    @Test
+    void guessingOneAccountFromManyAddressesIsStopped() {
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
+        for (int attempt = 0; attempt < MAX_ATTEMPTS_PER_EMAIL; attempt++) {
+            assertThat(requestLogInFrom("203.0.113." + attempt, PAULA_EMAIL, WRONG_PASSWORD))
+                    .hasStatus(HttpStatus.UNAUTHORIZED);
+        }
+
+        assertThat(requestLogInFrom("198.51.100.99", PAULA_EMAIL, DEFAULT_PASSWORD))
+                .hasStatus(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void oneAddressTryingManyEmailsIsThrottled() {
+        for (int attempt = 0; attempt < MAX_ATTEMPTS_PER_IP; attempt++) {
+            assertThat(requestLogInFrom(ATTACKER_IP, "user" + attempt + "@fluiar.com.br", WRONG_PASSWORD))
+                    .hasStatus(HttpStatus.UNAUTHORIZED);
+        }
+
+        assertThat(requestLogInFrom(ATTACKER_IP, UNKNOWN_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(requestLogInFrom(OWNER_IP, UNKNOWN_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.UNAUTHORIZED);
+    }
+
+    @Test
+    void theApiCountsTheForwardedAddressSentByTheNextServer() throws Exception {
+        for (int attempt = 0; attempt < MAX_ATTEMPTS_PER_IP; attempt++) {
+            assertThat(postLogInOverHttp(ATTACKER_IP, "user" + attempt + "@fluiar.com.br"))
+                    .isEqualTo(HttpStatus.UNAUTHORIZED.value());
+        }
+
+        assertThat(postLogInOverHttp(ATTACKER_IP, UNKNOWN_EMAIL)).isEqualTo(HttpStatus.TOO_MANY_REQUESTS.value());
+        assertThat(postLogInOverHttp(OWNER_IP, UNKNOWN_EMAIL)).isEqualTo(HttpStatus.UNAUTHORIZED.value());
+    }
+
+    @Test
+    void theServersPrivateAddressIsNotLimitedPerAddress() {
+        for (int attempt = 0; attempt <= MAX_ATTEMPTS_PER_IP; attempt++) {
+            assertThat(requestLogInFrom(PRIVATE_IP, "user" + attempt + "@fluiar.com.br", WRONG_PASSWORD))
+                    .hasStatus(HttpStatus.UNAUTHORIZED);
+        }
+    }
+
+    @Test
+    void thePrivateAddressStillLimitsEachEmail() {
+        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            assertThat(requestLogInFrom(PRIVATE_IP, UNKNOWN_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.UNAUTHORIZED);
+        }
+
+        assertThat(requestLogInFrom(PRIVATE_IP, UNKNOWN_EMAIL, WRONG_PASSWORD)).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
+    }
+
+    @Test
+    void successfulLogInsAreNeverLimitedByAddressOrEmail() {
+        createAdmin(PAULA_NAME, PAULA_EMAIL);
+
+        for (int attempt = 0; attempt < MAX_ATTEMPTS_PER_EMAIL + 10; attempt++) {
+            assertThat(requestLogInFrom(ATTACKER_IP, PAULA_EMAIL, DEFAULT_PASSWORD)).hasStatus(HttpStatus.OK);
+        }
+    }
+
+    @Test
     void logInCountsAttemptsOfUnknownEmails() {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             assertThat(requestLogIn(UNKNOWN_EMAIL, DEFAULT_PASSWORD)).hasStatus(HttpStatus.UNAUTHORIZED);
@@ -186,6 +272,27 @@ class AuthControllerTest extends ApiIntegrationTest {
 
     private MvcTestResult requestLogIn(String email, String password, boolean rememberMe) {
         return postLogIn(Map.of("email", email, "password", password, "rememberMe", rememberMe));
+    }
+
+    private MvcTestResult requestLogInFrom(String ip, String email, String password) {
+        return mvc.post().uri("/api/auth/login")
+                .with(request -> {
+                    request.setRemoteAddr(ip);
+                    return request;
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", email, "password", password)))
+                .exchange();
+    }
+
+    /** A real HTTP call from loopback, the way the Next server calls the API. */
+    private int postLogInOverHttp(String forwardedFor, String email) throws Exception {
+        HttpRequest request = HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/auth/login"))
+                .header("Content-Type", MediaType.APPLICATION_JSON_VALUE)
+                .header("X-Forwarded-For", forwardedFor)
+                .POST(HttpRequest.BodyPublishers.ofString(json(Map.of("email", email, "password", WRONG_PASSWORD))))
+                .build();
+        return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.discarding()).statusCode();
     }
 
     private MvcTestResult postLogIn(Map<String, Object> body) {

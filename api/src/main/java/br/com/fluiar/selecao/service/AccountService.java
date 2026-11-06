@@ -15,6 +15,8 @@ import br.com.fluiar.selecao.security.AttemptLimiter;
 import br.com.fluiar.selecao.security.AttemptLimiter.Action;
 import br.com.fluiar.selecao.security.TokenService;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class AccountService {
 
+    private static final Logger log = LoggerFactory.getLogger(AccountService.class);
     private static final String CURRENT_PASSWORD_FIELD = "currentPassword";
 
     private final UserRepository userRepository;
@@ -70,6 +73,7 @@ public class AccountService {
         if (emailChanged) {
             // Pending reset links went to the old address, so they must stop working.
             resetTokenRepository.deleteByUserId(userId);
+            log.info("auth.email_changed userId={}", userId);
         }
 
         return MeResponse.of(user, officeOf(user));
@@ -84,6 +88,7 @@ public class AccountService {
         user.changePassword(passwordEncoder.encode(request.newPassword()));
         // A pending reset link would let its holder replace the password that was just chosen.
         resetTokenRepository.deleteByUserId(userId);
+        log.info("auth.password_changed userId={}", userId);
 
         return AuthResponse.of(tokenService.issue(user, false), user, officeOf(user));
     }

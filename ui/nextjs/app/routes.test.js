@@ -28,7 +28,7 @@ import { CLIENT, CLIENT_ACCESS, LIST, ME, OFFICE, PRODUCT, ROOM, SECOND_PRODUCT,
 const { cookieStore, fetchMock, refresh } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() }, fetchMock: vi.fn(), refresh: vi.fn(),
 }));
-vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieStore) }));
+vi.mock('next/headers', () => ({ cookies: vi.fn(async () => cookieStore), headers: async () => new Headers() }));
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
   notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }),

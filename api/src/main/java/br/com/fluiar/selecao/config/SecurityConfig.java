@@ -7,8 +7,10 @@ import br.com.fluiar.selecao.security.TokenService;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import org.springframework.boot.security.autoconfigure.actuate.web.servlet.EndpointRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
@@ -31,12 +33,29 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 public class SecurityConfig {
 
     private static final String[] PUBLIC_PATHS = {
-            "/api/auth/**", "/actuator/health", "/error", "/v3/api-docs/**",
+            "/api/auth/**", "/error", "/v3/api-docs/**",
             "/swagger-ui/**", "/swagger-ui.html"
     };
     private static final List<String> CORS_ALLOWED_METHODS = List.of("GET", "POST", "PUT", "PATCH", "DELETE");
     private static final List<String> CORS_ALLOWED_HEADERS = List.of(HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE);
     private static final String ALL_PATHS = "/**";
+
+    /**
+     * The actuator is served only on the management port, which stays internal. Health and metrics need no login there;
+     * any other endpoint is denied.
+     */
+    @Bean
+    @Order(1)
+    SecurityFilterChain actuatorFilterChain(HttpSecurity http) throws Exception {
+        http
+                .securityMatcher(EndpointRequest.toAnyEndpoint())
+                .csrf(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(requests -> requests
+                        .requestMatchers(EndpointRequest.to("health", "prometheus")).permitAll()
+                        .anyRequest().denyAll());
+        return http.build();
+    }
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http, JsonMapper mapper) throws Exception {

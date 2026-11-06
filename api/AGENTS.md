@@ -45,15 +45,9 @@ The other environment variables and their local defaults are in `README.md`.
 
 Only what file names do not tell you:
 
-- `PLANO-BACKEND.md` (Portuguese): the design spec. It has the decisions and their reasons, layer rules,
-  the endpoint table ("Contrato da API"), the error format and the accepted risks ("Fora do escopo e riscos
-  aceitos"). Its checkboxes were never ticked and some paths are old (`nextjs/` is now `../ui/nextjs/`, and
-  "the root README" is now `../ui/README.md`).
-  When it disagrees with the code, the code is the current state. Its `feat: ...` commit style is replaced
-  by the git rules in `../AGENTS.md`.
 - For a new resource, copy `ClientController`, `ClientService`, `ClientRepository`, `model/Client`,
   `dto/ClientRequest` and `dto/ClientResponse`. For its tests, copy `ClientControllerTest`.
-- `config/SecurityConfig` `PUBLIC_PATHS`: only authentication, health and documentation are public. Other paths need
+- `config/SecurityConfig` `PUBLIC_PATHS`: only authentication and documentation are public; health and metrics live only on `MANAGEMENT_PORT`. Other paths need
   `Authorization: Bearer <token>`. `/api/client/**` requires CLIENT, administrative resources require
   ADMIN; `/api/me`, share resolution and image reads accept both roles.
 
@@ -62,6 +56,8 @@ Only what file names do not tell you:
 - Layers: `controller` -> `service` -> `repository` -> `model`. A controller handles HTTP only and calls one
   service method per endpoint. It never uses a repository or returns an entity. Services hold the business
   rules, with `@Transactional(readOnly = true)` on the class and `@Transactional` on methods that write.
+- Outbound HTTP or e-mail never runs inside a transaction. Use `Propagation.NOT_SUPPORTED` plus `TransactionTemplate`
+  (`ProductService`, `InvitationService`) or an after-commit event (`PasswordResetMailSender`).
 - Every resource belongs to an office. Controllers take `@CurrentOfficeId UUID officeId`. Services load with
   `findByIdAndOfficeId(...)` or `findInOffice(...)` and `.orElseThrow(ApiException::notFound)`.
   A resource of another office answers 404, never 403.
@@ -115,8 +111,7 @@ Admins are provisioned explicitly with `ops/provision-admin.sql`; there is no pu
 
 Ask first:
 
-- Changing the API contract: paths, JSON fields, status codes or the error format. The UI integration plan
-  ("Impacto no frontend" in `PLANO-BACKEND.md`) depends on it.
+- Changing the API contract: paths, JSON fields, status codes or the error format. The UI depends on it.
 - Changing security: `PUBLIC_PATHS`, CORS, token lifetime, password hashing or the JWT secret rule.
 - Adding or upgrading a dependency. When approved, use a version published at least 7 days ago, pinned
   exactly, and leave the versions that Spring Boot manages unpinned.

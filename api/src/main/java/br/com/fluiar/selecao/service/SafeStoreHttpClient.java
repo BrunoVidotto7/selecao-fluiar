@@ -1,5 +1,6 @@
 package br.com.fluiar.selecao.service;
 
+import br.com.fluiar.selecao.model.Store;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -22,6 +23,13 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 import org.springframework.stereotype.Component;
 
+/**
+ * Fetches retailer pages and images on behalf of the user-supplied product links (SSRF risk).
+ * Only https on port 443 is allowed, every destination (including redirects) must resolve to a public
+ * address, and the connection is pinned to the address that was validated, so a DNS rebinding answer
+ * given after the check cannot redirect the request to an internal host. The JDK HTTP client cannot pin
+ * a validated address while keeping TLS host verification, which is why this class talks to the socket itself.
+ */
 @Component
 public class SafeStoreHttpClient {
     private static final int MAX_URL_LENGTH = 4096;
@@ -30,7 +38,7 @@ public class SafeStoreHttpClient {
     private static final int CONNECT_TIMEOUT_MS = 3000;
     private static final int REQUEST_TIMEOUT_MS = 15000;
     private static final ScheduledExecutorService DEADLINES = Executors.newSingleThreadScheduledExecutor(Thread.ofPlatform().daemon().name("store-http-deadlines").factory());
-    private static final Map<String, String> STORES = Map.of("moveca.com.br", "moveca", "fontedosofa.com.br", "fonte-do-sofa", "westwing.com.br", "westwing", "abracasa.com.br", "abra-casa", "casavee.com.br", "casavee");
+    private static final List<Integer> REDIRECT_STATUSES = List.of(301, 302, 303, 307, 308);
 
     record Response(int status, Map<String, String> headers, byte[] body, String finalUrl) {
         Response(int status, Map<String, String> headers, byte[] body) { this(status, headers, body, null); }
@@ -56,9 +64,9 @@ public class SafeStoreHttpClient {
         return uri;
     }
 
-    static String store(String url) {
+    static Store store(String url) {
         String host = validatedUri(url).getHost().toLowerCase(Locale.ROOT).replaceFirst("^www\\.", "");
-        String store = STORES.get(host);
+        Store store = Store.ofHost(host);
         if (store == null) throw new IllegalArgumentException("Unsupported store");
         return store;
     }
@@ -79,13 +87,13 @@ public class SafeStoreHttpClient {
             InetAddress address = resolvePublic(uri.getHost(), deadline);
             Response response = exchange.get(uri, address, maxBytes, deadline);
             if (response.body().length > maxBytes || System.nanoTime() >= deadline) throw new IOException("Collection limit exceeded");
-            if (List.of(301, 302, 303, 307, 308).contains(response.status())) {
+            if (REDIRECT_STATUSES.contains(response.status())) {
                 String location = response.headers().get("location");
                 if (location == null) throw new IOException("Invalid redirect");
                 try { uri = validatedUri(uri.resolve(location).toString()); } catch (IllegalArgumentException exception) { throw new IOException("Invalid redirect"); }
                 continue;
             }
-            if (response.status() != 200) throw new IOException("Store unavailable");
+            if (response.status() != 200) throw new IOException("Store unavailable status=" + response.status());
             return new Response(response.status(), response.headers(), response.body(), uri.toString());
         }
         throw new IOException("Too many redirects");
@@ -113,6 +121,15 @@ public class SafeStoreHttpClient {
         catch (java.net.UnknownHostException exception) { throw new IllegalArgumentException("Unresolved destination"); }
     }
 
+    /**
+     * True only for globally routable addresses. Blocked besides the JDK's loopback, link-local, site-local,
+     * any-local and multicast checks:
+     * IPv4 0.0.0.0/8, 10/8, 100.64/10 (carrier-grade NAT), 127/8, 169.254/16, 172.16/12, 192.0.0/24 and 192.0.2/24
+     * (reserved, documentation), 192.88.99/24 (6to4 relay), 192.168/16, 198.18/15 (benchmarking),
+     * 198.51.100/24 and 203.0.113/24 (documentation), 224/4 and above (multicast, reserved).
+     * IPv6 outside 2000::/3, plus 2001::/23 (protocol assignments), 2001:db8::/32 (documentation),
+     * 2002::/16 (6to4) and 3fff::/20 (documentation).
+     */
     static boolean publicAddress(InetAddress address) {
         if (address.isAnyLocalAddress() || address.isLoopbackAddress() || address.isLinkLocalAddress() || address.isSiteLocalAddress() || address.isMulticastAddress()) return false;
         byte[] bytes = address.getAddress();
@@ -171,7 +188,7 @@ public class SafeStoreHttpClient {
             if (List.of("content-length", "transfer-encoding", "content-encoding", "content-type", "location").contains(name)
                     && headers.putIfAbsent(name, line.substring(colon + 1).strip()) != null) throw new IOException("Duplicate header");
         }
-        if (List.of(301, 302, 303, 307, 308).contains(status)) return new Response(status, headers, new byte[0]);
+        if (REDIRECT_STATUSES.contains(status)) return new Response(status, headers, new byte[0]);
         String encoding = headers.get("content-encoding");
         if (encoding != null && !encoding.equalsIgnoreCase("identity")) throw new IOException("Unsupported encoding");
         String transfer = headers.get("transfer-encoding");

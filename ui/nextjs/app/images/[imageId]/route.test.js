@@ -29,7 +29,7 @@ test('authorized images retain bytes and type without public caching or unsafe h
   expect(response.status).toBe(200);
   expect(new Uint8Array(await response.arrayBuffer())).toEqual(bytes);
   expect(response.headers.get('Content-Type')).toBe('image/png');
-  expect(response.headers.get('Cache-Control')).toBe('private, no-store');
+  expect(response.headers.get('Cache-Control')).toBe('private, max-age=31536000, immutable');
   expect(response.headers.get('Set-Cookie')).toBeNull();
   expect(fetchMock.mock.calls[0][0]).toBe('http://localhost:8080/api/images/' + IMAGE_ID);
   expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer private-jwt');
@@ -40,6 +40,7 @@ test.each([401, 404])('an upstream %s does not become a public image', async (st
   const response = await load();
   expect(response.status).toBe(status);
   expect(await response.text()).not.toContain('private upstream information');
+  expect(response.headers.get('Cache-Control')).toBe('private, no-store');
 });
 test('invalid IDs cannot turn the proxy into an arbitrary fetch', async () => {
   const response = await load('https://evil.example/image.png');

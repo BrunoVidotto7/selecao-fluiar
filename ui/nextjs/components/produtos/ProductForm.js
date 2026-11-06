@@ -87,7 +87,7 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
     }),
     fieldMap: productFieldMap,
     action: async (values) => {
-      const request = toProductRequest(values);
+      const request = toProductRequest(values, product);
       const binding = storeSyncChange(request, product, storePreview, { file, removeImage, importedImage });
       if (binding !== undefined) request.storeSync = binding;
       const saved = await saveProduct(listId, savedId.current, request);
@@ -171,7 +171,7 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
 
   const submitProduct = (event) => {
     if (deletingRef.current || searchingImagesRef.current || searchingProductRef.current || f.busy) { event.preventDefault(); return; }
-    const request = toProductRequest(f.values);
+    const request = toProductRequest(f.values, product);
     const binding = storeSyncChange(request, product, storePreview, { file, removeImage, importedImage });
     if (binding !== null) { f.submit(event); return; }
     event.preventDefault();

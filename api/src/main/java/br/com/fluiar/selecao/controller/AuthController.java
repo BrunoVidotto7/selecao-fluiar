@@ -10,6 +10,8 @@ import br.com.fluiar.selecao.dto.PasswordResetRequest;
 import br.com.fluiar.selecao.service.AuthService;
 import br.com.fluiar.selecao.service.InvitationService;
 import br.com.fluiar.selecao.service.PasswordResetService;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@SecurityRequirements
 @RequestMapping("/api/auth")
 public class AuthController {
 
@@ -36,14 +39,14 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse logIn(@Valid @RequestBody LoginRequest request) {
-        return authService.logIn(request);
+    public AuthResponse logIn(@Valid @RequestBody LoginRequest request, HttpServletRequest http) {
+        return authService.logIn(request, http.getRemoteAddr());
     }
 
     @PostMapping("/password-reset-requests")
     @ResponseStatus(HttpStatus.ACCEPTED)
-    public void requestPasswordReset(@Valid @RequestBody PasswordResetRequest request) {
-        passwordResetService.requestReset(request);
+    public void requestPasswordReset(@Valid @RequestBody PasswordResetRequest request, HttpServletRequest http) {
+        passwordResetService.requestReset(request, http.getRemoteAddr());
     }
 
     @GetMapping("/password-resets/{token}")

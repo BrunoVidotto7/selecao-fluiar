@@ -52,8 +52,7 @@ public class ClientShoppingListService {
             product.recordClientPurchase(list.nextClientChangeRevision(), clock.instant(), request.bought());
         }
         product.markBought(request.bought());
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
         return ClientProduct.of(product);
     }
 
@@ -65,8 +64,7 @@ public class ClientShoppingListService {
             product.recordClientNotes(list.nextClientChangeRevision(), clock.instant(), request.clientNotes());
         }
         product.changeClientNotes(request.clientNotes());
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
         return ClientProduct.of(product);
     }
 

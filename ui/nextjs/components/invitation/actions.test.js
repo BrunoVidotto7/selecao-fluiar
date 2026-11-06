@@ -8,7 +8,7 @@ const { cookieStore, cookies, fetchMock, redirect } = vi.hoisted(() => ({
   cookies: vi.fn(), fetchMock: vi.fn(),
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
 }));
-vi.mock('next/headers', () => ({ cookies }));
+vi.mock('next/headers', () => ({ cookies, headers: async () => new Headers() }));
 vi.mock('next/navigation', () => ({ redirect, notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }) }));
 
 const TOKEN = 'a'.repeat(43);

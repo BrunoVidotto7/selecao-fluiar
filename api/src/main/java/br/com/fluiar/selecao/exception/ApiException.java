@@ -17,6 +17,12 @@ public class ApiException extends RuntimeException {
         this.fieldErrors = fieldErrors;
     }
 
+    /** Keeps the internal cause for logs; it never reaches the response. */
+    public ApiException causedBy(Throwable cause) {
+        initCause(cause);
+        return this;
+    }
+
     public HttpStatus status() {
         return status;
     }

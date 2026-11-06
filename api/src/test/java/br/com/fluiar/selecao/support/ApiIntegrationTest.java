@@ -3,7 +3,7 @@ package br.com.fluiar.selecao.support;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
-import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.atLeast;
 import static org.mockito.Mockito.verify;
 
 import br.com.fluiar.selecao.model.User;
@@ -42,7 +42,7 @@ import org.springframework.test.web.servlet.assertj.MvcTestResult;
 import org.springframework.transaction.support.TransactionTemplate;
 import tools.jackson.databind.json.JsonMapper;
 
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(TestcontainersConfiguration.class)
@@ -225,15 +225,19 @@ public abstract class ApiIntegrationTest {
         return JsonPath.read(body, jsonPath);
     }
 
+    /** The password reset e-mail is sent after the response, so this waits for it. */
     protected SimpleMailMessage lastEmailTo(String recipient) {
-        ArgumentCaptor<SimpleMailMessage> sentEmails = ArgumentCaptor.forClass(SimpleMailMessage.class);
-        verify(mailSender, atLeastOnce()).send(sentEmails.capture());
+        await().atMost(MAX_WAIT_SECONDS, SECONDS).untilAsserted(() -> assertThat(emailsTo(recipient)).isNotEmpty());
+        return emailsTo(recipient).getLast();
+    }
 
-        List<SimpleMailMessage> emailsToRecipient = sentEmails.getAllValues().stream()
+    protected List<SimpleMailMessage> emailsTo(String recipient) {
+        ArgumentCaptor<SimpleMailMessage> sentEmails = ArgumentCaptor.forClass(SimpleMailMessage.class);
+        verify(mailSender, atLeast(0)).send(sentEmails.capture());
+
+        return sentEmails.getAllValues().stream()
                 .filter(email -> List.of(email.getTo()).contains(recipient))
                 .toList();
-        assertThat(emailsToRecipient).isNotEmpty();
-        return emailsToRecipient.getLast();
     }
 
     protected String extractToken(String emailText) {

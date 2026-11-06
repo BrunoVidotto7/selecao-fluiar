@@ -304,9 +304,9 @@ class ProductControllerTest extends ApiIntegrationTest {
         var list = requestList(paula, listId);
 
         assertThat(list).bodyJson().extractingPath("$.stats.estimatedTotal").convertTo(BIG_DECIMAL)
-                .isEqualByComparingTo("1250.1999");
+                .isEqualByComparingTo("1250.20");
         assertThat(list).bodyJson().extractingPath("$.stats.remainingTotal").convertTo(BIG_DECIMAL)
-                .isEqualByComparingTo("1250.1999");
+                .isEqualByComparingTo("1250.20");
     }
 
     @Test
@@ -494,6 +494,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(requestProduct(marina, mixerId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestUpdate(marina, mixerId, mixer(kitchenId))).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestStatusChange(marina, mixerId, Map.of("bought", true))).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(requestClientNotesChange(marina, mixerId, "Nota de outro escritório")).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestDelete(marina, mixerId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestCreate(marina, listId, mixer(kitchenId))).hasStatus(HttpStatus.NOT_FOUND);
 
@@ -501,6 +502,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(stored).hasStatus(HttpStatus.OK);
         assertThat(stored).bodyJson().extractingPath("$.name").isEqualTo(MIXER);
         assertThat(stored).bodyJson().extractingPath("$.bought").isEqualTo(false);
+        assertThat(stored).bodyJson().extractingPath("$.clientNotes").isNull();
         var list = requestList(paula, listId);
         assertThat(list).hasStatus(HttpStatus.OK);
         assertThat(list).bodyJson().extractingPath("$.stats.totalProducts").isEqualTo(1);
@@ -783,6 +785,14 @@ class ProductControllerTest extends ApiIntegrationTest {
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json(status))
+                .exchange();
+    }
+
+    private MvcTestResult requestClientNotesChange(TestSession session, UUID productId, String clientNotes) {
+        return mvc.put().uri("/api/products/{productId}/client-notes", productId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(session))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("clientNotes", clientNotes)))
                 .exchange();
     }
 

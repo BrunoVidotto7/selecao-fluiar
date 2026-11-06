@@ -2,7 +2,7 @@ package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ProductImportPreview;
 import br.com.fluiar.selecao.model.Product;
-import static br.com.fluiar.selecao.model.ProductStoreSync.*;
+import br.com.fluiar.selecao.model.SyncStatus;
 import br.com.fluiar.selecao.repository.*;
 import java.time.Clock;
 import java.math.BigDecimal;
@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @Transactional(readOnly=true)
 public class ProductSyncService {
-    public static final String DISCARDED = "discarded";
     private final ShoppingListRepository lists;
     private final ProductRepository products;
     private final ListActivityRepository activity;
@@ -25,20 +24,20 @@ public class ProductSyncService {
     }
 
     @Transactional
-    public String apply(ProductSyncRepository.Claim claim, ProductImportPreview preview,
+    public SyncStatus apply(ProductSyncRepository.Claim claim, ProductImportPreview preview,
             StoreProductCollector.DownloadedImage image) {
         var list=lists.findInOfficeForUpdate(claim.listId(),claim.officeId()).orElse(null);
-        if (list==null || !list.getClient().getId().equals(claim.clientId())) return DISCARDED;
+        if (list==null || !list.getClient().getId().equals(claim.clientId())) return SyncStatus.DISCARDED;
         Product product=products.findInOfficeForUpdate(claim.productId(),claim.officeId()).orElse(null);
-        if (product==null || !product.getRoom().getList().getId().equals(claim.listId())) return DISCARDED;
+        if (product==null || !product.getRoom().getList().getId().equals(claim.listId())) return SyncStatus.DISCARDED;
         var now=clock.instant();
         var sync=product.getStoreSync();
         if (sync==null || !sync.isEnabled() || !Objects.equals(sync.getBindingVersion(),claim.bindingVersion())
                 || !Objects.equals(sync.getLeaseToken(),claim.leaseToken()) || sync.getLeaseExpiresAt()==null
-                || !sync.getLeaseExpiresAt().isAfter(now)) return DISCARDED;
+                || !sync.getLeaseExpiresAt().isAfter(now)) return SyncStatus.DISCARDED;
         if (product.isBought() || !activity.active(claim.listId(),now.minus(ProductSyncRepository.ACTIVITY_WINDOW))) {
-            sync.finish(FAILED,now);
-            return DISCARDED;
+            sync.finish(SyncStatus.FAILED,now);
+            return SyncStatus.DISCARDED;
         }
         boolean identity=preview!=null && Objects.equals(preview.productId(),claim.productIdentity())
                 && Objects.equals(preview.variantId(),claim.variantId()) && Objects.equals(preview.store(),claim.store());
@@ -49,8 +48,8 @@ public class ProductSyncService {
                 || (price!=null && (product.getUnitPrice()==null || price.compareTo(product.getUnitPrice())!=0));
         if (imageValid) changed |= bindings.persistImage(product,image);
         product.synchronize(name,price);
-        String result=name!=null && price!=null && imageValid ? OK
-                : name!=null || price!=null || imageValid ? PARTIAL : FAILED;
+        SyncStatus result=name!=null && price!=null && imageValid ? SyncStatus.OK
+                : name!=null || price!=null || imageValid ? SyncStatus.PARTIAL : SyncStatus.FAILED;
         sync.finish(result,now);
         if (changed) list.touch();
         return result;

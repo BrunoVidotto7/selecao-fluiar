@@ -56,9 +56,6 @@ npm run build                                         # if routes/layouts/config
 - Validation messages must match on both sides: `ui/nextjs/lib/validation.js` and
   `api/.../exception/ErrorMessages.java` / `ValidationMessages.properties`. Changing one requires
   changing the other.
-- `api/PLANO-BACKEND.md` (Portuguese) is the original design spec with the endpoint contract and error
-  format; where it disagrees with the code, the code wins. Some of its paths are stale (`nextjs/` is
-  now `ui/nextjs/`).
 
 ## Key conventions
 

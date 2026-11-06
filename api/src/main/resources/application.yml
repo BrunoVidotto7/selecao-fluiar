@@ -1,3 +1,5 @@
+server:
+  forward-headers-strategy: native   # Tomcat só aceita o X-Forwarded-For de proxies internos (loopback e faixas privadas)
 spring:
   application:
     name: selecao-api
@@ -33,10 +35,25 @@ spring:
       "[mail.smtp.writetimeout]": 5000
       "[mail.smtp.starttls.enable]": ${MAIL_STARTTLS:false}   # true nos provedores que exigem STARTTLS (ex.: porta 587)
 management:
+  server:
+    port: ${MANAGEMENT_PORT:8081}   # o actuator só existe nesta porta: ela deve ficar interna (fora do balanceador)
+  endpoint:
+    health:
+      probes:
+        enabled: true   # /actuator/health/liveness e /readiness; o readiness só olha o banco
+      group:
+        readiness:
+          include: readinessState,db
   endpoints:
     web:
       exposure:
-        include: health
+        include: health,prometheus   # só na porta de gerenciamento
+  health:
+    mail:
+      enabled: false   # um SMTP fora do ar não deve derrubar a API nem tirá-la do balanceador
+logging:
+  pattern:
+    correlation: "[%X{requestId:-}] "
 springdoc:
   api-docs:
     enabled: true

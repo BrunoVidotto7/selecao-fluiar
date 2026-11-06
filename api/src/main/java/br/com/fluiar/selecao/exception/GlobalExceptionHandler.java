@@ -1,11 +1,13 @@
 package br.com.fluiar.selecao.exception;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.io.UncheckedIOException;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.NestedExceptionUtils;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpHeaders;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.servlet.HandlerMapping;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
@@ -56,7 +59,8 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     /** The SMTP server's message can repeat the recipient's address, so neither the log nor the response shows it. */
     @ExceptionHandler(MailException.class)
     ProblemDetail handleMailException(MailException exception) {
-        log.error("E-mail delivery failed: {}", exception.getClass().getSimpleName());
+        log.error("E-mail delivery failed: {} caused by {}", exception.getClass().getSimpleName(),
+                NestedExceptionUtils.getMostSpecificCause(exception).getClass().getSimpleName());
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ErrorMessages.EMAIL_NOT_SENT);
     }
 
@@ -72,9 +76,15 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
      * internal details, so only the log shows it.
      */
     @ExceptionHandler(Exception.class)
-    ProblemDetail handleUnexpectedError(Exception exception) {
-        log.error("Unexpected error", exception);
+    ProblemDetail handleUnexpectedError(Exception exception, HttpServletRequest request) {
+        log.error("Unexpected error on {} {}", request.getMethod(), routeOf(request), exception);
         return ProblemDetail.forStatusAndDetail(HttpStatus.INTERNAL_SERVER_ERROR, ErrorMessages.UNEXPECTED_ERROR);
+    }
+
+    /** The route pattern, not the URL: path values can be secrets such as share or invitation tokens. */
+    private static String routeOf(HttpServletRequest request) {
+        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        return pattern != null ? pattern.toString() : "(no route)";
     }
 
     @Override
@@ -97,10 +107,16 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         return handleExceptionInternal(exception, problem, headers, status, request);
     }
 
-    /** A body that is not valid JSON or does not fit the field types, such as a quantity of 1.9. */
+    /**
+     * A body that is not valid JSON or does not fit the field types, such as a quantity of 1.9. A field reader can
+     * reject its own field with an {@link ApiException}, such as a malformed {@code storeSync}.
+     */
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(
             HttpMessageNotReadableException exception, HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+        if (exception.getMostSpecificCause() instanceof ApiException fieldError) {
+            return handleExceptionInternal(exception, handleApiException(fieldError), headers, fieldError.status(), request);
+        }
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(status, ErrorMessages.INVALID_REQUEST);
         return handleExceptionInternal(exception, problem, headers, status, request);
     }

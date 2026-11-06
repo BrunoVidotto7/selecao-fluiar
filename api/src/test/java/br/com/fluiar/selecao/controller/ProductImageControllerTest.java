@@ -40,6 +40,8 @@ class ProductImageControllerTest extends ApiIntegrationTest {
     private static final String IMAGE_PATH = "/api/images/";
     private static final String PRIVATE_CACHE = "private";
     private static final String NO_STORE_CACHE = "no-store";
+    private static final String IMMUTABLE_CACHE = "immutable";
+    private static final String ONE_YEAR_CACHE = "max-age=31536000";
     private static final String INVALID_IMAGE = "Escolha um arquivo de imagem (JPG ou PNG).";
     private static final String IMAGE_TOO_LARGE = "A imagem deve ter até 5 MB.";
     private static final Instant OLDER_UPDATE = Instant.parse("2020-01-01T00:00:00Z");
@@ -66,7 +68,8 @@ class ProductImageControllerTest extends ApiIntegrationTest {
         assertThat(image).hasStatus(HttpStatus.OK);
         assertThat(image).hasContentType(MediaType.IMAGE_PNG);
         assertThat(image.getResponse().getContentAsByteArray()).isEqualTo(png);
-        assertThat(image.getResponse().getHeader(HttpHeaders.CACHE_CONTROL)).contains(PRIVATE_CACHE, NO_STORE_CACHE);
+        assertThat(image.getResponse().getHeader(HttpHeaders.CACHE_CONTROL))
+                .contains(PRIVATE_CACHE, ONE_YEAR_CACHE, IMMUTABLE_CACHE).doesNotContain(NO_STORE_CACHE);
         assertThat(storedImageUrl(paula, mixerId)).isEqualTo(imageUrl);
     }
 

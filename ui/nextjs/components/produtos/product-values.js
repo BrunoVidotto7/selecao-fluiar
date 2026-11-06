@@ -10,8 +10,12 @@ const LINKS_TOO_MANY = 'Adicione no máximo 10 links.';
 
 const filledLinks = (values) => values.links.filter((link) => link.url.trim() || link.note.trim());
 
-/** @param {{ nome: string, amb: string, categoryId: string, qtd: string, unidade: string, preco: string, obs: string, bought: boolean, links: { id: string, url: string, note: string }[] }} values */
-export function toProductRequest(values) {
+/**
+ * @param {{ nome: string, amb: string, categoryId: string, qtd: string, unidade: string, preco: string, obs: string, bought: boolean, links: { id: string, url: string, note: string }[] }} values
+ * @param {{ bought: boolean }} [product] The saved product when updating. Then bought is sent only when Status
+ * changed, so an edit cannot undo a purchase the client made meanwhile.
+ */
+export function toProductRequest(values, product) {
   return {
     name: values.nome.trim(),
     roomId: values.amb,
@@ -20,7 +24,7 @@ export function toProductRequest(values) {
     unit: values.unidade,
     unitPrice: values.preco.trim() ? parseBRL(values.preco.trim()) : null,
     notes: values.obs.trim() || null,
-    bought: values.bought,
+    ...(product && values.bought === product.bought ? {} : { bought: values.bought }),
     links: filledLinks(values).map((link) => ({ url: link.url.trim(), note: link.note.trim() || null })),
   };
 }

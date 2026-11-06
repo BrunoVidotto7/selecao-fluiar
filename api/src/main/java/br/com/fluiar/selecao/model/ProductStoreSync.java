@@ -1,6 +1,5 @@
 package br.com.fluiar.selecao.model;
 
-import br.com.fluiar.selecao.dto.ProductImportPreview;
 import jakarta.persistence.Column;
 import jakarta.persistence.Embeddable;
 import java.time.Instant;
@@ -8,10 +7,9 @@ import java.util.UUID;
 
 @Embeddable
 public class ProductStoreSync {
-    public static final String PENDING = "pending";
-    public static final String OK = "ok";
-    public static final String PARTIAL = "partial";
-    public static final String FAILED = "failed";
+    public static final int SOURCE_URL_MAX_LENGTH = 2048;
+    public static final int STORE_PRODUCT_ID_MAX_LENGTH = 512;
+    public static final int VARIANT_ID_MAX_LENGTH = 512;
     private String sourceUrl;
     private String store;
     private String storeProductId;
@@ -28,18 +26,18 @@ public class ProductStoreSync {
     private Instant leaseExpiresAt;
 
     protected ProductStoreSync() {}
-    public ProductStoreSync(ProductImportPreview preview, Instant now) {
-        sourceUrl=preview.sourceUrl(); store=preview.store(); storeProductId=preview.productId();
-        variantId=preview.variantId(); enabled=true; bindingVersion=UUID.randomUUID();
-        nextAttemptAt=now; status=PENDING;
+    public ProductStoreSync(String sourceUrl, String store, String storeProductId, String variantId, Instant now) {
+        this.sourceUrl=sourceUrl; this.store=store; this.storeProductId=storeProductId;
+        this.variantId=variantId; enabled=true; bindingVersion=UUID.randomUUID();
+        nextAttemptAt=now; status=SyncStatus.PENDING.value();
     }
     public void disable() { enabled=false; invalidateAttempt(); }
     public void invalidateAttempt() {
         bindingVersion=UUID.randomUUID(); leaseToken=null; leaseExpiresAt=null;
     }
-    public void finish(String status, Instant now) {
-        this.status=status;
-        if (OK.equals(status)) lastSyncedAt=now;
+    public void finish(SyncStatus status, Instant now) {
+        this.status=status.value();
+        if (status==SyncStatus.OK) lastSyncedAt=now;
         leaseToken=null; leaseExpiresAt=null;
     }
     public String getSourceUrl() { return sourceUrl; }

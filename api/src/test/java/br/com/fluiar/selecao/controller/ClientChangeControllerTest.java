@@ -238,6 +238,16 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
         assertThat(jsonMapper.readTree(summary(ana, "0").getResponse().getContentAsString()).at("/pendingListCount").asLong()).isZero();
     }
 
+    @Test
+    void adminEditWithoutBoughtKeepsClientPurchase() {
+        purchase(true);
+        var edit = Map.of("roomId", room, "categoryId", categoryId(ana, "Outros"), "name", "Sofá retrátil", "quantity", 1);
+        assertThat(mvc.put().uri("/api/products/{id}", product).header(HttpHeaders.AUTHORIZATION, bearer(ana))
+                .contentType(MediaType.APPLICATION_JSON).content(json(edit)).exchange()).hasStatus(HttpStatus.OK);
+        assertThat(jdbc.queryForObject("select bought from products where id = ?", Boolean.class, product)).isTrue();
+        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].purchase.value").isEqualTo(true);
+    }
+
     private void purchase(boolean bought) {
         assertThat(mvc.patch().uri("/api/client/lists/{id}/products/{product}", list, product)
                 .header(HttpHeaders.AUTHORIZATION, bearer(owner)).contentType(MediaType.APPLICATION_JSON)

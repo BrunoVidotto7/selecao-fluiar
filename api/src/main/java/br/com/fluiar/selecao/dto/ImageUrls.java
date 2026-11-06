@@ -2,7 +2,7 @@ package br.com.fluiar.selecao.dto;
 
 import java.util.UUID;
 
-/** Images have a public URL, because an {@code <img src>} does not send the Authorization header. */
+/** Image URLs are API paths; reading one needs an authorized account, so the Next.js proxy adds the bearer header. */
 public final class ImageUrls {
 
     public static final String IMAGE_PATH = "/api/images/";

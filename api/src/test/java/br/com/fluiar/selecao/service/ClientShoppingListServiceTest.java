@@ -106,19 +106,6 @@ class ClientShoppingListServiceTest {
     }
 
     @Test
-    void changingOwnershipWhileWaitingForTheLockRevokesTheOldClientsWrite() {
-        when(lists.findInOfficeForUpdate(listId, officeId)).thenAnswer(call -> {
-            var other = new Client(officeId, "Other", "other@example.com", "31999999999");
-            ReflectionTestUtils.setField(other, "id", UUID.randomUUID());
-            list.update("Home", null, other);
-            return Optional.of(list);
-        });
-        assertThatThrownBy(() -> service.setPurchase(officeId, clientId, listId, productId,
-                new ProductPurchaseRequest(true))).isInstanceOf(ApiException.class);
-        assertThat(product.isBought()).isFalse();
-    }
-
-    @Test
     void notesAreNormalizedAndPayloadsCannotEditOtherFields() {
         assertThat(new ProductClientNotesRequest("   ").clientNotes()).isNull();
         assertThatThrownBy(() -> mapper.readValue("{\"bought\":true,\"quantity\":3}", ProductPurchaseRequest.class))

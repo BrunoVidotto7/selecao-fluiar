@@ -1,7 +1,10 @@
 package br.com.fluiar.selecao.controller;
 
+import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -15,6 +18,9 @@ import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -46,6 +52,10 @@ class PasswordResetTest extends ApiIntegrationTest {
     /** Valid local part and labels, so only the 254-character limit fails. */
     private static final String EMAIL_OVER_LIMIT = "i".repeat(64) + "@" + ("d".repeat(63) + ".").repeat(3) + "com.br";
     private static final int MAX_ATTEMPTS = 5;
+    private static final int MAX_ATTEMPTS_PER_IP = 30;
+    private static final String PUBLIC_IP = "203.0.113.7";
+    private static final String OTHER_PUBLIC_IP = "198.51.100.20";
+    private static final long MAX_WAIT_SECONDS = 10;
     private static final Duration LINK_VALIDITY = Duration.ofHours(1);
     private static final String SMTP_REJECTION = "550 5.1.1 <paula@fluiar.com.br>: Recipient address rejected";
     /** The other transaction only holds the user's lock, so the requests queue up behind it and overlap. */
@@ -90,21 +100,41 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     @Test
     @ExtendWith(OutputCaptureExtension.class)
-    void failedEmailDeliveryAnswersGenericErrorAndKeepsNoLink(CapturedOutput output) {
+    void failedEmailDeliveryStillAnswersAcceptedAndIsLoggedWithoutPersonalData(CapturedOutput output) {
         createAdmin(PAULA_NAME, PAULA_EMAIL);
         doThrow(new MailSendException(SMTP_REJECTION)).when(mailSender).send(any(SimpleMailMessage.class));
 
         var result = requestReset(PAULA_EMAIL);
 
-        assertThat(result).hasStatus(HttpStatus.INTERNAL_SERVER_ERROR);
-        assertThat(result).bodyJson().extractingPath("$.detail")
-                .isEqualTo("Não conseguimos enviar o e-mail agora. Tente novamente em alguns minutos.");
-        assertThat(result).bodyText().doesNotContain(SMTP_REJECTION, PAULA_EMAIL);
-        assertThat(storedResetLinks()).isZero();
+        assertThat(result).hasStatus(HttpStatus.ACCEPTED);
+        await().atMost(MAX_WAIT_SECONDS, SECONDS)
+                .untilAsserted(() -> assertThat(output.getOut()).contains("MailSendException"));
         List<String> mailFailureLogs =
                 output.getOut().lines().filter(line -> line.contains("MailSendException")).toList();
         assertThat(mailFailureLogs).singleElement().asString().contains("ERROR");
         assertThat(output.getOut()).doesNotContain(SMTP_REJECTION, PAULA_EMAIL);
+    }
+
+    @Test
+    void noRowLockIsHeldWhileTheEmailIsSent() {
+        var session = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        AtomicReference<RuntimeException> lockFailure = new AtomicReference<>();
+        doAnswer(invocation -> {
+            // Another thread, so the query uses its own connection instead of the request's transaction.
+            CompletableFuture.runAsync(() -> {
+                try {
+                    jdbc.queryForObject("select id from users where id = ? for update nowait", UUID.class, session.userId());
+                } catch (RuntimeException e) {
+                    lockFailure.set(e);
+                }
+            }).join();
+            return null;
+        }).when(mailSender).send(any(SimpleMailMessage.class));
+
+        assertThat(requestReset(PAULA_EMAIL)).hasStatus(HttpStatus.ACCEPTED);
+
+        lastEmailTo(PAULA_EMAIL);
+        assertThat(lockFailure.get()).isNull();
     }
 
     @Test
@@ -311,7 +341,8 @@ class PasswordResetTest extends ApiIntegrationTest {
 
         assertThat(result).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo(TOO_MANY_ATTEMPTS_MESSAGE);
-        verify(mailSender, times(MAX_ATTEMPTS)).send(any(SimpleMailMessage.class));
+        await().atMost(MAX_WAIT_SECONDS, SECONDS)
+                .untilAsserted(() -> verify(mailSender, times(MAX_ATTEMPTS)).send(any(SimpleMailMessage.class)));
     }
 
     @Test
@@ -324,6 +355,16 @@ class PasswordResetTest extends ApiIntegrationTest {
 
         assertThat(result).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
         assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo(TOO_MANY_ATTEMPTS_MESSAGE);
+    }
+
+    @Test
+    void requestBlocksAPublicAddressAfterTooManyEmails() {
+        for (int attempt = 0; attempt < MAX_ATTEMPTS_PER_IP; attempt++) {
+            assertThat(requestResetFrom(PUBLIC_IP, "user" + attempt + "@fluiar.com.br")).hasStatus(HttpStatus.ACCEPTED);
+        }
+
+        assertThat(requestResetFrom(PUBLIC_IP, UNKNOWN_EMAIL)).hasStatus(HttpStatus.TOO_MANY_REQUESTS);
+        assertThat(requestResetFrom(OTHER_PUBLIC_IP, UNKNOWN_EMAIL)).hasStatus(HttpStatus.ACCEPTED);
     }
 
     /**
@@ -348,8 +389,21 @@ class PasswordResetTest extends ApiIntegrationTest {
 
     /** Requests a reset link and returns the token of the link sent by e-mail. */
     private String resetTokenSentTo(String email) {
+        int emailsBefore = emailsTo(email).size();
         assertThat(requestReset(email)).hasStatus(HttpStatus.ACCEPTED);
+        await().atMost(MAX_WAIT_SECONDS, SECONDS).until(() -> emailsTo(email).size() > emailsBefore);
         return extractToken(lastEmailTo(email).getText());
+    }
+
+    private MvcTestResult requestResetFrom(String ip, String email) {
+        return mvc.post().uri("/api/auth/password-reset-requests")
+                .with(request -> {
+                    request.setRemoteAddr(ip);
+                    return request;
+                })
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("email", email)))
+                .exchange();
     }
 
     private MvcTestResult requestReset(String email) {

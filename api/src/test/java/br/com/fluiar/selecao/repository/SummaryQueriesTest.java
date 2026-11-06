@@ -91,7 +91,7 @@ class SummaryQueriesTest {
     }
 
     @Test
-    void listSummaryMultipliesDecimalSquareMeterQuantitiesByUnitPrice() {
+    void listSummaryMultipliesDecimalSquareMeterQuantitiesByUnitPriceAndRoundsToCents() {
         UUID officeId = office();
         ShoppingList list = list(client(officeId, "Ana Souza"), "Apartamento");
         Room room = room(list, "Sala", 0);
@@ -102,7 +102,7 @@ class SummaryQueriesTest {
         List<ListSummaryResponse> summaries = shoppingListRepository.findSummaries(officeId);
 
         assertThat(summaries).singleElement().satisfies(summary ->
-                assertThat(summary.estimatedTotal()).isEqualByComparingTo("1250.1999"));
+                assertThat(summary.estimatedTotal()).isEqualTo(new BigDecimal("1250.20")));
     }
 
     @Test

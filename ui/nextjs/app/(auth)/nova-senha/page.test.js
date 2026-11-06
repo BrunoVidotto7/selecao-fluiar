@@ -9,7 +9,7 @@ const { cookieStore, cookies, fetchMock, redirect, push, refresh } = vi.hoisted(
   cookies: vi.fn(), fetchMock: vi.fn(), push: vi.fn(), refresh: vi.fn(),
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
 }));
-vi.mock('next/headers', () => ({ cookies }));
+vi.mock('next/headers', () => ({ cookies, headers: async () => new Headers() }));
 vi.mock('next/navigation', async (importOriginal) => {
   const { unstable_rethrow } = await importOriginal();
   return { redirect, useRouter: () => ({ push, refresh }), usePathname: () => '/nova-senha', unstable_rethrow };

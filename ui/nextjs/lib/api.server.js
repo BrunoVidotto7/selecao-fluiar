@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { headers as requestHeaders } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
 import { getAccessToken } from './session.server';
 import { getLoginPath, parseAuthenticatedUser } from './auth-routing';
@@ -31,6 +32,19 @@ export class ApiError extends Error {
     this.detail = detail;
     this.errors = errors;
   }
+}
+
+/**
+ * The browser's address, so the API limits login and reset attempts per user instead of per Next server. Only the
+ * header named by TRUSTED_CLIENT_IP_HEADER is read, because the proxy in front of Next must overwrite it: the browser
+ * controls any other. For x-forwarded-for, only the last entry, added by that proxy, is trusted.
+ */
+async function browserIp() {
+  const header = process.env.TRUSTED_CLIENT_IP_HEADER;
+  if (header !== 'x-forwarded-for' && header !== 'x-real-ip') return undefined;
+  const value = (await requestHeaders()).get(header);
+  if (!value) return undefined;
+  return (header === 'x-forwarded-for' ? value.split(',').at(-1) : value).trim() || undefined;
 }
 
 export function requestUrl(path) {
@@ -96,6 +110,10 @@ export async function apiRequest(path, { method = 'GET', body, auth = 'required'
     const token = await getAccessToken();
     if (!token) redirect(getLoginPath(returnTo));
     headers.set('Authorization', `Bearer ${token}`);
+  }
+  if (PUBLIC_API_PATH.test(url.pathname)) {
+    const ip = await browserIp();
+    if (ip) headers.set('X-Forwarded-For', ip);
   }
 
   const isJson = body !== undefined && !(body instanceof FormData);

@@ -5,6 +5,8 @@ import { isUuid } from './route-input';
 
 const IMAGE_TYPES = ['image/png', 'image/jpeg'];
 const PRIVATE_CACHE = 'private, no-store';
+// An image id never changes its bytes: a new image gets a new id.
+const IMAGE_CACHE = 'private, max-age=31536000, immutable';
 const NOT_FOUND_DETAIL = 'Não encontramos o que você procurava.';
 const LOGIN_DETAIL = 'Entre na sua conta para continuar.';
 const CONNECTION_DETAIL = 'Não conseguimos conectar à API. Tente novamente.';
@@ -32,7 +34,7 @@ export async function readProductImage(imageId) {
     const type = response.headers.get('Content-Type')?.split(';')[0].trim().toLowerCase();
     if (!IMAGE_TYPES.includes(type)) return problem(502, INVALID_RESPONSE_DETAIL);
     return new Response(await response.arrayBuffer(), {
-      status: 200, headers: { 'Content-Type': type, 'Cache-Control': PRIVATE_CACHE },
+      status: 200, headers: { 'Content-Type': type, 'Cache-Control': IMAGE_CACHE },
     });
   } catch {
     return problem(503, CONNECTION_DETAIL);

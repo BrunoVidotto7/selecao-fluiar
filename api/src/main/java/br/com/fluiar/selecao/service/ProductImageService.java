@@ -69,8 +69,7 @@ public class ProductImageService {
         product.disableStoreSync();
         imageRepository.deleteByProductId(product.getId());
         ProductImage image = imageRepository.save(new ProductImage(product.getId(), contentType, data));
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
 
         return new ProductImageResponse(ImageUrls.of(image.getId()));
     }
@@ -82,8 +81,7 @@ public class ProductImageService {
 
         product.disableStoreSync();
         imageRepository.deleteByProductId(product.getId());
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
     }
 
     public ImageContent load(UUID userId, UUID imageId) {

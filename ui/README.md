@@ -57,6 +57,10 @@ A integração usa chamadas no servidor Next.js. Configure a origem da API em
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
 
+Em produção, defina também `TRUSTED_CLIENT_IP_HEADER` (somente no servidor Next, nunca `NEXT_PUBLIC_`) com
+`x-forwarded-for` (usa a última entrada) ou `x-real-ip`. O proxy na frente do Next deve sobrescrever esse
+cabeçalho; sem a variável, o Next não repassa o endereço do navegador e a API aplica só os limites por e-mail.
+
 Para usar os fluxos integrados localmente, a API precisa estar em execução. Ela exige
 JDK 25, Docker, PostgreSQL, Mailpit e a variável `JWT_SECRET`. Siga as instruções de
 [`../api/README.md`](../api/README.md) antes de iniciar o Next.js. Os testes unitários

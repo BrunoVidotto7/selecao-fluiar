@@ -45,8 +45,7 @@ public class RoomService {
         }
 
         Room room = roomRepository.save(new Room(list, request.name(), roomRepository.findMaxPosition(list) + 1));
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
 
         return RoomResponse.of(room);
     }
@@ -61,8 +60,7 @@ public class RoomService {
         }
 
         room.rename(request.name());
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
 
         return RoomResponse.of(room);
     }
@@ -77,8 +75,7 @@ public class RoomService {
             throw ApiException.notFound();
         }
 
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
     }
 
     @Transactional
@@ -91,8 +88,7 @@ public class RoomService {
         }
 
         rooms.forEach(room -> room.moveTo(roomIds.indexOf(room.getId())));
-        list.touch();
-        activity.record(list.getId());
+        activity.recordHumanChange(list);
 
         return rooms.stream().sorted(Comparator.comparingInt(Room::getPosition)).map(RoomResponse::of).toList();
     }

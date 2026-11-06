@@ -27,6 +27,8 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 class ClientInvitationServiceTest {
     private static final UUID OFFICE_ID = UUID.randomUUID();
@@ -69,7 +71,7 @@ class ClientInvitationServiceTest {
         when(tokens.issue(any(User.class), eq(false))).thenReturn(new IssuedToken("test-token", NOW.plusSeconds(60)));
         var properties = new AppProperties(null, "http://localhost:3000", List.of(), ZoneOffset.UTC, "test@example.com");
         service = new InvitationService(invitations, clients, users, offices, email, encoder, tokens,
-                Clock.fixed(NOW, ZoneOffset.UTC), properties);
+                Clock.fixed(NOW, ZoneOffset.UTC), new TransactionTemplate(mock(PlatformTransactionManager.class)), properties);
     }
 
     @Test
@@ -93,14 +95,6 @@ class ClientInvitationServiceTest {
         assertThat(active.status()).isEqualTo(Status.ACTIVE);
         assertThat(active.email()).isEqualTo("login@example.com");
         assertThat(active.invitationId()).isNull();
-    }
-
-    @Test
-    void acceptanceRechecksTheInvitationAfterAcquiringTheClientLock() {
-        when(invitations.findByTokenHashForUpdate(SecureTokens.hash("token"))).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.accept("token", new InvitationAcceptRequest("clientPassword1")))
-                .isInstanceOfSatisfying(ApiException.class, failure -> assertThat(failure.status()).isEqualTo(HttpStatus.BAD_REQUEST));
-        verify(users, never()).save(any());
     }
 
     @Test

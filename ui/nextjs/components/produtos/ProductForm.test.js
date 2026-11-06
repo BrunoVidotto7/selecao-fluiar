@@ -278,10 +278,27 @@ test('editing shows API values, object links, image path and bought state withou
   await submit();
   expect(saveProduct.mock.calls[0][1]).toBe(PRODUCT.id);
   expect(saveProduct.mock.calls[0][2]).toEqual({
-    name: PRODUCT.name, roomId: ROOM.id, categoryId: PRODUCT.category.id, quantity: 2, unit: 'UNIT', unitPrice: 12.5, notes: PRODUCT.notes, bought: true, links: PRODUCT.links,
+    name: PRODUCT.name, roomId: ROOM.id, categoryId: PRODUCT.category.id, quantity: 2, unit: 'UNIT', unitPrice: 12.5, notes: PRODUCT.notes, links: PRODUCT.links,
   });
   expect(uploadProductImage).not.toHaveBeenCalled();
   expect(deleteProductImage).not.toHaveBeenCalled();
+});
+
+test('editing another field without touching Status sends no bought value', async () => {
+  getList.mockResolvedValue({ ...LIST, rooms: [{ ...ROOM, products: [{ ...PRODUCT, bought: true }] }] });
+  render(await editProductPage());
+  fireEvent.change(screen.getByLabelText('Nome do produto'), { target: { value: 'Batedeira nova' } });
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).toMatchObject({ name: 'Batedeira nova' });
+  expect(saveProduct.mock.calls[0][2]).not.toHaveProperty('bought');
+});
+
+test('changing Status while editing sends the new bought value', async () => {
+  getList.mockResolvedValue({ ...LIST, rooms: [{ ...ROOM, products: [{ ...PRODUCT, bought: true }] }] });
+  render(await editProductPage());
+  fireEvent.click(screen.getByRole('radio', { name: 'Pendente' }));
+  await submit();
+  expect(saveProduct.mock.calls[0][2]).toMatchObject({ bought: false });
 });
 
 test.each([

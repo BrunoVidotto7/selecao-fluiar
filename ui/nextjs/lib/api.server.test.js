@@ -5,15 +5,16 @@ import { actionResult, ApiError, apiRequest, getCurrentUser, readApi } from './a
 import { revalidateWorkspaceData } from './revalidate.server';
 import { CLIENT, DASHBOARD, LIST, ME, PRODUCT, PUBLIC_LIST, ROOM, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
-const { cookieStore, cookies, fetchMock, redirect, notFound, revalidatePath } = vi.hoisted(() => ({
+const { cookieStore, cookies, requestHeaders, fetchMock, redirect, notFound, revalidatePath } = vi.hoisted(() => ({
   cookieStore: { get: vi.fn(), set: vi.fn(), delete: vi.fn() },
   cookies: vi.fn(),
+  requestHeaders: vi.fn(),
   fetchMock: vi.fn(),
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
   notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }),
   revalidatePath: vi.fn(),
 }));
-vi.mock('next/headers', () => ({ cookies }));
+vi.mock('next/headers', () => ({ cookies, headers: requestHeaders }));
 vi.mock('next/navigation', () => ({ redirect, notFound }));
 vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('react', async (importOriginal) => {
@@ -33,6 +34,7 @@ beforeEach(() => {
   cookieStore.set.mockReset();
   cookieStore.delete.mockReset();
   cookies.mockReset().mockResolvedValue(cookieStore);
+  requestHeaders.mockReset().mockResolvedValue(new Headers());
   fetchMock.mockReset().mockImplementation(async () => json(ME));
   redirect.mockClear();
   notFound.mockClear();
@@ -78,6 +80,48 @@ test.each(['/api/auth/login', '/api/auth/password-reset-requests'])(
     expect(redirect).not.toHaveBeenCalled();
   },
 );
+
+describe('browser address for the API limits', () => {
+  const forwardedFor = async (incoming, path = '/api/auth/login') => {
+    requestHeaders.mockResolvedValue(new Headers(incoming));
+    await apiRequest(path);
+    return fetchMock.mock.calls[0][1].headers.get('X-Forwarded-For');
+  };
+
+  test('nothing is forwarded when TRUSTED_CLIENT_IP_HEADER is unset, even if the browser sent the headers', async () => {
+    expect(await forwardedFor({ 'x-real-ip': '6.6.6.6', 'x-forwarded-for': '6.6.6.6' })).toBeNull();
+  });
+
+  test('nothing is forwarded when TRUSTED_CLIENT_IP_HEADER has another value', async () => {
+    vi.stubEnv('TRUSTED_CLIENT_IP_HEADER', 'cf-connecting-ip');
+    expect(await forwardedFor({ 'cf-connecting-ip': '203.0.113.7', 'x-real-ip': '6.6.6.6' })).toBeNull();
+  });
+
+  test('x-forwarded-for forwards the last entry, the one added by the proxy in front of Next', async () => {
+    vi.stubEnv('TRUSTED_CLIENT_IP_HEADER', 'x-forwarded-for');
+    expect(await forwardedFor({ 'x-forwarded-for': '6.6.6.6, 203.0.113.7' })).toBe('203.0.113.7');
+  });
+
+  test('x-forwarded-for mode ignores x-real-ip', async () => {
+    vi.stubEnv('TRUSTED_CLIENT_IP_HEADER', 'x-forwarded-for');
+    expect(await forwardedFor({ 'x-real-ip': '6.6.6.6' }, '/api/auth/password-reset-requests')).toBeNull();
+  });
+
+  test('x-real-ip forwards that header only', async () => {
+    vi.stubEnv('TRUSTED_CLIENT_IP_HEADER', 'x-real-ip');
+    expect(await forwardedFor({ 'x-real-ip': '203.0.113.8', 'x-forwarded-for': '6.6.6.6' })).toBe('203.0.113.8');
+  });
+
+  test('x-real-ip mode ignores x-forwarded-for', async () => {
+    vi.stubEnv('TRUSTED_CLIENT_IP_HEADER', 'x-real-ip');
+    expect(await forwardedFor({ 'x-forwarded-for': '6.6.6.6' })).toBeNull();
+  });
+
+  test('protected requests never carry the address', async () => {
+    vi.stubEnv('TRUSTED_CLIENT_IP_HEADER', 'x-forwarded-for');
+    expect(await forwardedFor({ 'x-forwarded-for': '203.0.113.7' }, '/api/me')).toBeNull();
+  });
+});
 
 test('a protected request with no cookie redirects without a fetch or session write', async () => {
   cookieStore.get.mockReturnValue(undefined);

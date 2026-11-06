@@ -141,7 +141,7 @@ Local service addresses:
 - API: `http://localhost:8080`
 - Swagger UI: `http://localhost:8080/swagger-ui.html`
 - OpenAPI JSON: `http://localhost:8080/v3/api-docs`
-- Health: `http://localhost:8080/actuator/health`
+- Health (liveness/readiness, internal only): `http://localhost:8081/actuator/health`
 - Mailpit inbox: `http://localhost:8025`
 
 Compose exposes PostgreSQL on `127.0.0.1:5432` and SMTP on `127.0.0.1:1025`. It starts supporting services only; run Java and Next.js separately.
@@ -165,7 +165,7 @@ From the repository root, connect to the Compose database with `psql -h localhos
 \i api/ops/provision-admin.sql
 ```
 
-The include path assumes psql was opened from the repository root. See the [API setup notes](api/README.md#administrative-account-provisioning) for provisioning details. Client accounts are created through email invitations after an administrator logs in.
+The include path assumes psql was opened from the repository root. See the [API setup notes](api/README.md#primeiro-acesso) for provisioning details. Client accounts are created through email invitations after an administrator logs in.
 
 ### 3. Start the web application
 
@@ -204,6 +204,7 @@ API defaults are defined in [application.yml](api/src/main/resources/application
 | `MAIL_STARTTLS` | Enable SMTP STARTTLS | `false` |
 | `MAIL_FROM` | Email sender | `nao-responda@fluiar.com.br` |
 | `NEXT_PUBLIC_API_URL` | API origin configured in Next.js | Required; no default |
+| `TRUSTED_CLIENT_IP_HEADER` | Server-only Next.js setting: `x-forwarded-for` (last entry) or `x-real-ip`, overwritten by the proxy in front of Next | Unset; no address forwarded |
 
 JWT lifetimes are configured as 12 hours normally or 30 days with “remember me.” SMTP connection, read, and write timeouts are five seconds. Scheduler scanning defaults to 60 seconds, configured through `app.product-sync.scan-delay-ms` and `app.product-sync.initial-delay-ms`.
 

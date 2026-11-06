@@ -2,7 +2,10 @@ package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ProductImportPreview;
 import br.com.fluiar.selecao.dto.ProductImportPreview.Variant;
+import br.com.fluiar.selecao.dto.ProductImportPreview.Resolution;
 import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductStoreSync;
+import br.com.fluiar.selecao.model.Store;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URI;
@@ -11,6 +14,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Pattern;
 import org.springframework.stereotype.Component;
@@ -26,24 +30,57 @@ public class StoreProductExtractor {
     private static final BigDecimal MAX_PRICE = new BigDecimal("9999999999.99");
     private final JsonMapper mapper = JsonMapper.builder().build();
 
-    public ProductImportPreview extract(String url, String store, String requestedVariant, String html) {
-        List<JsonNode> products = readProducts(html);
-        List<JsonNode> matching = products.stream().filter(product -> matchesPage(product, url)).toList();
+    public ProductImportPreview extract(String url, Store store, String requestedVariant, String html) {
+        List<JsonNode> matching = readProducts(html).stream().filter(product -> matchesPage(product, url)).toList();
         if (matching.size() != 1) {
-            return result(url, store, null, null, List.of(), null, null, null, "unresolved");
+            return result(url, store, null, null, List.of(), null, null, null, Resolution.UNRESOLVED);
         }
         JsonNode product = normalizeStoreProduct(matching.getFirst(), store, html);
-        String productId = firstText(product, "productID", "sku", "mpn");
-        if (productId == null) productId = text(product, "@id");
-        String name = text(product, "name");
-        if (name != null && name.length() > MAX_PRODUCT_NAME) name = null;
-        String image = imageUrl(product.get("image"), url);
+        String productId = productId(product);
+        String name = withinLimit(text(product, "name"), MAX_PRODUCT_NAME);
+        String image = storeImage(store, imageUrl(product.get("image"), url));
         String variantId = requestedVariant == null ? queryVariant(url) : requestedVariant;
-        if ("fonte-do-sofa".equals(store) && image != null) image = image.replaceFirst("(?i)\\.webp(?=\\?|$)", ".jpg");
-        List<JsonNode> offers = new ArrayList<>();
-        addArrayOrObject(product.get("offers"), offers);
-        List<JsonNode> children = new ArrayList<>();
-        addArrayOrObject(product.get("hasVariant"), children);
+        List<JsonNode> offers = arrayOrObject(product.get("offers"));
+        List<JsonNode> children = arrayOrObject(product.get("hasVariant"));
+        LinkedHashMap<String, Variant> variants = collectVariants(children, offers);
+        List<Variant> variantList = List.copyOf(variants.values());
+        Resolution variantProblem = variantProblem(product, variantId, variants, children);
+        if (variantProblem != null) {
+            return result(url, store, productId, variantId, variantList, name, null, image, variantProblem);
+        }
+        if (variantId == null && variants.size() == 1) variantId = variants.keySet().iterator().next();
+        if (!children.isEmpty()) {
+            JsonNode child = selectedChild(children, variantId);
+            if (child == null) return result(url, store, productId, variantId, variantList, name, null, image, Resolution.UNRESOLVED);
+            String childName = text(child, "name");
+            if (childName != null) name = childName;
+            String childImage = imageUrl(child.get("image"), url);
+            if (childImage != null) image = storeImage(store, childImage);
+            offers = arrayOrObject(child.get("offers"));
+        }
+        BigDecimal price = regularPriceOfVariant(offers, variantId);
+        name = withinLimit(name, MAX_PRODUCT_NAME);
+        productId = withinLimit(productId, ProductStoreSync.STORE_PRODUCT_ID_MAX_LENGTH);
+        variantId = withinLimit(variantId, ProductStoreSync.VARIANT_ID_MAX_LENGTH);
+        Resolution resolution = productId != null && name != null && price != null && image != null ? Resolution.RESOLVED : Resolution.UNRESOLVED;
+        return result(url, store, productId, variantId, variantList, name, price, image, resolution);
+    }
+
+    private static String productId(JsonNode product) {
+        String productId = firstText(product, "productID", "sku", "mpn");
+        return productId != null ? productId : text(product, "@id");
+    }
+
+    private static String withinLimit(String value, int maxLength) {
+        return value != null && value.length() > maxLength ? null : value;
+    }
+
+    /** Fonte do Sofa serves webp, which the image validation does not accept; its jpg twin exists. */
+    private static String storeImage(Store store, String image) {
+        return store == Store.FONTE_DO_SOFA && image != null ? image.replaceFirst("(?i)\\.webp(?=\\?|$)", ".jpg") : image;
+    }
+
+    private static LinkedHashMap<String, Variant> collectVariants(List<JsonNode> children, List<JsonNode> offers) {
         LinkedHashMap<String, Variant> variants = new LinkedHashMap<>();
         for (JsonNode child : children) {
             String id = firstText(child, "sku", "productID");
@@ -53,28 +90,23 @@ public class StoreProductExtractor {
             String id = offerVariant(offer);
             if (id != null && !conditional(offer)) variants.putIfAbsent(id, new Variant(id, Objects.requireNonNullElse(text(offer, "name"), id)));
         }
-        if (variantId != null && variants.isEmpty() && !Objects.equals(variantId, text(product, "sku"))) {
-            return result(url, store, productId, variantId, List.of(), name, null, image, "unresolved");
-        }
-        if (!variants.isEmpty() && variantId == null && (variants.size() > 1 || children.isEmpty())) {
-            return result(url, store, productId, null, List.copyOf(variants.values()), name, null, image, "variant_required");
-        }
-        if (variantId != null && !variants.isEmpty() && !variants.containsKey(variantId)) {
-            return result(url, store, productId, variantId, List.copyOf(variants.values()), name, null, image, "unresolved");
-        }
-        if (variantId == null && variants.size() == 1) variantId = variants.keySet().iterator().next();
-        if (!children.isEmpty()) {
-            String chosenId = variantId;
-            List<JsonNode> selected = children.stream().filter(child -> Objects.equals(chosenId, firstText(child, "sku", "productID"))).toList();
-            if (selected.size() != 1) return result(url, store, productId, variantId, List.copyOf(variants.values()), name, null, image, "unresolved");
-            JsonNode child = selected.getFirst();
-            String childName = text(child, "name");
-            if (childName != null) name = childName;
-            String childImage = imageUrl(child.get("image"), url);
-            if (childImage != null) image = "fonte-do-sofa".equals(store) ? childImage.replaceFirst("(?i)\\.webp(?=\\?|$)", ".jpg") : childImage;
-            offers.clear();
-            addArrayOrObject(child.get("offers"), offers);
-        }
+        return variants;
+    }
+
+    /** Null when the chosen variant is usable; otherwise why the page cannot be resolved yet. */
+    private static Resolution variantProblem(JsonNode product, String variantId, Map<String, Variant> variants, List<JsonNode> children) {
+        if (variantId != null && variants.isEmpty() && !Objects.equals(variantId, text(product, "sku"))) return Resolution.UNRESOLVED;
+        if (!variants.isEmpty() && variantId == null && (variants.size() > 1 || children.isEmpty())) return Resolution.VARIANT_REQUIRED;
+        if (variantId != null && !variants.isEmpty() && !variants.containsKey(variantId)) return Resolution.UNRESOLVED;
+        return null;
+    }
+
+    private static JsonNode selectedChild(List<JsonNode> children, String variantId) {
+        List<JsonNode> selected = children.stream().filter(child -> Objects.equals(variantId, firstText(child, "sku", "productID"))).toList();
+        return selected.size() == 1 ? selected.getFirst() : null;
+    }
+
+    private static BigDecimal regularPriceOfVariant(List<JsonNode> offers, String variantId) {
         List<BigDecimal> prices = new ArrayList<>();
         boolean invalidPrice = false;
         for (JsonNode offer : offers) {
@@ -86,17 +118,18 @@ public class StoreProductExtractor {
             if (price == null) invalidPrice = true;
             else prices.add(price);
         }
-        if (name != null && name.length() > MAX_PRODUCT_NAME) name = null;
-        if (productId != null && productId.length() > 512) productId = null;
-        if (variantId != null && variantId.length() > 512) productId = null;
-        BigDecimal price = !invalidPrice && !prices.isEmpty() && prices.stream().distinct().count() == 1 ? prices.getFirst() : null;
-        String resolution = productId != null && name != null && price != null && image != null ? "resolved" : "unresolved";
-        return result(url, store, productId, variantId, List.copyOf(variants.values()), name, price, image, resolution);
+        return !invalidPrice && !prices.isEmpty() && prices.stream().distinct().count() == 1 ? prices.getFirst() : null;
     }
 
-    private JsonNode normalizeStoreProduct(JsonNode original, String store, String html) {
+    private static List<JsonNode> arrayOrObject(JsonNode node) {
+        List<JsonNode> target = new ArrayList<>();
+        addArrayOrObject(node, target);
+        return target;
+    }
+
+    private JsonNode normalizeStoreProduct(JsonNode original, Store store, String html) {
         ObjectNode product = (ObjectNode) original.deepCopy();
-        if ("moveca".equals(store)) {
+        if (store == Store.MOVECA) {
             JsonNode data = embeddedJson(html, "ymq_option.product");
             if (data != null && data.has("variants")) {
                 String page = text(original, "url");
@@ -115,7 +148,7 @@ public class StoreProductExtractor {
                 }
             }
         }
-        if ("fonte-do-sofa".equals(store)) {
+        if (store == Store.FONTE_DO_SOFA) {
             JsonNode data = embeddedJson(html, "LS.variants");
             if (data != null && data.isArray()) {
                 var variants = product.putArray("hasVariant");
@@ -139,7 +172,7 @@ public class StoreProductExtractor {
                 if (advertised.stream().noneMatch(offer -> offerVariant(offer) != null)) product.remove("offers");
             }
         }
-        if ("casavee".equals(store)) {
+        if (store == Store.CASAVEE) {
             JsonNode data = embeddedJson(html, "const dataProduct");
             String regular = null;
             if (data != null && Objects.equals(text(original, "sku"), text(data, "codigo"))) {
@@ -312,8 +345,8 @@ public class StoreProductExtractor {
         return text.isEmpty() ? null : text;
     }
 
-    private static ProductImportPreview result(String url, String store, String productId, String variantId,
-            List<Variant> variants, String name, BigDecimal price, String image, String resolution) {
-        return new ProductImportPreview(url, store, productId, variantId, variants, name, price, image, resolution);
+    private static ProductImportPreview result(String url, Store store, String productId, String variantId,
+            List<Variant> variants, String name, BigDecimal price, String image, Resolution resolution) {
+        return new ProductImportPreview(url, store.id(), productId, variantId, variants, name, price, image, resolution);
     }
 }

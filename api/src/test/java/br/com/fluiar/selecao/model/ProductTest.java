@@ -24,6 +24,14 @@ class ProductTest {
     }
 
     @Test
+    void lineTotalIsRoundedToCents() {
+        Product product = new Product(null, null, "Piso", new BigDecimal("0.01"), ProductUnit.SQUARE_METER,
+                new BigDecimal("19.99"), null, false, List.of());
+
+        assertThat(product.lineTotal()).isEqualTo(new BigDecimal("0.20"));
+    }
+
+    @Test
     void lineTotalOfProductWithoutPriceIsZero() {
         Product product = new Product(null, null, "Cadeira", new BigDecimal("2"), ProductUnit.UNIT, null, null, false, List.of());
 

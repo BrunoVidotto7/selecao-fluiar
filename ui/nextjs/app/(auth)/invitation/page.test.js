@@ -9,7 +9,7 @@ const { cookieStore, cookies, fetchMock, redirect, notFound } = vi.hoisted(() =>
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
   notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND'); }),
 }));
-vi.mock('next/headers', () => ({ cookies }));
+vi.mock('next/headers', () => ({ cookies, headers: async () => new Headers() }));
 vi.mock('next/navigation', () => ({
   redirect, notFound, useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }), usePathname: () => '/convite',
 }));

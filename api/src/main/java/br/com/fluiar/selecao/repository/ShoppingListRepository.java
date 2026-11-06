@@ -1,5 +1,6 @@
 package br.com.fluiar.selecao.repository;
 
+import br.com.fluiar.selecao.dto.DashboardTotals;
 import br.com.fluiar.selecao.dto.ListSummaryResponse;
 import br.com.fluiar.selecao.dto.ClientListSummaryResponse;
 import br.com.fluiar.selecao.model.ShoppingList;
@@ -7,6 +8,7 @@ import jakarta.persistence.LockModeType;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
@@ -19,7 +21,7 @@ public interface ShoppingListRepository extends JpaRepository<ShoppingList, UUID
                 l.id, l.name, l.description, c.id, c.name,
                 count(p.id),
                 sum(case when p.bought = true then 1 else 0 end),
-                sum(p.unitPrice * p.quantity),
+                sum(round(p.unitPrice * p.quantity, 2)),
                 l.updatedAt)
             from ShoppingList l
             join l.client c
@@ -66,6 +68,27 @@ public interface ShoppingListRepository extends JpaRepository<ShoppingList, UUID
 
     @Query(SUMMARY_SELECT + "where c.officeId = :officeId " + SUMMARY_GROUP_AND_ORDER)
     List<ListSummaryResponse> findSummaries(UUID officeId);
+
+    /** Only the first page of the summaries, newest update first. */
+    @Query(SUMMARY_SELECT + "where c.officeId = :officeId " + SUMMARY_GROUP_AND_ORDER)
+    List<ListSummaryResponse> findSummaries(UUID officeId, Pageable pageable);
+
+    /** One row of counts for the whole office, so the dashboard does not load every list. */
+    @Query("""
+            select new br.com.fluiar.selecao.dto.DashboardTotals(
+                count(l),
+                coalesce(sum(case when exists (select 1 from Product p where p.room.list = l)
+                    and not exists (select 1 from Product p where p.room.list = l and p.bought = false)
+                    then 1 else 0 end), 0L),
+                coalesce(sum(case when exists (select 1 from Product p where p.room.list = l and p.bought = false)
+                    then 1 else 0 end), 0L),
+                (select count(p) from Product p where p.room.list.client.officeId = :officeId),
+                (select count(p) from Product p
+                    where p.room.list.client.officeId = :officeId and p.bought = false))
+            from ShoppingList l join l.client c
+            where c.officeId = :officeId
+            """)
+    DashboardTotals findDashboardTotals(UUID officeId);
 
     @Query(SUMMARY_SELECT + "where c.officeId = :officeId and c.id = :clientId " + SUMMARY_GROUP_AND_ORDER)
     List<ListSummaryResponse> findSummariesByClient(UUID officeId, UUID clientId);

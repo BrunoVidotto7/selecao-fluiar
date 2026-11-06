@@ -50,7 +50,6 @@ Expected noise, not bugs: two `no-img-element` lint warnings, a Next "inferred w
 - Auth flow: the API signs JWTs itself (`JwtConfig`, `TokenService`). The UI stores the token only in the httpOnly `fluiar_session` cookie (`lib/session.server.js`); only Server Actions write/clear it, and the Next server adds the bearer header (`lib/api.server.js`, fixed origin, no-store). Tokens never reach browser JS.
 - UI pages in `app/` are Server Components that load data and pass props to `'use client'` components in `components/`. `params`/`searchParams` are Promises (await them). Errors arrive as `ProblemDetail` (RFC 9457): `detail` to a toast, `errors[field]` under fields. API fields are English; legacy form keys are Portuguese (`nome`, `tel`), so map explicitly.
 - Validation messages are duplicated and must change together: `ui/nextjs/lib/validation.js` and `api/.../exception/ErrorMessages.java` / `src/main/resources/ValidationMessages.properties`.
-- `api/PLANO-BACKEND.md` (Portuguese) is the original design spec; where it disagrees with the code, the code wins.
 
 ## Conventions worth knowing
 

@@ -3,6 +3,7 @@ package br.com.fluiar.selecao.controller;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -108,6 +109,18 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
         assertThat(read(owner, listId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(purchase(owner, "{\"bought\":true}")).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(read(other, listId)).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").isEqualTo("Existing note");
+    }
+
+    /** The owner's write waits for a concurrent transfer of the list and must not apply after it commits. */
+    @Test
+    void ownerWriteWaitingForATransferOfTheListIsNotFound() throws Exception {
+        var result = requestsDuringConcurrentTransaction(() -> {
+            jdbc.queryForObject("select id from shopping_lists where id = ? for update", UUID.class, listId);
+            jdbc.update("update shopping_lists set client_id = ? where id = ?", otherClientId, listId);
+        }, List.of(() -> purchase(owner, "{\"bought\":true}"))).getFirst();
+
+        assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(jdbc.queryForObject("select bought from products where id = ?", Boolean.class, productId)).isFalse();
     }
 
     @Test

@@ -1,6 +1,8 @@
 package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ProductImportPreview;
+import br.com.fluiar.selecao.model.Store;
+import br.com.fluiar.selecao.model.SyncStatus;
 import br.com.fluiar.selecao.repository.ProductSyncRepository;
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
 import java.math.BigDecimal;
@@ -33,7 +35,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
     }
     private ProductImportPreview preview(String name,BigDecimal price) {
         return new ProductImportPreview("https://moveca.com.br/products/chair","moveca","chair",null,List.of(),
-                name,price,"https://cdn.moveca.com.br/chair.png","resolved");
+                name,price,"https://cdn.moveca.com.br/chair.png",ProductImportPreview.Resolution.RESOLVED);
     }
     @Test void manualEditDuringCollectionInvalidatesTheCollectedResult() {
         Instant now=Instant.now(); var fixture=linked(now);
@@ -44,7 +46,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
                 });
         org.mockito.Mockito.when(storeCollector.downloadImage(org.mockito.ArgumentMatchers.anyString()))
                 .thenReturn(new StoreProductCollector.DownloadedImage(new byte[]{1},"image/png"));
-        worker.synchronizeStore("moveca");
+        worker.synchronizeStore(Store.MOVECA);
         assertThat(jdbc.queryForObject("select name from products where id=?",String.class,fixture.product())).isEqualTo("Manual");
         assertThat(jdbc.queryForObject("select count(*) from product_images where product_id=?",Integer.class,fixture.product())).isZero();
     }
@@ -54,7 +56,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
                 .thenReturn(preview("Novo",BigDecimal.TEN));
         org.mockito.Mockito.when(storeCollector.downloadImage(org.mockito.ArgumentMatchers.anyString()))
                 .thenThrow(br.com.fluiar.selecao.exception.ApiException.invalidImage());
-        worker.synchronizeStore("moveca");
+        worker.synchronizeStore(Store.MOVECA);
         assertThat(jdbc.queryForObject("select name from products where id=?",String.class,fixture.product())).isEqualTo("Novo");
         assertThat(jdbc.queryForObject("select sync_status from products where id=?",String.class,fixture.product())).isEqualTo("partial");
     }
@@ -74,8 +76,8 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
         var original=jobs.claim("moveca",now,5).getFirst();
         var recovered=jobs.claim("moveca",now.plusSeconds(600),5).getFirst();
         org.mockito.Mockito.doReturn(now.plusSeconds(600)).when(testClock).instant();
-        assertThat(sync.apply(original,preview("Antigo resultado",BigDecimal.TEN),null)).isEqualTo("discarded");
-        assertThat(sync.apply(recovered,preview("Novo",BigDecimal.TEN),null)).isEqualTo("partial");
+        assertThat(sync.apply(original,preview("Antigo resultado",BigDecimal.TEN),null)).isEqualTo(SyncStatus.DISCARDED);
+        assertThat(sync.apply(recovered,preview("Novo",BigDecimal.TEN),null)).isEqualTo(SyncStatus.PARTIAL);
     }
     @Test void listTransferredToAnotherClientRejectsCollectedResult() {
         Instant now=Instant.now();var fixture=linked(now);
@@ -87,7 +89,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
                 (select client_id from shopping_lists where id=?)
                 """,client,fixture.list());
         jdbc.update("update shopping_lists set client_id=? where id=?",client,fixture.list());
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo("discarded");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo(SyncStatus.DISCARDED);
     }
     @Test void eligiblePendingBindingIsClaimed() {
         Instant now=Instant.now(); linked(now);
@@ -99,7 +101,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
         jdbc.update("insert into product_images(id,product_id,content_type,data,created_at) values (?,?,?, ?,now())",
                 image,fixture.product(),"image/png",before);
         var claim=jobs.claim("moveca",now,5).getFirst();
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),new StoreProductCollector.DownloadedImage(after,"image/png"))).isEqualTo("ok");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),new StoreProductCollector.DownloadedImage(after,"image/png"))).isEqualTo(SyncStatus.OK);
         assertThat(jdbc.queryForObject("select id from product_images where product_id=?",UUID.class,fixture.product())).isNotEqualTo(image);
         assertThat(jdbc.queryForObject("select data from product_images where product_id=?",byte[].class,fixture.product())).containsExactly(after);
     }
@@ -111,7 +113,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
         jdbc.update("update list_human_activity set last_human_activity_at=? where list_id=?",
                 Timestamp.from(now.minus(Duration.ofDays(30))),fixture.list());
         var claim=jobs.claim("moveca",now,5).getFirst();
-        assertThat(sync.apply(claim,null,null)).isEqualTo("failed");
+        assertThat(sync.apply(claim,null,null)).isEqualTo(SyncStatus.FAILED);
         assertThat(jobs.claim("moveca",now.plus(Duration.ofHours(24)).minusSeconds(1),5)).isEmpty();
         jdbc.update("update list_human_activity set last_human_activity_at=? where list_id=?",Timestamp.from(now),fixture.list());
         assertThat(jobs.claim("moveca",now.plus(Duration.ofHours(24)),5)).hasSize(1);
@@ -142,7 +144,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
         jdbc.update("insert into product_images(id,product_id,content_type,data,created_at) values (?,?,?, ?,now())",
                 image,fixture.product(),"image/png",original);
         var claim=jobs.claim("moveca",now,5).getFirst();
-        assertThat(sync.apply(claim,preview("Novo",null),null)).isEqualTo("partial");
+        assertThat(sync.apply(claim,preview("Novo",null),null)).isEqualTo(SyncStatus.PARTIAL);
         assertThat(jdbc.queryForObject("select name from products where id=?",String.class,fixture.product())).isEqualTo("Novo");
         assertThat(jdbc.queryForObject("select unit_price from products where id=?",BigDecimal.class,fixture.product())).isEqualByComparingTo("50");
         assertThat(jdbc.queryForObject("select id from product_images where product_id=?",UUID.class,fixture.product())).isEqualTo(image);
@@ -154,28 +156,28 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
         Instant now=Instant.now();var fixture=linked(now);
         var claim=jobs.claim("moveca",now,5).getFirst();
         jdbc.update("update products set bought=true where id=?",fixture.product());
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo("discarded");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo(SyncStatus.DISCARDED);
         assertThat(jdbc.queryForObject("select name from products where id=?",String.class,fixture.product())).isEqualTo("Antigo");
     }
     @Test void replacementBindingRejectsCollectedResult() {
         Instant now=Instant.now();var fixture=linked(now);
         var claim=jobs.claim("moveca",now,5).getFirst();
         jdbc.update("update products set binding_version=? where id=?",UUID.randomUUID(),fixture.product());
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo("discarded");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo(SyncStatus.DISCARDED);
         assertThat(jdbc.queryForObject("select name from products where id=?",String.class,fixture.product())).isEqualTo("Antigo");
     }
     @Test void deletedProductIsNeverRecreatedByCollectedResult() {
         Instant now=Instant.now();var fixture=linked(now);
         var claim=jobs.claim("moveca",now,5).getFirst();
         jdbc.update("delete from products where id=?",fixture.product());
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo("discarded");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo(SyncStatus.DISCARDED);
         assertThat(jdbc.queryForObject("select count(*) from products where id=?",Integer.class,fixture.product())).isZero();
     }
     @Test void activityExpiringDuringCollectionRejectsCollectedResult() {
         Instant now=Instant.now();var fixture=linked(now);
         var claim=jobs.claim("moveca",now,5).getFirst();
         jdbc.update("update list_human_activity set last_human_activity_at=? where list_id=?",Timestamp.from(now.minus(Duration.ofDays(30)).minusSeconds(1)),fixture.list());
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo("discarded");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),null)).isEqualTo(SyncStatus.DISCARDED);
         assertThat(jdbc.queryForObject("select name from products where id=?",String.class,fixture.product())).isEqualTo("Antigo");
     }
     @Test void identicalImageBytesPreserveImageIdentityAndSuccessfulSyncTimeAdvances() {
@@ -184,7 +186,7 @@ class ProductSynchronizationTest extends ApiIntegrationTest {
         jdbc.update("insert into product_images(id,product_id,content_type,data,created_at) values (?,?,?, ?,now())",
                 image,fixture.product(),"image/png",bytes);
         var claim=jobs.claim("moveca",now,5).getFirst();
-        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),new StoreProductCollector.DownloadedImage(bytes,"image/png"))).isEqualTo("ok");
+        assertThat(sync.apply(claim,preview("Novo",BigDecimal.TEN),new StoreProductCollector.DownloadedImage(bytes,"image/png"))).isEqualTo(SyncStatus.OK);
         assertThat(jdbc.queryForObject("select id from product_images where product_id=?",UUID.class,fixture.product())).isEqualTo(image);
         assertThat(jdbc.queryForObject("select last_synced_at from products where id=?",Timestamp.class,fixture.product())).isNotNull();
     }

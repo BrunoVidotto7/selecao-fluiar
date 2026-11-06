@@ -9,7 +9,7 @@ const { cookieStore, cookies, fetchMock, redirect } = vi.hoisted(() => ({
   fetchMock: vi.fn(),
   redirect: vi.fn(() => { throw new Error('NEXT_REDIRECT'); }),
 }));
-vi.mock('next/headers', () => ({ cookies }));
+vi.mock('next/headers', () => ({ cookies, headers: async () => new Headers() }));
 vi.mock('next/navigation', () => ({ redirect, notFound: vi.fn() }));
 
 const API_ORIGIN = 'http://localhost:8080';

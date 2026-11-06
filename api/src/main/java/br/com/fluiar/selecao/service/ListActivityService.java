@@ -1,6 +1,7 @@
 package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.exception.ApiException;
+import br.com.fluiar.selecao.model.ShoppingList;
 import br.com.fluiar.selecao.repository.ListActivityRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
 import java.time.Clock;
@@ -29,4 +30,11 @@ public class ListActivityService {
 
     @Transactional
     public void record(UUID listId) { activities.record(listId, clock.instant()); }
+
+    /** A person changed the list's rooms or products: the list gets a new updatedAt and the change counts as activity. */
+    @Transactional
+    public void recordHumanChange(ShoppingList list) {
+        list.touch();
+        record(list.getId());
+    }
 }

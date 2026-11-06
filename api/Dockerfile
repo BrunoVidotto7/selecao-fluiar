@@ -13,4 +13,6 @@ WORKDIR /app
 COPY --from=build /build/target/selecao-api-0.0.1-SNAPSHOT.jar app.jar
 USER app
 EXPOSE 8080
+# Management port (health and metrics): keep it internal, never publish it.
+EXPOSE 8081
 ENTRYPOINT ["java", "-jar", "app.jar"]

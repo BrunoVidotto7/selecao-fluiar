@@ -16,13 +16,18 @@ import java.time.Clock;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Service
 @Transactional(readOnly = true)
 public class InvitationService {
+    private static final Logger log = LoggerFactory.getLogger(InvitationService.class);
     private static final Duration INVITATION_VALIDITY = Duration.ofDays(7);
     private static final String INVITATION_PATH = "/invitation?token=";
     private static final String CLIENT_ID_FIELD = "clientId";
@@ -36,11 +41,12 @@ public class InvitationService {
     private final PasswordEncoder passwordEncoder;
     private final TokenService tokenService;
     private final Clock clock;
+    private final TransactionTemplate transactionTemplate;
     private final String frontendUrl;
 
     public InvitationService(OfficeInvitationRepository invitations, ClientRepository clients, UserRepository users,
             OfficeRepository offices, EmailService emailService, PasswordEncoder passwordEncoder,
-            TokenService tokenService, Clock clock, AppProperties properties) {
+            TokenService tokenService, Clock clock, TransactionTemplate transactionTemplate, AppProperties properties) {
         this.invitations = invitations;
         this.clients = clients;
         this.users = users;
@@ -49,6 +55,7 @@ public class InvitationService {
         this.passwordEncoder = passwordEncoder;
         this.tokenService = tokenService;
         this.clock = clock;
+        this.transactionTemplate = transactionTemplate;
         this.frontendUrl = properties.frontendUrl();
     }
 
@@ -64,8 +71,19 @@ public class InvitationService {
                 .orElseGet(() -> new ClientAccessResponse(Status.NOT_INVITED, client.getEmail(), null, null));
     }
 
-    @Transactional
+    /**
+     * The e-mail is sent after the invitation is committed, so the SMTP server never holds the client's row lock or a
+     * database connection. If it fails the invitation stays, and inviting again replaces its token.
+     */
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public InvitationResponse invite(UUID adminId, UUID officeId, UUID clientId) {
+        NewInvitation created = transactionTemplate.execute(status -> createInvitation(adminId, officeId, clientId));
+        log.info("invitation result=created officeId={} clientId={}", officeId, clientId);
+        emailService.sendInvitation(created.email(), created.officeName(), created.inviterName(), created.link());
+        return created.response();
+    }
+
+    private NewInvitation createInvitation(UUID adminId, UUID officeId, UUID clientId) {
         Client client = lockClient(officeId, clientId);
         rejectActiveClient(clientId);
         rejectEmailWithAccount(client.getEmail());
@@ -80,8 +98,8 @@ public class InvitationService {
                 client.getEmail(), adminId, SecureTokens.hash(token), clock.instant().plus(INVITATION_VALIDITY)));
         Office office = offices.findById(officeId).orElseThrow(ApiException::notFound);
         User inviter = users.findById(adminId).orElseThrow(ApiException::notFound);
-        emailService.sendInvitation(client.getEmail(), office.getName(), inviter.getName(), frontendUrl + INVITATION_PATH + token);
-        return InvitationResponse.of(invitation);
+        return new NewInvitation(InvitationResponse.of(invitation), client.getEmail(), office.getName(),
+                inviter.getName(), frontendUrl + INVITATION_PATH + token);
     }
 
     @Transactional
@@ -90,6 +108,7 @@ public class InvitationService {
         if (invitations.deleteForClient(invitationId, officeId, clientId) == 0) {
             throw ApiException.notFound();
         }
+        log.info("invitation result=revoked officeId={} clientId={}", officeId, clientId);
     }
 
     public InvitationInfoResponse inspect(String token) {
@@ -118,7 +137,12 @@ public class InvitationService {
                 invitation.getEmail(), passwordEncoder.encode(request.password())));
         invitations.delete(invitation);
         Office office = offices.findById(invitation.getOfficeId()).orElseThrow(ApiException::invalidLink);
+        log.info("invitation result=accepted officeId={} clientId={}", invitation.getOfficeId(), client.getId());
         return AuthResponse.of(tokenService.issue(user, false), user, office);
+    }
+
+    private record NewInvitation(
+            InvitationResponse response, String email, String officeName, String inviterName, String link) {
     }
 
     private Client lockClient(UUID officeId, UUID clientId) {
