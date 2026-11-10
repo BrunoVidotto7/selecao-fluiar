@@ -163,36 +163,36 @@ test('an armed remove button disarms after 2.5 seconds and keeps the product', (
   expect(screen.getByRole('link', { name: 'Varal' })).toBeTruthy();
 });
 
-test('the client view is read-only and keeps the API store links and notes', () => {
+test('the client preview cannot mark purchases and keeps the API store links and notes', () => {
   renderFull();
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
-  expect(screen.queryAllByRole('checkbox')).toHaveLength(0);
+  expect(screen.queryAllByRole('checkbox', { name: /^Comprado:/ })).toHaveLength(0);
   expect(screen.queryByRole('link', { name: 'Editar Batedeira' })).toBeNull();
   expect(screen.getByText('Opção leve')).toBeTruthy();
   expect(screen.getByRole('link', { name: /loja.com.br/ }).getAttribute('href')).toBe('https://loja.com.br/varal');
   expect(screen.queryByText(PRODUCT.notes)).toBeNull();
 });
 
-test('read-only tables accept the public API subset without fabricated identifiers', () => {
+test('the client preview accepts the public API subset without fabricated identifiers', () => {
   const rooms = [{
     name: 'Cozinha', products: [{
       name: 'Batedeira', quantity: 2, bought: false, category: PRODUCT.category,
       links: [{ url: 'https://loja.com/item', note: 'Azul' }],
     }],
   }];
-  render(<ClientView rooms={rooms} />);
+  render(<ClientView rooms={rooms} selected={new Set()} onSelect={vi.fn()} onSelectRoom={vi.fn()} isRoomSelected={() => false} />);
   expect(screen.queryByText('2 un.')).not.toBeNull();
   expect(screen.queryByRole('link', { name: /loja.com/ })?.getAttribute('href')).toBe('https://loja.com/item');
   expect(screen.getByText('Azul')).toBeTruthy();
-  expect(screen.queryByRole('checkbox')).toBeNull();
+  expect(screen.queryByRole('checkbox', { name: /^Comprado:/ })).toBeNull();
 });
 
-test('public rows are immutable read-only displays even when names repeat', () => {
+test('the client preview renders repeated product names as separate rows without purchase controls', () => {
   const publicProduct = { ...PUBLIC_LIST.rooms[0].products[0], category: PRODUCT.category };
   const duplicateRoom = { ...PUBLIC_LIST.rooms[0], products: [publicProduct, {
     ...publicProduct, quantity: 3, bought: true,
   }] };
-  render(<ClientView rooms={[duplicateRoom, duplicateRoom, { name: 'Vazio', products: [] }]} />);
+  render(<ClientView rooms={[duplicateRoom, duplicateRoom, { name: 'Vazio', products: [] }]} selected={new Set()} onSelect={vi.fn()} onSelectRoom={vi.fn()} isRoomSelected={() => false} />);
   expect(screen.queryAllByRole('row')).toHaveLength(6);
   expect(screen.queryAllByText('Batedeira')).toHaveLength(4);
   expect(screen.queryAllByRole('img', { name: 'Comprado' })).toHaveLength(2);
@@ -211,6 +211,7 @@ test('the original list note remains unchanged', () => {
   render(<ListNote />);
   expect(screen.getByText(/As opções desta lista foram selecionadas pela Fluiar com todo cuidado/)).toBeTruthy();
   expect(screen.getByText(/A Fluiar não realiza vendas nem se responsabiliza pelas transações/)).toBeTruthy();
+  expect(screen.getByText('Condições de pagamento, como parcelamento ou descontos vigentes, e taxa de envio sob consulta direto no site do produto.')).toBeTruthy();
 });
 
 test('API image paths use the authenticated local proxy and null prices remain Sem preço', () => {
@@ -550,11 +551,25 @@ test('shows the category under each item name', () => {
   expect(screen.getAllByText('Luminotécnica', { selector: '.ro-cat' })).toHaveLength(1);
 });
 
-test('client preview has no category filter', () => {
+test('client preview filters by category and status, and hides the edit controls', () => {
   render(viewOf(categorized()));
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
-  expect(screen.queryByRole('combobox', { name: 'Categoria' })).toBeNull();
-  expect(screen.getAllByText('Luminotécnica', { selector: '.ro-cat' })).toHaveLength(1);
+  expect(screen.queryByRole('link', { name: 'Editar lista' })).toBeNull();
+  pick(idOf(LUZ));
+  expect(screen.queryByText('Varal')).not.toBeNull();
+  expect(screen.queryByText('Batedeira')).toBeNull();
+  expect(screen.queryByRole('heading', { name: 'Cozinha' })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /Pendentes/ }));
+  expect(screen.getByText('Nenhum item desta categoria com esse status.')).toBeTruthy();
+});
+
+test('client preview status filter hides done items', () => {
+  const { container } = renderFull();
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  expect(container.querySelector('.summary')).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: /Comprados/ }));
+  expect(screen.queryByText('Capacho')).not.toBeNull();
+  expect(screen.queryByText('Batedeira')).toBeNull();
 });
 
 const printSheet = () => document.body.querySelector(':scope > .print-sheet');
@@ -595,8 +610,24 @@ test('print selection survives a filter change and a refreshed list, and drops r
   expect(screen.queryByText('1 item selecionado')).toBeNull();
 });
 
-test('the client preview has no print selection', () => {
-  renderFull();
+test('the client preview has print selection and keeps it from edit mode', () => {
+  window.print = vi.fn();
+  const { container } = renderFull();
+  fireEvent.click(printBox('Capacho'));
   fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
-  expect(screen.queryByRole('checkbox', { name: /^Imprimir:/ })).toBeNull();
+  expect(screen.getByText('1 item selecionado')).toBeTruthy();
+  expect(printBox('Capacho').checked).toBe(true);
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar todos de Lavanderia' }));
+  expect(screen.getByText('2 itens selecionados')).toBeTruthy();
+  expect(sheetItems(container)).toEqual(['Capacho', 'Varal']);
+  fireEvent.click(screen.getByRole('button', { name: 'Imprimir selecionados' }));
+  expect(window.print).toHaveBeenCalledOnce();
+  expect(screen.queryAllByRole('checkbox', { name: /^Comprado:/ })).toHaveLength(0);
+});
+
+test('the client preview shows the product photo', () => {
+  const product = { ...PRODUCT, imageUrl: '/api/images/' + PRODUCT.id };
+  const { container } = render(viewOf({ ...LIST, rooms: [{ ...ROOM, products: [product] }] }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  expect(container.querySelector('.thumb img')?.getAttribute('src')).toBe('/images/' + PRODUCT.id);
 });

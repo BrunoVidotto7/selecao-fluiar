@@ -6,6 +6,7 @@ import { Crumbs, EmptyState } from '../ui/Display';
 import { Segmented, Select } from '../ui/Fields';
 import { useToast } from '../feedback/Feedback';
 import ItemLinks from '../lista/ItemLinks';
+import ProductThumb from '../lista/ProductThumb';
 import ProductClientNotesEditor from '../lista/ProductClientNotesEditor';
 import PrintBar from '../lista/PrintBar';
 import PrintSheet from '../lista/PrintSheet';
@@ -87,7 +88,10 @@ function ListContent({ list }) {
             <td className="ck"><input type="checkbox" className="check" checked={product.bought} disabled={pendingIds.has(product.id)}
               aria-label={`Comprado: ${product.name}`} onChange={(event) => purchase(product.id, event.target.checked)} /></td>
             <td className="qt"><span className="ro-qty">{formatQuantity(product.quantity, product.unit)}</span></td>
-            <td className="it"><span className="ro-name">{product.name}</span><span className="ro-cat">{product.category.name}</span></td>
+            <td className="it"><div className="itm">
+              <ProductThumb imageUrl={product.imageUrl} />
+              <div className="txt"><span className="ro-name">{product.name}</span><span className="ro-cat">{product.category.name}</span></div>
+            </div></td>
             <td><ItemLinks links={product.links} empty="Opções em breve" />
               <ProductClientNotesEditor productId={product.id} productName={product.name} clientNotes={product.clientNotes}
                 onSave={(value) => notes(product.id, value)} />

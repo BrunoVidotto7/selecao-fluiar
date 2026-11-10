@@ -98,3 +98,13 @@ test('print selection survives a filter change and a refreshed list, and drops r
   rerender(view({ ...twoItems, rooms: [{ ...twoItems.rooms[0], products: [CLIENT_PRODUCT] }] }));
   expect(screen.queryByText('1 item selecionado')).toBeNull();
 });
+test('shows the product photo, or a placeholder icon without one', () => {
+  const withImage = { ...CLIENT_PRODUCT, imageUrl: '/api/images/' + CLIENT_PRODUCT.id };
+  const list = { ...CLIENT_LIST, rooms: [{ ...CLIENT_LIST.rooms[0], products: [withImage, { ...OTHER, imageUrl: null }] }] };
+  const { container } = render(view(list));
+  const thumbs = container.querySelectorAll('.thumb');
+  expect(thumbs).toHaveLength(2);
+  expect(thumbs[0].querySelector('img')?.getAttribute('src')).toBe('/images/' + CLIENT_PRODUCT.id);
+  expect(thumbs[0].querySelector('img')?.getAttribute('loading')).toBe('lazy');
+  expect(thumbs[1].querySelector('img')).toBeNull();
+});

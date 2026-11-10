@@ -4,6 +4,7 @@ export function ListNote() {
     <aside className="disc">
       <b>Nota</b>
       <p>As opções desta lista foram selecionadas pela Fluiar com todo cuidado, considerando o projeto, a qualidade e a procedência de cada loja. Ainda assim, como as compras são feitas diretamente com os vendedores, podem ocorrer intercorrências.</p>
+      <p>Condições de pagamento, como parcelamento ou descontos vigentes, e taxa de envio sob consulta direto no site do produto.</p>
       <p>A Fluiar não realiza vendas nem se responsabiliza pelas transações. Se algo acontecer, estamos à disposição para orientar sobre os seus direitos como consumidor junto à loja.</p>
     </aside>
   );

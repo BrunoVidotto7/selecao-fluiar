@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { unstable_rethrow } from 'next/navigation';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
-import { brl, imageSource } from '@/lib/format';
+import { brl } from '@/lib/format';
+import ProductThumb from './ProductThumb';
 import ClientChangeDetails from '../client-changes/ClientChangeDetails';
 import ItemLinks from './ItemLinks';
 import StoreSyncStatus from '../produtos/StoreSyncStatus';
@@ -153,7 +154,7 @@ function ItemRow({ item, listBase, pending, printed, onPrint, onToggle, onQty, o
       </td>
       <td className="it">
         <div className="itm">
-          <span className="thumb">{item.imageUrl ? <img src={imageSource(item.imageUrl)} alt="" /> : <Icon name="bag" />}</span>
+          <ProductThumb imageUrl={item.imageUrl} />
           <div className="txt">
             <div className="nmw">
               <Link className="nm-link" href={editHref}>{item.name}</Link>

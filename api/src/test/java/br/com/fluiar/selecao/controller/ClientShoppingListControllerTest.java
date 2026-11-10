@@ -2,18 +2,23 @@ package br.com.fluiar.selecao.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import br.com.fluiar.selecao.model.ProductImage;
+import br.com.fluiar.selecao.repository.ProductImageRepository;
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 class ClientShoppingListControllerTest extends ApiIntegrationTest {
+    @Autowired
+    private ProductImageRepository productImageRepository;
     private TestSession admin;
     private TestSession owner;
     private TestSession other;
@@ -57,6 +62,20 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void clientListShowsTheImageUrlOnlyForProductsWithImage() {
+        UUID imageId = productImageRepository.save(new ProductImage(productId, "image/png", new byte[] {1, 2, 3})).getId();
+        createProduct(admin, listId, createRoom(admin, listId, "Bedroom"), "Lamp");
+
+        var result = read(owner, listId);
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.rooms[?(@.name=='Kitchen')].products[0].imageUrl").asArray()
+                .containsExactly("/api/images/" + imageId);
+        assertThat(result).bodyJson().extractingPath("$.rooms[?(@.name=='Bedroom')].products[0].imageUrl").asArray()
+                .containsExactly((Object) null);
+    }
+
+    @Test
     void privateDetailsOmitInternalFieldsAndClientAccountsFromSignature() {
         jdbc.update("update products set notes = 'Internal', unit_price = 10 where id = ?", productId);
         var response = read(owner, listId);
@@ -66,7 +85,6 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
         assertThat(response).bodyJson().doesNotHavePath("$.clientId");
         assertThat(response).bodyJson().doesNotHavePath("$.rooms[0].products[0].notes");
         assertThat(response).bodyJson().doesNotHavePath("$.rooms[0].products[0].unitPrice");
-        assertThat(response).bodyJson().doesNotHavePath("$.rooms[0].products[0].imageUrl");
         assertThat(response).bodyJson().extractingPath("$.signature.architectNames").asArray().containsExactly("Admin");
     }
 

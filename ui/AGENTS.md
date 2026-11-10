@@ -145,7 +145,7 @@ setup is documented in `../api/README.md`. The fixed points:
   UUID/token arguments and whitelisted bodies; `actionResult` wraps only expected `ApiError`s.
 - Auth and invitation/reset requests do not read or forward the JWT. Share resolution uses the
   current session and returns only `{listId, role}`. Client pages use client DTOs without prices,
-  images, internal notes or contact details. Image reads use the private Next proxy; tokens stay
+  internal notes or contact details. Image reads use the private Next proxy; tokens stay
   in server headers. Login preserves only validated local `/l/<token>` return paths.
 - Errors are `ProblemDetail`: show `detail` in a toast and each `errors[field]` under its field.
   API fields and new form keys are English; map any retained legacy form keys explicitly.
@@ -170,7 +170,7 @@ Never:
 
 ## Known warnings (not bugs)
 
-- `npm run lint`: two `@next/next/no-img-element` warnings, in `components/lista/RoomTable.js` and
+- `npm run lint`: two `@next/next/no-img-element` warnings, in `components/lista/ProductThumb.js` and
   `components/produtos/ProductForm.js`.
 - `npm run build`: an "inferred workspace root" warning, caused by a lockfile outside the repo.
 - `npm audit`: a PostCSS advisory inside Next 15. Known and accepted; only Next 16 removes it.

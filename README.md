@@ -28,7 +28,7 @@ Interior projects involve many products, purchase alternatives, rooms, and clien
 - Mark products as purchased and maintain separate client notes visible to the architect.
 - Filter products by purchase status and follow the supplied retailer links.
 
-Client list responses deliberately omit prices, product images, and internal notes. Shared URLs require login and current list authorization: knowing a link does not grant access.
+Client list responses deliberately omit prices and internal notes. Shared URLs require login and current list authorization: knowing a link does not grant access.
 
 ## Tech stack
 

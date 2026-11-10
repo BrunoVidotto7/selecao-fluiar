@@ -84,7 +84,6 @@ class ClientShoppingListServiceTest {
         var item = json.get("rooms").get(0).get("products").get(0);
         assertThat(item.has("notes")).isFalse();
         assertThat(item.has("unitPrice")).isFalse();
-        assertThat(item.has("imageUrl")).isFalse();
         assertThat(detail.stats().pendingProducts()).isEqualTo(1);
     }
 

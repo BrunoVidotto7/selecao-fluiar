@@ -103,27 +103,25 @@ function ShoppingListContent({ list, signature }) {
 
       <ShareControls listId={list.id} shareToken={list.shareToken} />
 
-      {mode === 'edit' && (
-        <div>
-          <div className="listbar">
-            {stats.totalProducts > 0 && <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
-              options={[{ value: 'all', label: 'Todos', count: stats.totalProducts }, { value: 'pend', label: 'Pendentes', count: stats.pendingProducts }, { value: 'done', label: 'Comprados', count: stats.boughtProducts }]} />}
-            {stats.totalProducts > 0 && <Select id="category-filter" label="Categoria" placeholder="Todas as categorias"
-              value={categoryId} onChange={(e) => setCategoryId(e.target.value)} options={categories} />}
-            <div className="btns">
-              <Button href={`${base}/editar`} variant="ghost" size="sm" icon="edit">Editar lista</Button>
-              <Button href={`${base}/ambientes`} variant="ghost" size="sm">Gerenciar ambientes</Button>
-              {stats.totalProducts > 0 && <Button href={productHref} size="sm" icon="plus">Adicionar produto</Button>}
-            </div>
-          </div>
-          {stats.totalProducts > 0 && <div className="summary">
-            <div><span className="k">Itens</span><span className="v">{stats.totalProducts}</span></div>
-            <div><span className="k">Comprados</span><span className="v">{stats.boughtProducts}</span></div>
-            <div><span className="k">Pendentes</span><span className="v">{stats.pendingProducts}</span></div>
-            <div className="bar"><span>Estimado {brl(stats.estimatedTotal)} · faltam {brl(stats.remainingTotal)}</span><span className="progress"><i style={{ width: `${stats.totalProducts ? Math.round((100 * stats.boughtProducts) / stats.totalProducts) : 0}%` }} /></span></div>
+      <div>
+        <div className="listbar">
+          {stats.totalProducts > 0 && <Segmented label="Mostrar itens" value={filter} onChange={setFilter}
+            options={[{ value: 'all', label: 'Todos', count: stats.totalProducts }, { value: 'pend', label: 'Pendentes', count: stats.pendingProducts }, { value: 'done', label: 'Comprados', count: stats.boughtProducts }]} />}
+          {stats.totalProducts > 0 && <Select id="category-filter" label="Categoria" placeholder="Todas as categorias"
+            value={categoryId} onChange={(e) => setCategoryId(e.target.value)} options={categories} />}
+          {mode === 'edit' && <div className="btns">
+            <Button href={`${base}/editar`} variant="ghost" size="sm" icon="edit">Editar lista</Button>
+            <Button href={`${base}/ambientes`} variant="ghost" size="sm">Gerenciar ambientes</Button>
+            {stats.totalProducts > 0 && <Button href={productHref} size="sm" icon="plus">Adicionar produto</Button>}
           </div>}
         </div>
-      )}
+        {mode === 'edit' && stats.totalProducts > 0 && <div className="summary">
+          <div><span className="k">Itens</span><span className="v">{stats.totalProducts}</span></div>
+          <div><span className="k">Comprados</span><span className="v">{stats.boughtProducts}</span></div>
+          <div><span className="k">Pendentes</span><span className="v">{stats.pendingProducts}</span></div>
+          <div className="bar"><span>Estimado {brl(stats.estimatedTotal)} · faltam {brl(stats.remainingTotal)}</span><span className="progress"><i style={{ width: `${stats.totalProducts ? Math.round((100 * stats.boughtProducts) / stats.totalProducts) : 0}%` }} /></span></div>
+        </div>}
+      </div>
 
       {!stats.totalProducts ? (
         <div style={{ marginTop: 24 }}>
@@ -131,9 +129,13 @@ function ShoppingListContent({ list, signature }) {
             <Button href={productHref} icon="plus">Adicionar primeiro produto</Button>
           </EmptyState>
         </div>
+      ) : !visibleRooms.length ? (
+        <p className="filtered-empty">{categoryId ? 'Nenhum item desta categoria com esse status.'
+          : filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>
       ) : mode === 'view' ? (
-        <ClientView rooms={rooms} />
-      ) : visibleRooms.length ? (
+        <ClientView rooms={visibleRooms.map((r) => ({ ...r, products: r.shown }))} selected={print.selected}
+          onSelect={print.toggle} onSelectRoom={print.toggleRoom} isRoomSelected={print.isRoomSelected} />
+      ) : (
         visibleRooms.map((r) => (
           <RoomTable key={r.id} room={r} products={r.shown} showAdd={unfiltered} listBase={base}
             pendingIds={pendingIds} selected={print.selected} onSelect={print.toggle}
@@ -149,15 +151,10 @@ function ShoppingListContent({ list, signature }) {
             onQty={(id, quantity) => mutateProduct(id, () => patchProduct(list.id, id, { quantity }), 'Salvo')}
             onRemove={(id) => mutateProduct(id, () => deleteProduct(list.id, id), 'Item removido')} />
         ))
-      ) : (
-        <p className="filtered-empty">{categoryId ? 'Nenhum item desta categoria com esse status.'
-          : filter === 'done' ? 'Nenhum item comprado ainda.' : 'Todos os itens já foram comprados.'}</p>
       )}
 
-      {mode === 'edit' && <>
-        <PrintBar count={print.selected.size} onPrint={() => window.print()} onClear={print.clear} />
-        <PrintSheet title={list.name} clientName={list.clientName} rooms={rooms} selected={print.selected} />
-      </>}
+      <PrintBar count={print.selected.size} onPrint={() => window.print()} onClear={print.clear} />
+      <PrintSheet title={list.name} clientName={list.clientName} rooms={rooms} selected={print.selected} />
 
       <ListNote />
       <ListSignature signature={signature} />

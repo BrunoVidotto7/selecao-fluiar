@@ -20,11 +20,11 @@ public record ClientListDetailResponse(UUID id, String name, String description,
     public record ClientRoom(UUID id, String name, int position, List<ClientProduct> products) { }
     public record ClientProduct(UUID id, String name, ProductCategoryRef category, BigDecimal quantity,
             ProductUnit unit, boolean bought,
-            String clientNotes, List<ProductLinkDto> links) {
+            String imageUrl, String clientNotes, List<ProductLinkDto> links) {
         public static ClientProduct of(Product product) {
             return new ClientProduct(product.getId(), product.getName(), ProductCategoryRef.of(product.getCategory()),
                     product.getQuantity(), product.getUnit(), product.isBought(),
-                    product.getClientNotes(), product.getLinks().stream().map(ProductLinkDto::of).toList());
+                    ImageUrls.of(product.getImageId()), product.getClientNotes(), product.getLinks().stream().map(ProductLinkDto::of).toList());
         }
     }
     public record Signature(String officeName, List<String> architectNames) { }
