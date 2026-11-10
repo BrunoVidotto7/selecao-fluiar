@@ -104,7 +104,7 @@ do servidor podem gravar ou apagar esse cookie, não a renderização de página
    e salva observações por produto. O administrador acompanha e altera esses dados
    na lista administrativa. Observações internas permanecem separadas.
 4. Outro cliente, mesmo do mesmo escritório, não pode ler nem alterar essa lista.
-   Preços, imagens e observações internas não aparecem na visão do cliente.
+   Preços e observações internas não aparecem na visão do cliente.
 5. **Copiar link** copia `/l/<token>`. O endereço exige login e verifica a propriedade
    da lista; possuir o link não concede acesso. **Gerar novo link** invalida o anterior.
 6. Mudanças no e-mail de contato invalidam convites pendentes. Uma conta já ativa
@@ -203,5 +203,5 @@ pelo menos 7 dias. Não grave segredos ou edite arquivos gerados. Preserve o
 histórico de revisão em `nextjs/docs/quality-ledger.md`.
 
 Avisos conhecidos e aceitos: duas ocorrências de `no-img-element` no lint
-(`RoomTable.js` e `ProductForm.js`), inferência da raiz do workspace no build
+(`ProductThumb.js` e `ProductForm.js`), inferência da raiz do workspace no build
 e o aviso de PostCSS dentro do Next 15. Não os corrija como efeito colateral.
