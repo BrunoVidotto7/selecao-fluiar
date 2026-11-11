@@ -12,7 +12,7 @@ export default function ProductClientNotesEditor(props) {
   return <NotesEditor key={props.productId} {...props} />;
 }
 
-function NotesEditor({ productId, productName, clientNotes, onSave }) {
+function NotesEditor({ productId, productName, clientId, clientNotes, onSave }) {
   const [draft, setDraft] = useState(clientNotes ?? '');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -53,7 +53,7 @@ function NotesEditor({ productId, productName, clientNotes, onSave }) {
         toast(result.detail, 'err');
         return;
       }
-      const saved = result.data.clientNotes ?? '';
+      const saved = result.data.clientNotes.find((note) => note.clientId === clientId)?.text ?? '';
       baseline.current = saved;
       if (current.current === submitted) {
         current.current = saved;
@@ -71,8 +71,8 @@ function NotesEditor({ productId, productName, clientNotes, onSave }) {
   };
 
   return <form className="form" onSubmit={submit} noValidate style={{ marginTop: 12 }}>
-    <Textarea id={`client-notes-${productId}`} label="Observação do cliente"
-      aria-label={`Observação do cliente: ${productName}`} value={draft} error={error} rows={2}
+    <Textarea id={`client-notes-${productId}`} label="Observação"
+      aria-label={`Observação: ${productName}`} value={draft} error={error} rows={2}
       onChange={(event) => { current.current = event.target.value; setDraft(event.target.value); setError(''); }} />
     <Button type="submit" variant="ghost" size="sm" busy={busy} aria-label={`Salvar observação de ${productName}`}>
       {busy ? 'Salvando…' : 'Salvar observação'}

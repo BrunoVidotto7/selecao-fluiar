@@ -1,6 +1,7 @@
 // Field rules: { required: true | 'message', email: true, url: true, minLength: 8,
 //   maxLength: 120, maxLengthMessage: 'custom text', min: 1, max: 999, integer: true, phone: true, password: true, money: true,
 //   quantity: 'UNIT' | 'SQUARE_METER',
+//   zipCode: true, taxDocument: true,
 //   match: 'otherField', requiredIf: 'otherField',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
@@ -17,6 +18,14 @@ export const PRODUCT_IMAGE_TYPES = ['image/jpeg', 'image/png'];
 const MAX_PRODUCT_IMAGE_BYTES = 5 * 1024 * 1024;
 const INVALID_IMAGE_MESSAGE = 'Escolha um arquivo de imagem (JPG ou PNG).';
 const IMAGE_TOO_LARGE_MESSAGE = 'A imagem deve ter até 5 MB.';
+
+export const LIST_CODE_MAX_LENGTH = 40;
+export const LIST_CONTRACT_MAX_LENGTH = 120;
+export const LIST_CONTRACTOR_NAME_MAX_LENGTH = 120;
+export const LIST_ADDRESS_MAX_LENGTH = 300;
+const ZIP_CODE_MESSAGE = 'Digite o CEP com 8 números, como 30140-071.';
+const TAX_DOCUMENT_MESSAGE = 'Digite um CPF ou CNPJ válido.';
+const CODE_SEPARATORS = /[\s.\-/]/g;
 
 const REQUIRED_MESSAGE = 'Preencha este campo.';
 const INVALID_REQUEST_MESSAGE = 'Revise os dados enviados.';
@@ -48,6 +57,33 @@ function validateMoney(value) {
   return negative ? MONEY_NEGATIVE_MESSAGE : '';
 }
 
+function checkDigit(chars, weights) {
+  const sum = chars.reduce((total, char, i) => total + (char.charCodeAt(0) - 48) * weights[i], 0);
+  const remainder = sum % 11;
+  return remainder < 2 ? 0 : 11 - remainder;
+}
+
+function validCpf(code) {
+  if (!/^\d{11}$/.test(code) || /^(\d)\1{10}$/.test(code)) return false;
+  const chars = [...code];
+  const first = checkDigit(chars.slice(0, 9), [10, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = checkDigit(chars.slice(0, 10), [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return first === Number(chars[9]) && second === Number(chars[10]);
+}
+
+function validCnpj(code) {
+  if (!/^[0-9A-Z]{12}\d{2}$/.test(code) || /^(.)\1{13}$/.test(code)) return false;
+  const chars = [...code];
+  const first = checkDigit(chars.slice(0, 12), [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  const second = checkDigit(chars.slice(0, 13), [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]);
+  return first === Number(chars[12]) && second === Number(chars[13]);
+}
+
+export function isValidTaxDocument(value) {
+  const code = String(value ?? '').replace(CODE_SEPARATORS, '').toUpperCase();
+  return validCpf(code) || validCnpj(code);
+}
+
 export function validateQuantity(text, unit) {
   const value = String(text ?? '').trim();
   if (unit === 'SQUARE_METER') {
@@ -71,6 +107,8 @@ export function validateField(name, values, rule = {}) {
   if (v && rule.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) return 'Digite um e-mail válido, como nome@email.com.';
   if (v && rule.url && !/^https?:\/\/[^\s.]+\.\S+$/.test(v)) return 'Cole o link completo, começando com https://';
   if (rule.phone && !/^\d{10,11}$/.test(v.replace(/\D/g, ''))) return PHONE_MESSAGE;
+  if (v && rule.zipCode && !/^\d{8}$/.test(v.replace(CODE_SEPARATORS, ''))) return ZIP_CODE_MESSAGE;
+  if (v && rule.taxDocument && !isValidTaxDocument(v)) return TAX_DOCUMENT_MESSAGE;
   if (rule.password) {
     const message = validatePassword(raw);
     if (message) return message;

@@ -17,11 +17,11 @@ export default async function Page({ params }) {
   const parts = client.name.split(' ');
   return (
     <div className="wrap">
-      <Crumbs items={[{ href: '/clientes', label: 'Clientes' }, { label: client.name }]} />
+      <Crumbs items={[{ href: '/perfis', label: 'Perfis' }, { label: client.name }]} />
       <ClientDetail key={client.id} client={client}>
         <Avatar name={client.name} large />
         <div className="info">
-          <p className="eyebrow">Cliente desde {formatLongDate(client.createdAt)}</p>
+          <p className="eyebrow">Perfil desde {formatLongDate(client.createdAt)}</p>
           <h1 className="h1">{parts.slice(0, -1).join(' ')} <em>{parts.at(-1)}</em></h1>
           <div className="contact"><span><Icon name="mail" />{client.email}</span><span><Icon name="phone" />{maskPhone(client.phone)}</span></div>
         </div>

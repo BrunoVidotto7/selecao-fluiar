@@ -16,11 +16,16 @@ import PrintSheet from './PrintSheet';
 import usePrintSelection from './usePrintSelection';
 import ShareControls from './ShareControls';
 import { ListNote, ListSignature } from './ListFooter';
-import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
+import { patchProduct, deleteProduct, deleteProductClientNote } from '../produtos/actions';
 
 import { useClientChangeVisit } from '../client-changes/useClientChangeVisit';
 
 const WRITE_FAILED_DETAIL = 'Não conseguimos salvar agora. Tente novamente.';
+
+const INTERNAL_LABELS = [
+  ['projectCode', 'Código do projeto'], ['contract', 'Contrato'], ['contractorName', 'Contratante'],
+  ['contractorDocument', 'CPF ou CNPJ do contratante'], ['siteZipCode', 'CEP da obra'], ['siteAddress', 'Endereço da obra'],
+];
 
 /** @param {{ list: import('../listas/queries.server').ListDetailResponse, signature: { officeName: string, architectNames: string[] } }} props */
 export default function ShoppingList({ list, signature }) {
@@ -30,6 +35,7 @@ export default function ShoppingList({ list, signature }) {
 function ShoppingListContent({ list, signature }) {
   const { rooms, stats } = list;
   const visit = useClientChangeVisit(list.id, list.clientChanges);
+  const internalFields = INTERNAL_LABELS.filter(([key]) => list[key]).map(([key, label]) => [label, list[key]]);
   const [mode, setMode] = useState('edit'); // 'edit' | 'view'
   const [filter, setFilter] = useState('all'); // 'all' | 'pend' | 'done'
   const [categoryId, setCategoryId, categories] = useCategoryFilter(rooms);
@@ -84,14 +90,14 @@ function ShoppingListContent({ list, signature }) {
 
   return (
     <div className="listdoc">
-      <Crumbs items={[{ href: '/clientes', label: 'Clientes' }, { href: `/clientes/${list.clientId}`, label: list.clientName }, { label: list.name }]} />
+      <Crumbs items={[{ href: '/perfis', label: 'Perfis' }, { href: `/perfis/${list.clientId}`, label: list.clientName }, { label: list.name }]} />
       <header style={{ paddingTop: 18 }}>
         <h1>{t1}{t2 && <> <em>{t2}</em></>}</h1>
-        <p className="client">Cliente · <Link href={`/clientes/${list.clientId}`}><b>{list.clientName}</b></Link></p>
+        <p className="client">Perfil · <Link href={`/perfis/${list.clientId}`}><b>{list.clientName}</b></Link></p>
         <div className="meta">Separamos opções para cada item da sua casa. Clique para abrir a loja e veja nossas observações ao lado.</div>
         <div className="modebar">
-          <span><b>{mode === 'edit' ? 'Modo edição' : 'Visão do cliente'}</b> · {mode === 'edit' ? 'só quem tem permissão de editar vê esta tela' : 'é assim que seu cliente vê a lista'}</span>
-          <button type="button" className="btn btn-sm" onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}>{mode === 'edit' ? 'Ver como cliente' : 'Voltar a editar'}</button>
+          <span><b>{mode === 'edit' ? 'Modo edição' : 'Visão do perfil'}</b> · {mode === 'edit' ? 'só quem tem permissão de editar vê esta tela' : 'é assim que seu perfil vê a lista'}</span>
+          <button type="button" className="btn btn-sm" onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}>{mode === 'edit' ? 'Ver como perfil' : 'Voltar a editar'}</button>
         </div>
       </header>
 
@@ -100,6 +106,15 @@ function ShoppingListContent({ list, signature }) {
           : visit.readStatus === 'success' ? 'Alterações marcadas como vistas. Os destaques permanecem nesta visita.'
             : <>Não foi possível marcar as alterações como vistas. <button type="button" className="btn btn-sm" onClick={visit.retry}>Tentar novamente</button></>}
       </div>}
+
+      {mode === 'edit' && internalFields.length > 0 && (
+        <section className="card card-pad" aria-labelledby="internal-control" style={{ marginBottom: 16 }}>
+          <h2 className="sec" id="internal-control">Controle interno</h2>
+          <dl style={{ margin: 0, display: 'grid', gap: 6 }}>
+            {internalFields.map(([label, value]) => <div key={label}><dt className="meta">{label}</dt><dd style={{ margin: 0 }}>{value}</dd></div>)}
+          </dl>
+        </section>
+      )}
 
       <ShareControls listId={list.id} shareToken={list.shareToken} />
 
@@ -143,11 +158,7 @@ function ShoppingListContent({ list, signature }) {
             roomSelected={print.isRoomSelected({ ...r, products: r.shown })} changesByProduct={visit.changesByProduct}
             onToggle={(id, bought) => mutateProduct(id, () => patchProduct(list.id, id, { bought }),
               bought ? 'Marcado como comprado' : 'Voltou para pendentes')}
-            onNotes={async (id, value) => {
-              const result = await saveProductClientNotes(list.id, id, value);
-              if (mounted.current && result.ok) router.refresh();
-              return result;
-            }}
+            onDeleteNote={(id, clientId) => mutateProduct(id, () => deleteProductClientNote(list.id, id, clientId), 'Observação excluída.')}
             onQty={(id, quantity) => mutateProduct(id, () => patchProduct(list.id, id, { quantity }), 'Salvo')}
             onRemove={(id) => mutateProduct(id, () => deleteProduct(list.id, id), 'Item removido')} />
         ))

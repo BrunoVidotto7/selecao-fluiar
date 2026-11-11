@@ -61,7 +61,7 @@ test('category actions call the right endpoint and revalidate', async () => {
   expect(fetchMock.mock.calls[2][0]).toBe(`http://localhost:8080/api/office/categories/${CATEGORY_ID}`);
   expect(fetchMock.mock.calls[2][1].method).toBe('DELETE');
   expect(revalidatePath).toHaveBeenCalledWith('/escritorio');
-  expect(revalidatePath).toHaveBeenCalledWith('/clientes');
+  expect(revalidatePath).toHaveBeenCalledWith('/perfis');
 });
 test.each([undefined, null, [], {}, { name: 1 }].map((input) => [input]))('invalid category input %j has no side effects', async (input) => {
   expect(await createCategory(input)).toMatchObject({ ok: false, status: 400 });

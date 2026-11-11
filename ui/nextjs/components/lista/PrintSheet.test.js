@@ -3,11 +3,11 @@ import { describe, it, expect } from 'vitest';
 import PrintSheet from './PrintSheet';
 
 const product = (id, name, extra = {}) => ({
-  id, name, quantity: 2, unit: 'UNIT', bought: false, clientNotes: null, links: [], ...extra,
+  id, name, quantity: 2, unit: 'UNIT', bought: false, clientNotes: [], links: [], ...extra,
 });
 const rooms = [
   { id: 'r1', name: 'Sala', products: [
-    product('a', 'Sofá', { quantity: 12.5, unit: 'SQUARE_METER', unitPrice: 987.65, notes: 'nota interna secreta', clientNotes: 'prefiro cinza',
+    product('a', 'Sofá', { quantity: 12.5, unit: 'SQUARE_METER', unitPrice: 987.65, notes: 'nota interna secreta', clientNotes: [{ clientId: 'c1', clientName: 'Mariana', text: 'prefiro cinza' }, { clientId: 'c2', clientName: 'Paulo', text: 'prefiro bege' }],
       links: [{ url: 'https://www.loja.com.br/sofa', note: 'versão 3 lugares' }] }),
     product('b', 'Mesa'),
   ] },
@@ -43,7 +43,8 @@ describe('PrintSheet', () => {
     expect(screen.getByText('12,5 m²')).toBeTruthy();
     expect(screen.getByText(/loja\.com\.br/)).toBeTruthy();
     expect(screen.getByText(/versão 3 lugares/)).toBeTruthy();
-    expect(screen.getByText('Observação do cliente: prefiro cinza')).toBeTruthy();
+    expect(screen.getByText('Mariana: prefiro cinza')).toBeTruthy();
+    expect(screen.getByText('Paulo: prefiro bege')).toBeTruthy();
     expect(sheet.textContent).not.toMatch(/987|nota interna/);
     expect(sheet.querySelector('img')).toBeNull();
     expect(container.querySelector('.print-sheet')).toBeNull();
@@ -52,7 +53,7 @@ describe('PrintSheet', () => {
   it('shows the title, client and date', () => {
     render(<PrintSheet title="Casa nova" clientName="Maria Souza" rooms={rooms} selected={new Set(['a'])} />);
     expect(screen.getByRole('heading', { name: 'Casa nova' })).toBeTruthy();
-    expect(screen.getByText('Cliente: Maria Souza')).toBeTruthy();
+    expect(screen.getByText('Perfil: Maria Souza')).toBeTruthy();
     expect(screen.getByText(/\d{1,2} de \S+ de \d{4}/)).toBeTruthy();
   });
 });

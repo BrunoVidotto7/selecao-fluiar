@@ -10,13 +10,15 @@ import useApiForm from '../forms/useApiForm';
 import { brl, imageSource, parseBRL } from '@/lib/format';
 import { CATEGORY_REQUIRED, PRODUCT_IMAGE_TYPES, validateField, validateProductImage } from '@/lib/validation';
 import { UNIT_OPTIONS, parseQuantity, quantityRule } from '@/lib/quantity';
-import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
+import { saveProduct, deleteProduct, uploadProductImage, deleteProductImage, findProductImages, uploadProductImageFromUrl, previewStoreProduct, deleteProductClientNote } from './actions';
+import ProfileNotes from '../lista/ProfileNotes';
 import StoreSyncStatus from './StoreSyncStatus';
 import { toProductRequest, validateProductLinks, productFieldMap, storeSyncChange } from './product-values';
 
 const MIN_QUANTITY = 1;
 const MAX_QUANTITY = 999;
 const PARTIAL_IMAGE_DETAIL = 'O produto foi salvo, mas a imagem não foi atualizada. Tente novamente.';
+const NOTE_DELETED_DETAIL = 'Observação excluída.';
 const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
 const IMAGE_SEARCH_FAILED_DETAIL = 'Não conseguimos buscar imagens nesse link. Tente novamente.';
 const NO_IMAGES_DETAIL = 'Nenhuma imagem encontrada nesse link.';
@@ -213,7 +215,7 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
 
   const removeProduct = () => confirm({
     title: `Excluir “${product.name}”?`,
-    text: 'O produto sai da lista do cliente. Essa ação não pode ser desfeita.',
+    text: 'O produto sai da lista do perfil. Essa ação não pode ser desfeita.',
     confirmLabel: 'Excluir produto',
     onConfirm: async () => {
       if (deletingRef.current || f.busy) return;
@@ -235,6 +237,19 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
       }
     },
   });
+
+  const deleteNote = async (clientId) => {
+    try {
+      const result = await deleteProductClientNote(listId, product.id, clientId);
+      if (!mounted.current) return;
+      if (!result.ok) { toast(result.detail, 'err'); return; }
+      toast(NOTE_DELETED_DETAIL);
+      router.refresh();
+    } catch (error) {
+      unstable_rethrow(error);
+      if (mounted.current) toast(DELETE_FAILED_DETAIL, 'err');
+    }
+  };
 
   const linkInput = (link, name) => {
     const id = `link-${link.id}-${name}`;
@@ -348,6 +363,7 @@ export default function ProductForm({ listId, product, rooms, categories, defaul
       </Field>
 
       <Textarea label="Observações" optional placeholder="Ex.: preferir a versão com bowl de inox" {...f.field('obs')} />
+      {product && <ProfileNotes notes={product.clientNotes} productName={product.name} onDelete={deleteNote} />}
       <Field id="st" as="span" label="Status">
         <Segmented radio name="st" label="Status" value={f.values.bought ? 'done' : 'pend'} onChange={(value) => f.setValue('bought', value === 'done')}
           options={[{ value: 'pend', label: 'Pendente' }, { value: 'done', label: 'Comprado' }]} />

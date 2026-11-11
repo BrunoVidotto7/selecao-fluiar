@@ -2,14 +2,14 @@ import { expect, test, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { FeedbackProvider, useConfirm } from './Feedback';
 
-vi.mock('next/navigation', () => ({ usePathname: () => '/clientes' }));
+vi.mock('next/navigation', () => ({ usePathname: () => '/perfis' }));
 
 function Page({ onConfirm }) {
   const confirm = useConfirm();
   return (
     <>
       <button type="button">Botão de fundo</button>
-      <button type="button" onClick={() => confirm({ title: 'Excluir Ana?', confirmLabel: 'Excluir cliente', onConfirm })}>Excluir</button>
+      <button type="button" onClick={() => confirm({ title: 'Excluir Ana?', confirmLabel: 'Excluir perfil', onConfirm })}>Excluir</button>
     </>
   );
 }
@@ -45,7 +45,7 @@ test('Escape closes the confirmation', () => {
 
 test('the confirm button closes the dialog and runs the action', () => {
   const { onConfirm } = openDialog();
-  fireEvent.click(screen.getByRole('button', { name: 'Excluir cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir perfil' }));
   expect(screen.queryByRole('alertdialog')).toBeNull();
   expect(onConfirm).toHaveBeenCalledTimes(1);
 });
@@ -73,7 +73,7 @@ test('re-rendering the same page keeps its confirmation open', () => {
 test('Tab and Shift+Tab keep the focus inside the confirmation', () => {
   openDialog();
   const cancel = screen.getByRole('button', { name: 'Cancelar' });
-  const ok = screen.getByRole('button', { name: 'Excluir cliente' });
+  const ok = screen.getByRole('button', { name: 'Excluir perfil' });
 
   fireEvent.keyDown(cancel, { key: 'Tab', shiftKey: true });
   expect(document.activeElement).toBe(ok);

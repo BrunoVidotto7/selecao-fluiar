@@ -8,7 +8,9 @@ import { SearchInput, Segmented, TextInput, Textarea, Select } from '../ui/Field
 import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useApiForm from '../forms/useApiForm';
 import { brl, formatUpdatedAt, splitTitle, plural } from '@/lib/format';
+import ListMembersField from './ListMembersField';
 import { saveList, deleteList } from './actions';
+import { LIST_ADDRESS_MAX_LENGTH, LIST_CODE_MAX_LENGTH, LIST_CONTRACT_MAX_LENGTH, LIST_CONTRACTOR_NAME_MAX_LENGTH } from '@/lib/validation';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
@@ -78,7 +80,7 @@ export function ListsTable({ lists }) {
     <div style={{ display: 'grid', gap: 16 }}>
       <p className="meta" style={{ margin: 0 }}>{plural(shown.length, 'lista', 'listas')}</p>
       <div className="toolbar">
-        <SearchInput id="busca" label="Pesquisar listas" placeholder="Pesquisar por lista ou cliente" value={q} onChange={(e) => setQ(e.target.value)} />
+        <SearchInput id="busca" label="Pesquisar listas" placeholder="Pesquisar por lista ou perfil" value={q} onChange={(e) => setQ(e.target.value)} />
         <Segmented label="Filtrar listas" value={status} onChange={setStatus}
           options={[{ value: 'all', label: 'Todas' }, { value: 'open', label: 'Em andamento' }, { value: 'done', label: 'Concluídas' }]} />
       </div>
@@ -113,7 +115,7 @@ export function EmptyLists({ clientName, newHref = '/listas/nova' }) {
       <Button href={newHref} icon="plus">Criar primeira lista</Button>
     </EmptyState>
   ) : (
-    <EmptyState icon="list" title="Nenhuma lista criada" text="Cada lista pertence a um cliente. Crie a primeira e adicione os produtos por ambiente.">
+    <EmptyState icon="list" title="Nenhuma lista criada" text="Cada lista pertence a um perfil. Crie a primeira e adicione os produtos por ambiente.">
       <Button href={newHref} icon="plus">Criar primeira lista</Button>
     </EmptyState>
   );
@@ -151,25 +153,71 @@ export function ListCards({ lists, onDeleted }) {
 }
 
 export function ListForm({ list, clients, defaultClientId = '' }) {
-  const del = useDeleteList({ destination: list ? `/clientes/${list.clientId}` : undefined });
+  const del = useDeleteList({ destination: list ? `/perfis/${list.clientId}` : undefined });
   const f = useApiForm({
-    initial: { nome: list?.name || '', desc: list?.description || '', cli: list?.clientId || defaultClientId },
-    rules: { nome: { required: true }, cli: { required: 'Escolha o cliente desta lista.' } },
-    action: (v) => saveList(list?.id ?? null, { name: v.nome, description: v.desc.trim() || null, clientId: v.cli }),
-    fieldMap: { name: 'nome', description: 'desc', clientId: 'cli' },
+    initial: {
+      nome: list?.name || '', desc: list?.description || '', cli: list?.clientId || defaultClientId,
+      members: (list?.members || []).map(({ clientId, role }) => ({ clientId, role })),
+      codigo: list?.projectCode || '', contrato: list?.contract || '', contratante: list?.contractorName || '',
+      documento: list?.contractorDocument || '', cep: list?.siteZipCode || '', endereco: list?.siteAddress || '',
+    },
+    rules: {
+      nome: { required: true },
+      cli: { required: 'Escolha o perfil principal desta lista.' },
+      codigo: { maxLength: LIST_CODE_MAX_LENGTH },
+      contrato: { maxLength: LIST_CONTRACT_MAX_LENGTH },
+      contratante: { maxLength: LIST_CONTRACTOR_NAME_MAX_LENGTH },
+      documento: { taxDocument: true },
+      cep: { zipCode: true },
+      endereco: { maxLength: LIST_ADDRESS_MAX_LENGTH },
+    },
+    action: (v) => saveList(list?.id ?? null, {
+      name: v.nome, description: v.desc.trim() || null, clientId: v.cli, members: v.members,
+      projectCode: v.codigo.trim() || null, contract: v.contrato.trim() || null, contractorName: v.contratante.trim() || null,
+      contractorDocument: v.documento.trim() || null, siteZipCode: v.cep.trim() || null, siteAddress: v.endereco.trim() || null,
+    }),
+    fieldMap: {
+      name: 'nome', description: 'desc', clientId: 'cli', members: 'members', projectCode: 'codigo', contract: 'contrato',
+      contractorName: 'contratante', contractorDocument: 'documento', siteZipCode: 'cep', siteAddress: 'endereco',
+    },
     onSuccess: (saved, values, { go }) => go(`/listas/${saved.id}`, 'Lista salva.'),
   });
   const [a, b] = splitTitle(f.values.nome.trim() || 'Lista de compras da casa');
+  const changePrincipal = (event) => {
+    const next = event.target.value;
+    f.setValues((current) => {
+      const members = current.members.filter((m) => m.clientId !== next);
+      const savedOutgoingMember = (list?.members ?? []).find((m) => m.clientId === current.cli);
+      if (
+        savedOutgoingMember
+        && savedOutgoingMember.clientId !== next
+        && !members.some((m) => m.clientId === savedOutgoingMember.clientId)
+      ) {
+        members.push({ clientId: savedOutgoingMember.clientId, role: savedOutgoingMember.role });
+      }
+      return { ...current, cli: next, members };
+    });
+  };
   return (
     <form className="card card-pad form" onSubmit={f.submit} noValidate>
       <TextInput label="Nome da lista" placeholder="Ex.: Lista de compras da casa" {...f.field('nome')} />
       <div className="disc" aria-live="polite">
-        <b>Como o cliente vê o título</b>
+        <b>Como o perfil vê o título</b>
         <p className="h1" style={{ fontSize: 26 }}>{a}{b && <> <em>{b}</em></>}</p>
       </div>
       <Textarea label="Descrição" optional placeholder="Ex.: Itens para a casa nova, separados por ambiente." {...f.field('desc')} />
-      <Select label="Cliente" placeholder="Selecione um cliente" options={clients.map((c) => ({ value: c.id, label: c.name }))}
-        hint={clients.length ? <>Cliente novo? <Link href="/clientes/novo">Cadastre aqui</Link>.</> : <Link href="/clientes/novo">Cadastre um cliente</Link>} {...f.field('cli')} />
+      <Select label="Perfil principal" placeholder="Selecione um perfil" options={clients.map((c) => ({ value: c.id, label: c.name }))}
+        hint={<>O perfil principal é sempre editor. {clients.length ? <>Perfil novo? <Link href="/perfis/novo">Cadastre aqui</Link>.</> : <Link href="/perfis/novo">Cadastre um perfil</Link>}</>}
+        {...f.field('cli')} onChange={changePrincipal} />
+      <ListMembersField clients={clients} principalId={f.values.cli} value={f.values.members}
+        onChange={(members) => f.setValue('members', members)} error={f.errors.members} />
+      <h2 className="sec">Controle interno</h2>
+      <TextInput label="Código do projeto" optional {...f.field('codigo')} />
+      <TextInput label="Contrato" optional {...f.field('contrato')} />
+      <TextInput label="Contratante" optional {...f.field('contratante')} />
+      <TextInput label="CPF ou CNPJ do contratante" optional {...f.field('documento')} />
+      <TextInput label="CEP da obra" optional placeholder="Ex.: 30140-071" {...f.field('cep')} />
+      <TextInput label="Endereço da obra" optional {...f.field('endereco')} />
       <div className="formfoot">
         {list && <Button variant="text-danger" icon="trash" className="left" onClick={() => del(list)}>Excluir lista</Button>}
         <Button variant="ghost" href={list ? `/listas/${list.id}` : '/listas'}>Cancelar</Button>

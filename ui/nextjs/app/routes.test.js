@@ -4,10 +4,10 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { redirect } from 'next/navigation';
 import Home from './page';
 import NotFound from './not-found';
-import ClientPage from './(app)/(admin)/clientes/[id]/page';
-import { generateMetadata as clientMetadata } from './(app)/(admin)/clientes/[id]/page';
-import ClientsPage from './(app)/(admin)/clientes/page';
-import EditClientPage from './(app)/(admin)/clientes/[id]/editar/page';
+import ClientPage from './(app)/(admin)/perfis/[id]/page';
+import { generateMetadata as clientMetadata } from './(app)/(admin)/perfis/[id]/page';
+import ClientsPage from './(app)/(admin)/perfis/page';
+import EditClientPage from './(app)/(admin)/perfis/[id]/editar/page';
 import ListPage from './(app)/(admin)/listas/[id]/page';
 import { generateMetadata as listMetadata } from './(app)/(admin)/listas/[id]/page';
 import ListsPage from './(app)/(admin)/listas/page';
@@ -305,7 +305,7 @@ test('the list page starts list and office reads in parallel and displays only A
   expect(screen.getByRole('link', { name: 'novo item em Cozinha' }).getAttribute('href'))
     .toBe(`/listas/${LIST.id}/produtos/novo?ambiente=${ROOM.id}`);
   expect(screen.getAllByRole('link', { name: CLIENT.name }).map((link) => link.getAttribute('href')))
-    .toEqual(['/clientes/' + CLIENT.id, '/clientes/' + CLIENT.id]);
+    .toEqual(['/perfis/' + CLIENT.id, '/perfis/' + CLIENT.id]);
   expect(screen.getByText('Ateliê Horizonte')).toBeTruthy();
   expect(screen.getByText('Ana Lima')).toBeTruthy();
   expect(screen.getByText('Beatriz Silva')).toBeTruthy();
@@ -352,7 +352,7 @@ test('client metadata and detail both consume the authoritative private client e
   expect(screen.getByRole('heading', { name: 'Listas de compras · 1' })).toBeTruthy();
   expect(screen.getByRole('link', { name: 'Casa nova' }).getAttribute('href')).toBe('/listas/' + LIST.id);
   expect(screen.getByText('(31) 99999-8888')).toBeTruthy();
-  expect(screen.getByText('Cliente desde 31 de outubro de 2026')).toBeTruthy();
+  expect(screen.getByText('Perfil desde 31 de outubro de 2026')).toBeTruthy();
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
     'http://localhost:8080/api/clients/' + CLIENT.id, 'http://localhost:8080/api/clients/' + CLIENT.id,
     'http://localhost:8080/api/clients/' + CLIENT.id + '/access',
@@ -366,9 +366,9 @@ test('the clients page loads API summaries and ignores a prototype empty query',
   render(await ClientsPage({ searchParams: Promise.resolve({ estado: 'vazio' }) }));
   expect(screen.getByRole('link', { name: CLIENT.name })).toBeTruthy();
   expect(screen.getByText('7')).toBeTruthy();
-  expect(screen.getByText('Cliente desde 31 out 2026')).toBeTruthy();
+  expect(screen.getByText('Perfil desde 31 out 2026')).toBeTruthy();
   expect(screen.getByText('(31) 99999-8888')).toBeTruthy();
-  expect(screen.queryByText('Nenhum cliente por aqui ainda')).toBeNull();
+  expect(screen.queryByText('Nenhum perfil por aqui ainda')).toBeNull();
   expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['http://localhost:8080/api/clients']);
 });
 
@@ -378,7 +378,7 @@ test('a clients GET outage renders the error boundary, not a successful empty cl
   expect(result).toMatchObject({ status: 503, detail: 'Tente novamente.' });
   render(<PrivateError error={result} reset={vi.fn()} />);
   expect(screen.getByText('Não conseguimos carregar esta página.')).toBeTruthy();
-  expect(screen.queryByText('Nenhum cliente por aqui ainda')).toBeNull();
+  expect(screen.queryByText('Nenhum perfil por aqui ainda')).toBeNull();
 });
 
 test.each([['detail', ClientPage], ['edit', EditClientPage], ['metadata', clientMetadata]])(

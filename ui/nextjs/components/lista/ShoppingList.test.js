@@ -5,7 +5,7 @@ import ClientView from './ClientView';
 import { ListNote, ListSignature } from './ListFooter';
 import { FeedbackProvider } from '../feedback/Feedback';
 import { markClientChangesRead } from '../client-changes/actions';
-import { patchProduct, deleteProduct, saveProductClientNotes } from '../produtos/actions';
+import { patchProduct, deleteProduct, deleteProductClientNote } from '../produtos/actions';
 import { LIST, OFFICE, PRODUCT, PUBLIC_LIST, ROOM, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
 const { refresh, push } = vi.hoisted(() => ({ refresh: vi.fn(), push: vi.fn() }));
@@ -14,13 +14,13 @@ vi.mock('next/navigation', () => ({
   unstable_rethrow: vi.fn(),
 }));
 vi.mock('../client-changes/actions', () => ({ markClientChangesRead: vi.fn().mockResolvedValue({ ok: true }) }));
-vi.mock('../produtos/actions', () => ({ patchProduct: vi.fn(), deleteProduct: vi.fn(), saveProductClientNotes: vi.fn() }));
+vi.mock('../produtos/actions', () => ({ patchProduct: vi.fn(), deleteProduct: vi.fn(), deleteProductClientNote: vi.fn() }));
 vi.mock('./actions', () => ({ rotateShareToken: vi.fn() }));
 
 beforeEach(() => {
   vi.clearAllMocks();
   markClientChangesRead.mockResolvedValue({ ok: true });
-  saveProductClientNotes.mockReset().mockResolvedValue({ ok: true, data: { ...PRODUCT, clientNotes: 'Saved' } });
+  deleteProductClientNote.mockReset().mockResolvedValue({ ok: true, data: undefined });
   patchProduct.mockReset().mockResolvedValue({ ok: true, data: PRODUCT });
   deleteProduct.mockReset().mockResolvedValue({ ok: true, data: undefined });
   vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:8080');
@@ -165,12 +165,12 @@ test('an armed remove button disarms after 2.5 seconds and keeps the product', (
 
 test('the client preview cannot mark purchases and keeps the API store links and notes', () => {
   renderFull();
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(screen.queryAllByRole('checkbox', { name: /^Comprado:/ })).toHaveLength(0);
   expect(screen.queryByRole('link', { name: 'Editar Batedeira' })).toBeNull();
   expect(screen.getByText('Opção leve')).toBeTruthy();
   expect(screen.getByRole('link', { name: /loja.com.br/ }).getAttribute('href')).toBe('https://loja.com.br/varal');
-  expect(screen.queryByText(PRODUCT.notes)).toBeNull();
+  expect(screen.getAllByText(/Nota interna/).length).toBeGreaterThan(0);
 });
 
 test('the client preview accepts the public API subset without fabricated identifiers', () => {
@@ -252,7 +252,7 @@ test('two taps remove the last product only after deletion and refreshed server 
     totalProducts: 0, boughtProducts: 0, pendingProducts: 0, estimatedTotal: 0, remainingTotal: 0,
   } }));
   expect(screen.getByText(EMPTY)).toBeTruthy();
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(screen.getByText(EMPTY)).toBeTruthy();
 });
 
@@ -424,7 +424,7 @@ test.each([[[], '/ambientes'], [[{ ...ROOM, products: [] }], '/produtos/novo']])
     expect(screen.getByRole('link', { name: 'Gerenciar ambientes' }).getAttribute('href')).toBe(`/listas/${LIST.id}/ambientes`);
     expect(screen.getByRole('link', { name: 'Editar lista' }).getAttribute('href')).toBe(`/listas/${LIST.id}/editar`);
     expect(screen.getByRole('link', { name: 'Adicionar primeiro produto' }).getAttribute('href')).toBe(`/listas/${LIST.id}${target}`);
-    fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
     expect(screen.queryByRole('link', { name: 'Gerenciar ambientes' })).toBeNull();
   },
 );
@@ -434,34 +434,48 @@ test('populated lists expose room management without changing product controls o
   expect(screen.getByRole('link', { name: 'Gerenciar ambientes' }).getAttribute('href')).toBe(`/listas/${LIST.id}/ambientes`);
   expect(screen.getByRole('link', { name: 'Adicionar produto' }).getAttribute('href')).toBe(`/listas/${LIST.id}/produtos/novo`);
   expect(screen.getAllByRole('checkbox', { name: /^Comprado:/ })).toHaveLength(3);
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(screen.queryByRole('link', { name: 'Gerenciar ambientes' })).toBeNull();
 });
 
-test('admins can edit client observations and the preview remains read only', async () => {
-  const list = { ...LIST, rooms: [{ ...ROOM, products: [{ ...PRODUCT, clientNotes: 'Bought locally' }] }] };
+test('admins can delete a profile note and the preview shows price, internal notes and profile notes read only', async () => {
+  const notes = [{ clientId: 'c1', clientName: 'Mariana', text: 'Bought locally', updatedAt: '2026-11-05T12:00:00Z' }];
+  const list = { ...LIST, rooms: [{ ...ROOM, products: [{ ...PRODUCT, clientNotes: notes }] }] };
   render(viewOf(list));
-  const input = screen.getByRole('textbox', { name: `Observação do cliente: ${PRODUCT.name}` });
-  expect(input.value).toBe('Bought locally');
-  fireEvent.change(input, { target: { value: 'Saved' } });
-  await act(async () => fireEvent.click(screen.getByRole('button', { name: `Salvar observação de ${PRODUCT.name}` })));
-  expect(saveProductClientNotes).toHaveBeenCalledWith(LIST.id, PRODUCT.id, 'Saved');
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
-  expect(screen.getByText('Bought locally')).toBeTruthy();
-  expect(screen.queryByRole('button', { name: `Salvar observação de ${PRODUCT.name}` })).toBeNull();
+  expect(screen.queryByRole('textbox', { name: `Observação: ${PRODUCT.name}` })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir observação de Mariana' }));
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Excluir' })));
+  expect(deleteProductClientNote).toHaveBeenCalledWith(LIST.id, PRODUCT.id, 'c1');
+  expect(screen.getByText('Observação excluída.')).toBeTruthy();
+  expect(refresh).toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
+  expect(screen.getByText('Mariana: Bought locally')).toBeTruthy();
+  expect(screen.getByText(/R\$\s*12,50/)).toBeTruthy();
+  expect(screen.getByText(/Conferir as medidas\./)).toBeTruthy();
+  expect(screen.queryByRole('button', { name: /Excluir observação/ })).toBeNull();
+});
+
+test('a failed note deletion shows the API detail and does not refresh', async () => {
+  deleteProductClientNote.mockResolvedValue({ ok: false, status: 404, detail: 'Não encontramos.', errors: {} });
+  const notes = [{ clientId: 'c1', clientName: 'Mariana', text: 'x', updatedAt: '2026-11-05T12:00:00Z' }];
+  render(viewOf({ ...LIST, rooms: [{ ...ROOM, products: [{ ...PRODUCT, clientNotes: notes }] }] }));
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir observação de Mariana' }));
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Excluir' })));
+  expect(screen.getByText('Não encontramos.')).toBeTruthy();
+  expect(refresh).not.toHaveBeenCalled();
 });
 
 test('client change highlights survive refresh and filters during the visit', async () => {
   const changed = { ...fullList, clientChanges: { observedRevision: 1, products: [{ productId: PRODUCT.id,
     purchase: { revision: 1, changedAt: '2026-11-05T12:00:00Z', value: true } }] } };
   const view = render(viewOf(changed));
-  expect(screen.getByText('Alterado pelo cliente')).toBeTruthy();
+  expect(screen.getByText('Alterado por um perfil')).toBeTruthy();
   view.rerender(viewOf({ ...fullList, clientChanges: { observedRevision: 2, products: [] } }));
-  expect(screen.getByText('Alterado pelo cliente')).toBeTruthy();
+  expect(screen.getByText('Alterado por um perfil')).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: /Comprados/ }));
-  expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
+  expect(screen.queryByText('Alterado por um perfil')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /Todos/ }));
-  expect(screen.getByText('Alterado pelo cliente')).toBeTruthy();
+  expect(screen.getByText('Alterado por um perfil')).toBeTruthy();
   await act(async () => {});
 });
 
@@ -476,16 +490,16 @@ test('refresh never confirms changes that arrived after opening and reentry star
   expect(markClientChangesRead).toHaveBeenCalledTimes(1);
   view.unmount();
   render(viewOf({ ...fullList, clientChanges: { observedRevision: 2, products: [] } }));
-  expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
+  expect(screen.queryByText('Alterado por um perfil')).toBeNull();
 });
 test('deleted products do not render ghost rows and bought highlights retain the done class', async () => {
   const snapshot = { observedRevision: 1, products: [{ productId: SECOND_PRODUCT.id,
     purchase: { revision: 1, changedAt: '2026-11-05T12:00:00Z', value: true } }] };
   const view = render(viewOf({ ...fullList, clientChanges: snapshot }));
-  expect(screen.getByText('Alterado pelo cliente').closest('tr').classList.contains('done')).toBe(true);
+  expect(screen.getByText('Alterado por um perfil').closest('tr').classList.contains('done')).toBe(true);
   view.rerender(viewOf({ ...fullList, clientChanges: snapshot, rooms: fullList.rooms.map((room) => ({ ...room,
     products: room.products.filter((product) => product.id !== SECOND_PRODUCT.id) })) }));
-  expect(screen.queryByText('Alterado pelo cliente')).toBeNull();
+  expect(screen.queryByText('Alterado por um perfil')).toBeNull();
   await act(async () => {});
 });
 
@@ -553,7 +567,7 @@ test('shows the category under each item name', () => {
 
 test('client preview filters by category and status, and hides the edit controls', () => {
   render(viewOf(categorized()));
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(screen.queryByRole('link', { name: 'Editar lista' })).toBeNull();
   pick(idOf(LUZ));
   expect(screen.queryByText('Varal')).not.toBeNull();
@@ -565,7 +579,7 @@ test('client preview filters by category and status, and hides the edit controls
 
 test('client preview status filter hides done items', () => {
   const { container } = renderFull();
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(container.querySelector('.summary')).toBeNull();
   fireEvent.click(screen.getByRole('button', { name: /Comprados/ }));
   expect(screen.queryByText('Capacho')).not.toBeNull();
@@ -582,7 +596,7 @@ test('print selection shows the count, prints only the marked item and does not 
   fireEvent.click(printBox('Varal'));
   expect(screen.getByText('1 item selecionado')).toBeTruthy();
   expect(sheetItems(container)).toEqual(['Varal']);
-  expect(printSheet(container).textContent).toContain(`Cliente: ${fullList.clientName}`);
+  expect(printSheet(container).textContent).toContain(`Perfil: ${fullList.clientName}`);
   fireEvent.click(screen.getByRole('button', { name: 'Imprimir selecionados' }));
   expect(window.print).toHaveBeenCalledOnce();
   expect(patchProduct).not.toHaveBeenCalled();
@@ -614,7 +628,7 @@ test('the client preview has print selection and keeps it from edit mode', () =>
   window.print = vi.fn();
   const { container } = renderFull();
   fireEvent.click(printBox('Capacho'));
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(screen.getByText('1 item selecionado')).toBeTruthy();
   expect(printBox('Capacho').checked).toBe(true);
   fireEvent.click(screen.getByRole('checkbox', { name: 'Selecionar todos de Lavanderia' }));
@@ -628,6 +642,24 @@ test('the client preview has print selection and keeps it from edit mode', () =>
 test('the client preview shows the product photo', () => {
   const product = { ...PRODUCT, imageUrl: '/api/images/' + PRODUCT.id };
   const { container } = render(viewOf({ ...LIST, rooms: [{ ...ROOM, products: [product] }] }));
-  fireEvent.click(screen.getByRole('button', { name: 'Ver como cliente' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
   expect(container.querySelector('.thumb img')?.getAttribute('src')).toBe('/images/' + PRODUCT.id);
+});
+
+test('the internal control block shows only the filled fields in edit mode', () => {
+  render(viewOf({ ...fullList, projectCode: 'P-1', contractorName: 'Ana Souza', siteZipCode: '30140071' }));
+  const block = screen.getByRole('region', { name: 'Controle interno' });
+  expect(block.textContent).toContain('Código do projeto');
+  expect(block.textContent).toContain('P-1');
+  expect(block.textContent).toContain('Contratante');
+  expect(block.textContent).toContain('CEP da obra');
+  expect(block.textContent).not.toContain('Contrato');
+  expect(block.textContent).not.toContain('Endereço da obra');
+  fireEvent.click(screen.getByRole('button', { name: 'Ver como perfil' }));
+  expect(screen.queryByRole('region', { name: 'Controle interno' })).toBeNull();
+});
+
+test('no internal control block appears when nothing is filled', () => {
+  render(viewOf(fullList));
+  expect(screen.queryByRole('region', { name: 'Controle interno' })).toBeNull();
 });

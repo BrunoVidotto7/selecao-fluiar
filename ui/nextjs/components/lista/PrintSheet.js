@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { host, formatLongDate } from '../../lib/format';
 import { formatQuantity } from '../../lib/quantity';
 
-// Paper copy: no prices, images or internal notes; links are plain text.
+// Paper copy: no prices, images or internal notes; profile notes by author; links are plain text.
 export default function PrintSheet({ title, clientName, rooms, selected }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
@@ -16,7 +16,7 @@ export default function PrintSheet({ title, clientName, rooms, selected }) {
   return createPortal(
     <div className="print-sheet">
       <h1>{title}</h1>
-      {clientName && <p>Cliente: {clientName}</p>}
+      {clientName && <p>Perfil: {clientName}</p>}
       <p>{formatLongDate(new Date().toISOString())}</p>
       {sections.map(({ room, products }) => (
         <section key={room.id}>
@@ -34,7 +34,7 @@ export default function PrintSheet({ title, clientName, rooms, selected }) {
                     {(product.links ?? []).map((link, index) => (
                       <div key={index}>{host(link.url)}{link.note ? ` — ${link.note}` : ''}</div>
                     ))}
-                    {product.clientNotes && <div>Observação do cliente: {product.clientNotes}</div>}
+                    {(product.clientNotes ?? []).map((note) => <div key={note.clientId}>{note.clientName}: {note.text}</div>)}
                   </td>
                 </tr>
               ))}

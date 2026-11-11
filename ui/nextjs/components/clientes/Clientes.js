@@ -8,13 +8,14 @@ import { SearchInput, TextInput } from '../ui/Fields';
 import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useApiForm from '../forms/useApiForm';
 import { unstable_rethrow, useRouter } from 'next/navigation';
+import { LIST_ROLE_LABELS } from '@/lib/list-roles';
 import { formatShortDate, formatUpdatedAt, maskPhone, plural } from '@/lib/format';
 import { EmptyLists, ListCards } from '../listas/Listas';
 import { saveClient, deleteClient } from './actions';
 
 const norm = (s) => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const DELETE_FAILED_DETAIL = 'Não conseguimos excluir agora. Tente novamente.';
-const DELETE_SUCCESS_DETAIL = 'Cliente excluído.';
+const DELETE_SUCCESS_DETAIL = 'Perfil excluído.';
 const CLIENT_NAME_MAX_LENGTH = 120;
 const CLIENT_EMAIL_MAX_LENGTH = 254;
 
@@ -41,7 +42,7 @@ export function useDeleteClient({ destination } = {}) {
     confirm({
       title: `Excluir ${client.name}?`,
       text: deleteText(client.name, listCount),
-      confirmLabel: 'Excluir cliente',
+      confirmLabel: 'Excluir perfil',
       onConfirm: async () => {
         if (pending.current) return;
         pending.current = true;
@@ -81,27 +82,27 @@ export function ClientsTable({ clients }) {
   if (!clients.length) return <EmptyClients />;
   return (
     <div style={{ display: 'grid', gap: 16 }}>
-      <p className="meta" style={{ margin: 0 }}>{plural(shown.length, 'cliente', 'clientes')}{q && ` para “${q}”`}</p>
-      <div className="toolbar"><SearchInput id="busca" label="Pesquisar clientes" placeholder="Pesquisar por nome" value={q} onChange={(e) => setQ(e.target.value)} /></div>
+      <p className="meta" style={{ margin: 0 }}>{plural(shown.length, 'perfil', 'perfis')}{q && ` para “${q}”`}</p>
+      <div className="toolbar"><SearchInput id="busca" label="Pesquisar perfis" placeholder="Pesquisar por nome" value={q} onChange={(e) => setQ(e.target.value)} /></div>
       <div className="tbl stack">
         <table>
-          <thead><tr><th>Cliente</th><th>Contato</th><th>Listas</th><th>Atualizado</th><th><span className="sr">Ações</span></th></tr></thead>
+          <thead><tr><th>Perfil</th><th>Contato</th><th>Listas</th><th>Atualizado</th><th><span className="sr">Ações</span></th></tr></thead>
           <tbody>
             {shown.map((c) => (
               <tr key={c.id}>
-                <td className="main"><div className="who"><Avatar name={c.name} /><div><Link href={`/clientes/${c.id}`}>{c.name}</Link><span className="sub">Cliente desde {formatShortDate(c.createdAt)}</span></div></div></td>
+                <td className="main"><div className="who"><Avatar name={c.name} /><div><Link href={`/perfis/${c.id}`}>{c.name}</Link><span className="sub">Perfil desde {formatShortDate(c.createdAt)}</span></div></div></td>
                 <td data-label="Contato"><span>{c.email}<span className="sub">{maskPhone(c.phone)}</span></span></td>
                 <td data-label="Listas" className="num">{c.listCount}</td>
                 <td data-label="Atualizado">{formatUpdatedAt(c.updatedAt)}</td>
                 <td className="actions-cell"><div className="actions">
-                  <IconButton href={`/clientes/${c.id}`} icon="eye" label={`Ver ${c.name}`} />
-                  <IconButton href={`/clientes/${c.id}/editar`} icon="edit" label={`Editar ${c.name}`} />
+                  <IconButton href={`/perfis/${c.id}`} icon="eye" label={`Ver ${c.name}`} />
+                  <IconButton href={`/perfis/${c.id}/editar`} icon="edit" label={`Editar ${c.name}`} />
                   <IconButton danger icon="trash" label={`Excluir ${c.name}`} onClick={() => del(c, c.listCount)} />
                 </div></td>
               </tr>
             ))}
             {!shown.length && (
-              <tr className="noresults"><td colSpan={5}>Nenhum cliente encontrado para “{q}”. Confira a grafia ou <Link href="/clientes/novo">cadastre um cliente novo</Link>.</td></tr>
+              <tr className="noresults"><td colSpan={5}>Nenhum perfil encontrado para “{q}”. Confira a grafia ou <Link href="/perfis/novo">cadastre um perfil novo</Link>.</td></tr>
             )}
           </tbody>
         </table>
@@ -112,15 +113,15 @@ export function ClientsTable({ clients }) {
 
 export function EmptyClients() {
   return (
-    <EmptyState icon="users" title="Nenhum cliente por aqui ainda" text="Cadastre um cliente para começar a montar as listas de compras dele.">
-      <Button href="/clientes/novo" icon="plus">Cadastrar primeiro cliente</Button>
+    <EmptyState icon="users" title="Nenhum perfil por aqui ainda" text="Cadastre um perfil para começar a montar as listas de compras dele.">
+      <Button href="/perfis/novo" icon="plus">Cadastrar primeiro perfil</Button>
     </EmptyState>
   );
 }
 
 /** @param {{ client?: import('./queries.server').ClientDetailResponse }} props */
 export function ClientForm({ client }) {
-  const del = useDeleteClient({ destination: '/clientes' });
+  const del = useDeleteClient({ destination: '/perfis' });
   const f = useApiForm({
     initial: { nome: client?.name || '', email: client?.email || '', tel: maskPhone(client?.phone || '') },
     rules: {
@@ -130,23 +131,23 @@ export function ClientForm({ client }) {
     },
     action: (v) => saveClient(client?.id ?? null, { name: v.nome, email: v.email, phone: v.tel.replace(/\D/g, '') }),
     fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
-    onSuccess: (saved, values, { go }) => go(`/clientes/${saved.id}`, client ? 'Alterações salvas.' : 'Cliente cadastrado.'),
+    onSuccess: (saved, values, { go }) => go(`/perfis/${saved.id}`, client ? 'Alterações salvas.' : 'Perfil cadastrado.'),
   });
   const tel = f.field('tel');
   return (
     <form className="card card-pad form" onSubmit={f.submit} noValidate>
       <TextInput label="Nome completo" autoComplete="off" placeholder="Ex.: Marina Duarte" {...f.field('nome')} />
       <div className="row2">
-        <TextInput label="E-mail" type="email" placeholder="nome@email.com" hint="Usado para convidar o cliente. Após ativar o acesso, o e-mail da conta é gerenciado separadamente." {...f.field('email')} />
+        <TextInput label="E-mail" type="email" placeholder="nome@email.com" hint="Usado para convidar o perfil. Após ativar o acesso, o e-mail da conta é gerenciado separadamente." {...f.field('email')} />
         <TextInput label="Telefone" type="tel" inputMode="tel" placeholder="(31) 99999-9999" {...tel} onChange={(e) => f.setValue('tel', maskPhone(e.target.value))} />
       </div>
       <div className="formfoot">
         {client && (
           <Button variant="text-danger" icon="trash" className="left"
-            onClick={() => del(client, client.lists.length)}>Excluir cliente</Button>
+            onClick={() => del(client, client.lists.length)}>Excluir perfil</Button>
         )}
-        <Button variant="ghost" href={client ? `/clientes/${client.id}` : '/clientes'}>Cancelar</Button>
-        <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar cliente'}</Button>
+        <Button variant="ghost" href={client ? `/perfis/${client.id}` : '/perfis'}>Cancelar</Button>
+        <Button type="submit" busy={f.busy}>{f.busy ? 'Salvando…' : 'Salvar perfil'}</Button>
       </div>
     </form>
   );
@@ -155,13 +156,14 @@ export function ClientForm({ client }) {
 /** @param {{ client: import('./queries.server').ClientDetailResponse, children?: import('react').ReactNode }} props */
 export function ClientDetail({ client, children }) {
   const lists = client.lists;
-  const newHref = `/listas/nova?cliente=${client.id}`;
+  const memberLists = client.memberLists ?? [];
+  const newHref = `/listas/nova?perfil=${client.id}`;
   return (
     <>
       <section className="card profile">
         {children}
         <div className="quick">
-          <Button href={`/clientes/${client.id}/editar`} variant="ghost" icon="edit">Editar</Button>
+          <Button href={`/perfis/${client.id}/editar`} variant="ghost" icon="edit">Editar</Button>
           <DeleteClientButton client={client} listCount={lists.length} />
         </div>
       </section>
@@ -172,12 +174,24 @@ export function ClientDetail({ client, children }) {
       {lists.length
         ? <ListCards lists={lists} />
         : <EmptyLists clientName={client.name} newHref={newHref} />}
+      {memberLists.length > 0 && (
+        <>
+          <h2 className="sec">Listas em que participa</h2>
+          <ul className="card card-pad">
+            {memberLists.map((l) => (
+              <li key={l.id}>
+                <Link href={`/listas/${l.id}`}>{l.name}</Link> <span className="muted">{LIST_ROLE_LABELS[l.role]}</span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </>
   );
 }
 
 export function DeleteClientButton({ client, listCount }) {
-  const del = useDeleteClient({ destination: '/clientes' });
+  const del = useDeleteClient({ destination: '/perfis' });
   return (
     <Button variant="text-danger" icon="trash" onClick={() => del(client, listCount)}>Excluir</Button>
   );

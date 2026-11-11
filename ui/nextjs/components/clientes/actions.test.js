@@ -36,7 +36,7 @@ test.each([[null, 'POST', '/api/clients', 201], [CLIENT.id, 'PUT', '/api/clients
     }));
     expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer private-jwt');
     expect(revalidatePath.mock.calls).toEqual([
-      ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+      ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/perfis'], ['/perfis/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
     ]);
   },
 );
@@ -77,7 +77,7 @@ test('delete awaits the real write before returning success and invalidating', a
   expect(await pending).toEqual({ ok: true, data: undefined });
   expect(fetchMock).toHaveBeenCalledExactlyOnceWith(ORIGIN + '/api/clients/' + CLIENT.id,
     expect.objectContaining({ method: 'DELETE', body: undefined }));
-  expect(revalidatePath).toHaveBeenCalledWith('/clientes/[id]', 'layout');
+  expect(revalidatePath).toHaveBeenCalledWith('/perfis/[id]', 'layout');
 });
 
 test('save awaits persistence before exposing the saved client or invalidating', async () => {

@@ -20,7 +20,7 @@ test('admin invites the stored client without entering an arbitrary email', asyn
   show();
   expect(screen.queryByRole('textbox')).toBeNull();
   expect(screen.getByText(CLIENT.email)).toBeTruthy();
-  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Convidar cliente' })));
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Convidar perfil' })));
   expect(inviteClient).toHaveBeenCalledExactlyOnceWith(CLIENT.id);
   expect(refresh).toHaveBeenCalledOnce();
 });
@@ -40,7 +40,7 @@ test('active access displays login email separately and offers no invitation', (
 test('a failed email send does not claim success or refresh', async () => {
   inviteClient.mockResolvedValue({ ok: false, status: 500, detail: 'Não conseguimos enviar o e-mail agora.', errors: {} });
   show();
-  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Convidar cliente' })));
+  await act(async () => fireEvent.click(screen.getByRole('button', { name: 'Convidar perfil' })));
   expect(screen.getByRole('status').textContent).toContain('Não conseguimos enviar');
   expect(refresh).not.toHaveBeenCalled();
 });

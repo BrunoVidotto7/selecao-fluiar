@@ -60,12 +60,12 @@ export default function OfficeManager({ office }) {
       <section className="card setsec" aria-labelledby="office-title">
         <div className="about">
           <h2 className="sec" id="office-title">Dados do escritório</h2>
-          <p>O nome do escritório aparece na assinatura das listas enviadas aos clientes.</p>
+          <p>O nome do escritório aparece na assinatura das listas enviadas aos perfis.</p>
         </div>
         <RenameOfficeForm key={office.id} office={office} />
       </section>
       <section className="card setsec" aria-labelledby="members-title">
-        <div className="about"><h2 className="sec" id="members-title">Membros</h2><p>Pessoas que compartilham os clientes e as listas deste escritório.</p></div>
+        <div className="about"><h2 className="sec" id="members-title">Membros</h2><p>Pessoas que compartilham os perfis e as listas deste escritório.</p></div>
         <ul className="rows office-rows">
           {office.members.map((member) => (
             <li key={member.id}><div className="office-person"><strong>{member.name}</strong><span className="meta">{member.email}</span></div></li>

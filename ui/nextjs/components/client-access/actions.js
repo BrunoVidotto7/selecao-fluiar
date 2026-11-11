@@ -13,7 +13,7 @@ export async function inviteClient(clientId) {
   return actionResult(async () => {
     requireId(clientId);
     const invitation = await apiRequest(`/api/clients/${clientId}/invitations`, { method: 'POST' });
-    revalidatePath(`/clientes/${clientId}`);
+    revalidatePath(`/perfis/${clientId}`);
     return invitation;
   });
 }
@@ -23,6 +23,6 @@ export async function revokeClientInvitation(clientId, invitationId) {
     requireId(clientId);
     requireId(invitationId);
     await apiRequest(`/api/clients/${clientId}/invitations/${invitationId}`, { method: 'DELETE' });
-    revalidatePath(`/clientes/${clientId}`);
+    revalidatePath(`/perfis/${clientId}`);
   });
 }

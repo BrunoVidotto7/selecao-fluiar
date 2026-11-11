@@ -1,12 +1,12 @@
 import { describe, expect, test } from 'vitest';
-import { passwordStrength, validateAll, validateField } from './validation';
+import { passwordStrength, validateAll, validateField, isValidTaxDocument } from './validation';
 
 const MISMATCH = 'As senhas não são iguais.';
 
 describe('validateField', () => {
   test('required rejects blank values and accepts a custom message', () => {
     expect(validateField('nome', { nome: '   ' }, { required: true })).toBe('Preencha este campo.');
-    expect(validateField('cli', { cli: '' }, { required: 'Escolha o cliente.' })).toBe('Escolha o cliente.');
+    expect(validateField('cli', { cli: '' }, { required: 'Escolha o perfil.' })).toBe('Escolha o perfil.');
     expect(validateField('nome', { nome: 'Ana' }, { required: true })).toBe('');
   });
 
@@ -129,4 +129,34 @@ test('passwordStrength grows with length, mixed case and digits', () => {
   expect(passwordStrength('abcdefgh')).toBe(1);
   expect(passwordStrength('Abcdefgh')).toBe(2);
   expect(passwordStrength('Abcdefgh12')).toBe(3);
+});
+
+describe('list internal control rules', () => {
+  test.each(['52998224725', '11222333000181', '12ABC34501DE35', '529.982.247-25', '12.abc.345/01de-35'])('accepts the valid document %s', (value) => {
+    expect(isValidTaxDocument(value)).toBe(true);
+    expect(validateField('doc', { doc: value }, { taxDocument: true })).toBe('');
+  });
+
+  test.each(['52998224724', '11111111111', '11222333000180', '12ABC34501DE36', '00000000000000', '1234567890', '12ABC3450IDE35', '529.982.247-24'])(
+    'rejects the invalid document %s', (value) => {
+      expect(isValidTaxDocument(value)).toBe(false);
+      expect(validateField('doc', { doc: value }, { taxDocument: true })).toBe('Digite um CPF ou CNPJ válido.');
+    });
+
+  test('an empty document or CEP is valid', () => {
+    expect(validateField('doc', { doc: '  ' }, { taxDocument: true })).toBe('');
+    expect(validateField('cep', { cep: '' }, { zipCode: true })).toBe('');
+  });
+
+  test.each(['30140-071', '30140071', '30 140.071', '30140/071'])('accepts the CEP %s', (value) => {
+    expect(validateField('cep', { cep: value }, { zipCode: true })).toBe('');
+  });
+
+  test.each(['3014-071', '301400711', 'abcdefgh'])('rejects the CEP %s', (value) => {
+    expect(validateField('cep', { cep: value }, { zipCode: true })).toBe('Digite o CEP com 8 números, como 30140-071.');
+  });
+
+  test('size limits use the existing message', () => {
+    expect(validateField('c', { c: 'a'.repeat(41) }, { maxLength: 40 })).toBe('Use no máximo 40 caracteres.');
+  });
 });

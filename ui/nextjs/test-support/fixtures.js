@@ -36,7 +36,7 @@ export const PRODUCT = {
   unit: 'UNIT',
   unitPrice: 12.50,
   notes: 'Conferir as medidas.',
-  clientNotes: null,
+  clientNotes: [],
   bought: false,
   imageUrl: null,
   category: { id: '55555555-5555-4555-8555-555555555551', name: 'Eletrodomésticos', deleted: false },
@@ -65,6 +65,13 @@ export const LIST = {
   description: 'Seleção para a casa nova.',
   clientId: CLIENT_ID,
   clientName: CLIENT_NAME,
+  members: [],
+  projectCode: null,
+  contract: null,
+  contractorName: null,
+  contractorDocument: null,
+  siteZipCode: null,
+  siteAddress: null,
   shareToken: 'a'.repeat(43),
   updatedAt: CREATED_AT,
   stats: { totalProducts: 1, boughtProducts: 0, pendingProducts: 1, estimatedTotal: 25, remainingTotal: 25 },
@@ -92,6 +99,7 @@ export const CLIENT = {
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
   lists: [LIST_SUMMARY],
+  memberLists: [],
 };
 
 export const DASHBOARD = {
@@ -129,12 +137,13 @@ export const CLIENT_ME = { ...ME, id: '88888888-8888-4888-8888-888888885555', ro
 export const CLIENT_ACCESS = { status: 'NOT_INVITED', email: CLIENT.email, invitationId: null, expiresAt: null };
 
 export const CLIENT_PRODUCT = {
-  id: PRODUCT.id, name: PRODUCT.name, quantity: PRODUCT.quantity, unit: PRODUCT.unit, bought: false, clientNotes: null, imageUrl: null, category: PRODUCT.category,
+  id: PRODUCT.id, name: PRODUCT.name, quantity: PRODUCT.quantity, unit: PRODUCT.unit, bought: false, unitPrice: 1500, notes: null, clientNotes: [], imageUrl: null, category: PRODUCT.category,
   links: [{ url: 'https://example.com/batedeira', note: null }],
 };
 export const CLIENT_LIST = {
   id: LIST.id, name: LIST.name, description: LIST.description, updatedAt: LIST.updatedAt,
   stats: { totalProducts: 1, boughtProducts: 0, pendingProducts: 1 },
+  clientId: CLIENT_ID, canEdit: true,
   rooms: [{ id: ROOM.id, name: ROOM.name, position: 0, products: [CLIENT_PRODUCT] }],
   signature: { officeName: ME.officeName, architectNames: [ME.name] },
 };

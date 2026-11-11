@@ -5,11 +5,11 @@ import { FeedbackProvider } from '../feedback/Feedback';
 import { CLIENT_PRODUCT } from '@/test-support/fixtures';
 vi.mock('next/navigation', async (original) => ({ ...(await original()), useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 const save = vi.fn();
-const props = { productId: CLIENT_PRODUCT.id, productName: CLIENT_PRODUCT.name, clientNotes: null, onSave: save };
+const props = { productId: CLIENT_PRODUCT.id, productName: CLIENT_PRODUCT.name, clientId: 'c1', clientNotes: null, onSave: save };
 const view = (extra = {}) => <FeedbackProvider><ProductClientNotesEditor {...props} {...extra} /></FeedbackProvider>;
-const input = () => screen.getByRole('textbox', { name: `Observação do cliente: ${CLIENT_PRODUCT.name}` });
+const input = () => screen.getByRole('textbox', { name: `Observação: ${CLIENT_PRODUCT.name}` });
 const submit = () => fireEvent.click(screen.getByRole('button', { name: `Salvar observação de ${CLIENT_PRODUCT.name}` }));
-beforeEach(() => { save.mockReset().mockResolvedValue({ ok: true, data: { clientNotes: 'Bought locally' } }); });
+beforeEach(() => { save.mockReset().mockResolvedValue({ ok: true, data: { clientNotes: [{ clientId: 'c1', clientName: 'Mariana', text: 'Bought locally' }] } }); });
 
 test('notes save explicitly and normalize the submitted text', async () => {
   render(view());
@@ -39,7 +39,7 @@ test('oversized notes are rejected before the action and blank notes clear saved
   expect(save).not.toHaveBeenCalled();
   expect(input().getAttribute('aria-invalid')).toBe('true');
   fireEvent.change(input(), { target: { value: '  ' } });
-  save.mockResolvedValue({ ok: true, data: { clientNotes: null } });
+  save.mockResolvedValue({ ok: true, data: { clientNotes: [] } });
   await act(async () => submit());
   expect(save).toHaveBeenCalledExactlyOnceWith(null);
   expect(input().value).toBe('');
@@ -52,6 +52,6 @@ test('late results preserve newer typing and duplicate submits are blocked', asy
   submit(); submit();
   expect(save).toHaveBeenCalledOnce();
   fireEvent.change(input(), { target: { value: 'Newer draft' } });
-  await act(async () => release({ ok: true, data: { clientNotes: 'First draft' } }));
+  await act(async () => release({ ok: true, data: { clientNotes: [{ clientId: 'c1', clientName: 'Mariana', text: 'First draft' }] } }));
   expect(input().value).toBe('Newer draft');
 });

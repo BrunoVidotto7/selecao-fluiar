@@ -10,7 +10,7 @@ vi.mock('next/navigation', async (importOriginal) => {
   const { unstable_rethrow } = await importOriginal();
   return {
     useRouter: () => ({ push, refresh }),
-    usePathname: () => '/clientes',
+    usePathname: () => '/perfis',
     unstable_rethrow,
   };
 });
@@ -390,7 +390,7 @@ test('success awaits its callback and receives unchanged submitted values and fe
   const saved = { id: 'saved' };
   const onSuccess = vi.fn(async (data, values, { go }) => {
     await pending.promise;
-    go('/clientes', 'Cliente cadastrado.');
+    go('/perfis', 'Perfil cadastrado.');
   });
   const { result } = renderHook(() => useApiForm({
     initial: { nome: 'Ana', senha: '  abc123  ' }, action: vi.fn().mockResolvedValue({ ok: true, data: saved }), onSuccess,
@@ -402,8 +402,8 @@ test('success awaits its callback and receives unchanged submitted values and fe
   expect(push).not.toHaveBeenCalled();
   await act(async () => { pending.resolve(); await submission; });
   expect(result.current.busy).toBe(false);
-  expect(JSON.parse(sessionStorage.getItem('flash'))).toEqual({ m: 'Cliente cadastrado.' });
-  expect(push).toHaveBeenCalledWith('/clientes');
+  expect(JSON.parse(sessionStorage.getItem('flash'))).toEqual({ m: 'Perfil cadastrado.' });
+  expect(push).toHaveBeenCalledWith('/perfis');
   expect(refresh).toHaveBeenCalledTimes(1);
   expect(push.mock.invocationCallOrder[0]).toBeLessThan(refresh.mock.invocationCallOrder[0]);
 });
@@ -429,7 +429,7 @@ test('field maps use the submitted row snapshot, not rows edited while the actio
 
 test('unmount before an action resolves prevents success navigation', async () => {
   const pending = deferred();
-  const onSuccess = vi.fn((data, values, { go }) => go('/clientes', 'Cliente cadastrado.'));
+  const onSuccess = vi.fn((data, values, { go }) => go('/perfis', 'Perfil cadastrado.'));
   const { result, unmount } = renderHook(() => useApiForm({ action: () => pending.promise, onSuccess }));
   let submission;
   act(() => { submission = result.current.submit(event); });
@@ -443,7 +443,7 @@ test('unmount before an action resolves prevents success navigation', async () =
 
 test('unmount during an async success callback prevents late navigation and flash', async () => {
   const pending = deferred();
-  const onSuccess = async (data, values, { go }) => { await pending.promise; go('/clientes', 'Cliente cadastrado.'); };
+  const onSuccess = async (data, values, { go }) => { await pending.promise; go('/perfis', 'Perfil cadastrado.'); };
   const { result, unmount } = renderHook(() => useApiForm({
     action: vi.fn().mockResolvedValue({ ok: true, data: null }), onSuccess,
   }));
@@ -461,7 +461,7 @@ test('unmount during an async success callback prevents late toast feedback', as
   const pending = deferred();
   const onSuccess = vi.fn(async (data, values, { toast }) => {
     await pending.promise;
-    toast('Cliente cadastrado.');
+    toast('Perfil cadastrado.');
   });
   const view = renderForm({ action: vi.fn().mockResolvedValue({ ok: true, data: null }), onSuccess });
   fireEvent.submit(screen.getByRole('form', { name: 'Dados' }));

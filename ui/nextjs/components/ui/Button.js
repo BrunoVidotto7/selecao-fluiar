@@ -3,7 +3,7 @@ import Icon from './Icon';
 
 const VARIANTS = { primary: 'btn', ghost: 'btn btn-ghost', danger: 'btn btn-danger', text: 'btn btn-text', 'text-danger': 'btn btn-text danger' };
 
-// Botão em pílula (estilo do "Ver como cliente" da lista original).
+// Botão em pílula (estilo do "Ver como perfil" da lista original).
 // Com href vira link; sem href, <button>.
 export default function Button({ href, variant = 'primary', size, block, icon, busy, disabled, className = '', children, ...props }) {
   const cls = [VARIANTS[variant], size === 'sm' && 'btn-sm', block && 'btn-block', className].filter(Boolean).join(' ');

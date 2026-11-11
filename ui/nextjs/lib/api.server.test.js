@@ -334,7 +334,7 @@ test('getCurrentUser redirects a revoked session without exposing user data or w
 test('workspace revalidation invalidates only the shared private views', () => {
   revalidateWorkspaceData();
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/perfis'], ['/perfis/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
 });
 

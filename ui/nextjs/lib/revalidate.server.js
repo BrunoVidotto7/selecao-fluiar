@@ -6,8 +6,8 @@ export function revalidateWorkspaceData() {
   revalidatePath('/dashboard');
   revalidatePath('/minhas-listas');
   revalidatePath('/minhas-listas/[id]', 'layout');
-  revalidatePath('/clientes');
-  revalidatePath('/clientes/[id]', 'layout');
+  revalidatePath('/perfis');
+  revalidatePath('/perfis/[id]', 'layout');
   revalidatePath('/listas');
   revalidatePath('/listas/[id]', 'layout');
 }

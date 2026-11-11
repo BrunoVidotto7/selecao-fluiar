@@ -1,10 +1,10 @@
 // @vitest-environment node
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import {
-  saveProduct, saveProductClientNotes, patchProduct, deleteProduct, uploadProductImage, deleteProductImage,
+  saveProduct, deleteProductClientNote, patchProduct, deleteProduct, uploadProductImage, deleteProductImage,
   findProductImages, uploadProductImageFromUrl, previewStoreProduct,
 } from './actions';
-import { LIST, ROOM, PRODUCT, ME, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
+import { CLIENT, LIST, ROOM, PRODUCT, ME, SECOND_PRODUCT, SECOND_ROOM } from '@/test-support/fixtures';
 
 const { cookies, fetchMock, redirect, revalidatePath, lookup, requireAdmin } = vi.hoisted(() => ({
   cookies: vi.fn(), fetchMock: vi.fn(), revalidatePath: vi.fn(), lookup: vi.fn(), requireAdmin: vi.fn(),
@@ -239,14 +239,25 @@ test('PATCH preserves the product write other-office 404 and quantity field vali
   expect(revalidatePath).not.toHaveBeenCalled();
 });
 
-test('admin notes are persisted independently and only inside the selected list', async () => {
-  const saved = { ...PRODUCT, clientNotes: 'Bought locally' };
-  fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST) : json(saved));
-  expect(await saveProductClientNotes(LIST.id, PRODUCT.id, '  Bought locally  ')).toEqual({ ok: true, data: saved });
-  expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
-    ORIGIN + '/api/lists/' + LIST.id, ORIGIN + '/api/products/' + PRODUCT.id + '/client-notes',
+test('deleting a profile note checks the list and calls the delete endpoint', async () => {
+  fetchMock.mockImplementation(async (_, options) => options.method === 'GET' ? json(LIST) : new Response(null, { status: 204 }));
+  expect(await deleteProductClientNote(LIST.id, PRODUCT.id, CLIENT.id)).toEqual({ ok: true, data: undefined });
+  expect(fetchMock.mock.calls.map(([url, options]) => [url, options.method])).toEqual([
+    [ORIGIN + '/api/lists/' + LIST.id, 'GET'],
+    [ORIGIN + '/api/products/' + PRODUCT.id + '/client-notes/' + CLIENT.id, 'DELETE'],
   ]);
-  expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ clientNotes: 'Bought locally' });
+});
+
+test.each([['x', PRODUCT.id, CLIENT.id], [LIST.id, 'x', CLIENT.id], [LIST.id, PRODUCT.id, 'x']])(
+  'deleting a profile note rejects invalid ids %j before any API call', async (listId, productId, clientId) => {
+    expect(await deleteProductClientNote(listId, productId, clientId)).toMatchObject({ ok: false, status: 400 });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+test('deleting a profile note of a product outside the list is not found', async () => {
+  fetchMock.mockImplementation(async () => json(LIST));
+  expect(await deleteProductClientNote(LIST.id, '44444444-4444-4444-8444-000000000000', CLIENT.id)).toMatchObject({ ok: false, status: 404 });
+  expect(fetchMock).toHaveBeenCalledOnce();
 });
 
 const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);

@@ -1,5 +1,7 @@
 import { isUuid } from './route-input';
+import { formatQuantity } from './quantity';
 export const brl = (n) => n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+export const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity !== 1 ? `${formatQuantity(it.quantity, it.unit)} × ${brl(it.unitPrice)}` : brl(it.unitPrice));
 export const pct = (total, done) => (total ? Math.round((100 * done) / total) : 0);
 export const initials = (name) => {
   const w = name.replace(/\b(e|de|da|do|dos|das)\b/gi, ' ').split(/\s+/).filter(Boolean);

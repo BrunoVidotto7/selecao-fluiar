@@ -23,6 +23,10 @@ vi.mock('next/cache', () => ({ revalidatePath }));
 vi.mock('./actions', () => ({ saveList, deleteList }));
 
 const SUMMARY = CLIENT.lists[0];
+const EMPTY_CONTROL = { projectCode: null, contract: null, contractorName: null, contractorDocument: null, siteZipCode: null, siteAddress: null };
+const OTHER = { id: '33333333-3333-4333-8333-333333333333', name: 'Paulo Lima' };
+const THIRD = { id: '44444444-4444-4444-8444-444444444444', name: 'Rita Alves' };
+const profiles = [...DASHBOARD.recentClients, OTHER, THIRD];
 const EMPTY_LIST = {
   ...SUMMARY, id: '22222222-2222-4222-8222-222222225555', name: 'Sem produtos',
   totalProducts: 0, boughtProducts: 0, estimatedTotal: 0, completed: false,
@@ -93,7 +97,7 @@ test('the form validates a name and a client before calling a server action', ()
   render(feedback(<ListForm clients={DASHBOARD.recentClients} />));
   submit();
   expect(screen.getByText('Preencha este campo.')).toBeTruthy();
-  expect(screen.getByText('Escolha o cliente desta lista.')).toBeTruthy();
+  expect(screen.getByText('Escolha o perfil principal desta lista.')).toBeTruthy();
   expect(saveList).not.toHaveBeenCalled();
   expect(push).not.toHaveBeenCalled();
 });
@@ -101,12 +105,123 @@ test('the form validates a name and a client before calling a server action', ()
 test('the list form maps fields and uses the returned UUID', async () => {
   render(feedback(<ListForm clients={DASHBOARD.recentClients} />));
   fireEvent.change(screen.getByLabelText('Nome da lista'), { target: { value: 'Casa nova' } });
-  fireEvent.change(screen.getByLabelText('Cliente'), { target: { value: CLIENT.id } });
+  fireEvent.change(screen.getByLabelText('Perfil principal'), { target: { value: CLIENT.id } });
   submit();
   await waitFor(() => expect(saveList).toHaveBeenCalledExactlyOnceWith(null,
-    { name: 'Casa nova', description: null, clientId: CLIENT.id }));
+    { name: 'Casa nova', description: null, clientId: CLIENT.id, members: [], ...EMPTY_CONTROL }));
   await waitFor(() => expect(push).toHaveBeenCalledWith('/listas/' + LIST.id));
   expect(refresh).toHaveBeenCalledOnce();
+});
+
+test('profiles can be added as reader, switched to editor and removed; the principal is never offered', () => {
+  render(feedback(<ListForm clients={profiles} defaultClientId={CLIENT.id} />));
+  const group = screen.getByRole('group', { name: 'Outros perfis com acesso' });
+  const options = () => within(within(group).getByLabelText('Perfil para adicionar')).getAllByRole('option').map((o) => o.textContent);
+  expect(options()).toEqual(['Selecione um perfil', 'Paulo Lima', 'Rita Alves']);
+  fireEvent.change(within(group).getByLabelText('Perfil para adicionar'), { target: { value: OTHER.id } });
+  expect(within(group).getByLabelText('Nível de acesso para adicionar').value).toBe('READER');
+  fireEvent.click(within(group).getByRole('button', { name: 'Adicionar' }));
+  expect(within(group).getByLabelText('Nível de acesso de Paulo Lima').value).toBe('READER');
+  expect(options()).toEqual(['Selecione um perfil', 'Rita Alves']);
+  fireEvent.change(within(group).getByLabelText('Nível de acesso de Paulo Lima'), { target: { value: 'EDITOR' } });
+  expect(within(group).getByLabelText('Nível de acesso de Paulo Lima').value).toBe('EDITOR');
+  fireEvent.click(within(group).getByRole('button', { name: 'Remover Paulo Lima' }));
+  expect(within(group).queryByLabelText('Nível de acesso de Paulo Lima')).toBeNull();
+  expect(options()).toEqual(['Selecione um perfil', 'Paulo Lima', 'Rita Alves']);
+});
+
+test('the members are sent and choosing a member as principal removes them from the members', async () => {
+  render(feedback(<ListForm clients={profiles} defaultClientId={CLIENT.id} />));
+  expect(screen.getByText(/O perfil principal é sempre editor\./)).toBeTruthy();
+  fireEvent.change(screen.getByLabelText('Nome da lista'), { target: { value: 'Casa nova' } });
+  const group = screen.getByRole('group', { name: 'Outros perfis com acesso' });
+  fireEvent.change(within(group).getByLabelText('Perfil para adicionar'), { target: { value: OTHER.id } });
+  fireEvent.click(within(group).getByRole('button', { name: 'Adicionar' }));
+  fireEvent.change(within(group).getByLabelText('Perfil para adicionar'), { target: { value: THIRD.id } });
+  fireEvent.change(within(group).getByLabelText('Nível de acesso para adicionar'), { target: { value: 'EDITOR' } });
+  fireEvent.click(within(group).getByRole('button', { name: 'Adicionar' }));
+  fireEvent.change(screen.getByLabelText('Perfil principal'), { target: { value: THIRD.id } });
+  expect(within(group).queryByLabelText('Nível de acesso de Rita Alves')).toBeNull();
+  submit();
+  await waitFor(() => expect(saveList).toHaveBeenCalledExactlyOnceWith(null, {
+    name: 'Casa nova', description: null, clientId: THIRD.id, members: [{ clientId: OTHER.id, role: 'READER' }], ...EMPTY_CONTROL,
+  }));
+});
+
+test('a pending add choice that became the principal is not added', () => {
+  render(feedback(<ListForm clients={profiles} defaultClientId={CLIENT.id} />));
+  const group = screen.getByRole('group', { name: 'Outros perfis com acesso' });
+  fireEvent.change(within(group).getByLabelText('Perfil para adicionar'), { target: { value: THIRD.id } });
+  fireEvent.change(screen.getByLabelText('Perfil principal'), { target: { value: THIRD.id } });
+  fireEvent.click(within(group).getByRole('button', { name: 'Adicionar' }));
+  expect(within(group).queryByLabelText('Nível de acesso de Rita Alves')).toBeNull();
+});
+
+test('the add select has the members id used to focus a field error', () => {
+  render(feedback(<ListForm list={{ ...LIST, members: [] }} clients={profiles} />));
+  expect(screen.getByLabelText('Perfil para adicionar').id).toBe('members');
+});
+
+test('the add select points to the members error', async () => {
+  saveList.mockResolvedValue({ ok: false, status: 400, detail: 'Revise os campos destacados.', errors: { members: 'Cada perfil pode aparecer só uma vez.' } });
+  render(feedback(<ListForm list={LIST} clients={profiles} />));
+  submit();
+  await waitFor(() => expect(screen.getByLabelText('Perfil para adicionar').getAttribute('aria-invalid')).toBe('true'));
+  expect(screen.getByLabelText('Perfil para adicionar').getAttribute('aria-describedby')).toBe('members-err');
+  expect(document.activeElement).toBe(screen.getByLabelText('Perfil para adicionar'));
+});
+
+test('switching the principal away and back restores a saved member with its role', async () => {
+  const list = { ...LIST, members: [{ clientId: OTHER.id, clientName: OTHER.name, role: 'EDITOR' }] };
+  render(feedback(<ListForm list={list} clients={profiles} />));
+  fireEvent.change(screen.getByLabelText('Perfil principal'), { target: { value: OTHER.id } });
+  expect(screen.queryByLabelText('Nível de acesso de Paulo Lima')).toBeNull();
+  fireEvent.change(screen.getByLabelText('Perfil principal'), { target: { value: CLIENT.id } });
+  expect(screen.getByLabelText('Nível de acesso de Paulo Lima').value).toBe('EDITOR');
+  submit();
+  await waitFor(() => expect(saveList).toHaveBeenCalledExactlyOnceWith(LIST.id, expect.objectContaining({
+    clientId: CLIENT.id, members: [{ clientId: OTHER.id, role: 'EDITOR' }],
+  })));
+});
+
+test('the internal control fields are optional and sent when filled', async () => {
+  render(feedback(<ListForm list={LIST} clients={profiles} />));
+  fireEvent.change(screen.getByLabelText('Código do projeto (opcional)'), { target: { value: 'P-1' } });
+  fireEvent.change(screen.getByLabelText('Contrato (opcional)'), { target: { value: 'C-9' } });
+  fireEvent.change(screen.getByLabelText('Contratante (opcional)'), { target: { value: 'Ana' } });
+  fireEvent.change(screen.getByLabelText('CPF ou CNPJ do contratante (opcional)'), { target: { value: '12.ABC.345/01DE-35' } });
+  fireEvent.change(screen.getByLabelText('CEP da obra (opcional)'), { target: { value: '30140-071' } });
+  fireEvent.change(screen.getByLabelText('Endereço da obra (opcional)'), { target: { value: 'Rua A, 10' } });
+  submit();
+  await waitFor(() => expect(saveList).toHaveBeenCalledExactlyOnceWith(LIST.id, {
+    name: 'Casa nova', description: 'Seleção para a casa nova.', clientId: CLIENT.id, members: [],
+    projectCode: 'P-1', contract: 'C-9', contractorName: 'Ana', contractorDocument: '12.ABC.345/01DE-35',
+    siteZipCode: '30140-071', siteAddress: 'Rua A, 10',
+  }));
+});
+
+test('an invalid CEP or document blocks the save with the API messages', () => {
+  render(feedback(<ListForm list={LIST} clients={profiles} />));
+  fireEvent.change(screen.getByLabelText('CEP da obra (opcional)'), { target: { value: '3014-071' } });
+  fireEvent.change(screen.getByLabelText('CPF ou CNPJ do contratante (opcional)'), { target: { value: '529.982.247-24' } });
+  submit();
+  expect(screen.getByText('Digite o CEP com 8 números, como 30140-071.')).toBeTruthy();
+  expect(screen.getByText('Digite um CPF ou CNPJ válido.')).toBeTruthy();
+  expect(saveList).not.toHaveBeenCalled();
+});
+
+test('the edit form shows the saved members and internal fields', () => {
+  const list = { ...LIST, members: [{ clientId: OTHER.id, clientName: OTHER.name, role: 'EDITOR' }], projectCode: 'P-1' };
+  render(feedback(<ListForm list={list} clients={profiles} />));
+  expect(screen.getByLabelText('Nível de acesso de Paulo Lima').value).toBe('EDITOR');
+  expect(screen.getByLabelText('Código do projeto (opcional)').value).toBe('P-1');
+});
+
+test('the API members error appears under the profiles area', async () => {
+  saveList.mockResolvedValue({ ok: false, status: 400, detail: 'Revise os campos destacados.', errors: { members: 'Cada perfil pode aparecer só uma vez.' } });
+  render(feedback(<ListForm list={LIST} clients={profiles} />));
+  submit();
+  await waitFor(() => expect(within(screen.getByRole('group', { name: 'Outros perfis com acesso' })).getByText('Cada perfil pode aparecer só uma vez.')).toBeTruthy());
 });
 
 test('edit saves English API fields and retains the persisted list ID', async () => {
@@ -114,22 +229,22 @@ test('edit saves English API fields and retains the persisted list ID', async ()
   fireEvent.change(screen.getByLabelText('Descrição (opcional)'), { target: { value: 'Sala e cozinha.' } });
   submit();
   await waitFor(() => expect(saveList).toHaveBeenCalledExactlyOnceWith(LIST.id,
-    { name: 'Casa nova', description: 'Sala e cozinha.', clientId: CLIENT.id }));
+    { name: 'Casa nova', description: 'Sala e cozinha.', clientId: CLIENT.id, members: [], ...EMPTY_CONTROL }));
   await waitFor(() => expect(push).toHaveBeenCalledWith('/listas/' + LIST.id));
 });
 
 test('a deleted or foreign client error maps to the select, preserves edits and does not navigate', async () => {
   saveList.mockResolvedValue({
     ok: false, status: 400, detail: 'Revise os campos destacados.',
-    errors: { clientId: 'Escolha o cliente desta lista.' },
+    errors: { clientId: 'Escolha o perfil principal desta lista.' },
   });
   render(feedback(<ListForm list={LIST} clients={DASHBOARD.recentClients} />));
   fireEvent.change(screen.getByLabelText('Nome da lista'), { target: { value: 'Minha casa' } });
   fireEvent.change(screen.getByLabelText('Descrição (opcional)'), { target: { value: 'Meu rascunho' } });
   submit();
-  await waitFor(() => expect(screen.queryByText('Escolha o cliente desta lista.')).not.toBeNull());
-  expect(screen.getByLabelText('Cliente').getAttribute('aria-invalid')).toBe('true');
-  expect(document.activeElement).toBe(screen.getByLabelText('Cliente'));
+  await waitFor(() => expect(screen.queryByText('Escolha o perfil principal desta lista.')).not.toBeNull());
+  expect(screen.getByLabelText('Perfil principal').getAttribute('aria-invalid')).toBe('true');
+  expect(document.activeElement).toBe(screen.getByLabelText('Perfil principal'));
   expect(screen.getByLabelText('Nome da lista').value).toBe('Minha casa');
   expect(screen.getByLabelText('Descrição (opcional)').value).toBe('Meu rascunho');
   expect(screen.getByRole('status').textContent).toContain('Revise os campos destacados.');
@@ -152,17 +267,17 @@ test('a pending save is busy and duplicate submits never make a second request',
 });
 
 test('only an API-listed client UUID is preselected and query changes reset the choice', async () => {
-  const view = render(await page(NewListPage, { cliente: CLIENT.id }));
-  expect(screen.getByLabelText('Cliente').value).toBe(CLIENT.id);
+  const view = render(await page(NewListPage, { perfil: CLIENT.id }));
+  expect(screen.getByLabelText('Perfil principal').value).toBe(CLIENT.id);
   view.rerender(await page(NewListPage, {}));
-  expect(screen.getByLabelText('Cliente').value).toBe('');
+  expect(screen.getByLabelText('Perfil principal').value).toBe('');
 });
 
 test('preselection matches a case-insensitive UUID and uses the actual API option value', async () => {
   const client = { ...DASHBOARD.recentClients[0], id: 'abcdefab-cdef-4abc-8def-abcdefabcdef' };
   fetchMock.mockImplementation(async () => json([client]));
-  render(await page(NewListPage, { cliente: client.id.toUpperCase() }));
-  expect(screen.getByLabelText('Cliente').value).toBe('abcdefab-cdef-4abc-8def-abcdefabcdef');
+  render(await page(NewListPage, { perfil: client.id.toUpperCase() }));
+  expect(screen.getByLabelText('Perfil principal').value).toBe('abcdefab-cdef-4abc-8def-abcdefabcdef');
 });
 
 test('navigating to another persisted list edit page replaces the form values', async () => {
@@ -175,22 +290,27 @@ test('navigating to another persisted list edit page replaces the form values', 
   expect(screen.getByRole('link', { name: 'Cancelar' }).getAttribute('href')).toBe('/listas/' + other.id);
 });
 
-test.each(['sergio-hooper', '11111111-1111-4111-8111-111111115555', [CLIENT.id]].map((cliente) => [cliente]))(
-  'an unknown or malformed client query %j leaves a required choice', async (cliente) => {
-    render(await page(NewListPage, { cliente }));
-    expect(screen.getByLabelText('Cliente').value).toBe('');
+test.each(['sergio-hooper', '11111111-1111-4111-8111-111111115555', [CLIENT.id]].map((perfil) => [perfil]))(
+  'an unknown or malformed profile query %j leaves a required choice', async (perfil) => {
+    render(await page(NewListPage, { perfil }));
+    expect(screen.getByLabelText('Perfil principal').value).toBe('');
     fireEvent.change(screen.getByLabelText('Nome da lista'), { target: { value: 'Nova casa' } });
     submit();
-    expect(screen.getByText('Escolha o cliente desta lista.')).toBeTruthy();
+    expect(screen.getByText('Escolha o perfil principal desta lista.')).toBeTruthy();
     expect(saveList).not.toHaveBeenCalled();
   },
 );
 
+test('the old cliente query key is ignored', async () => {
+  render(await page(NewListPage, { cliente: CLIENT.id }));
+  expect(screen.getByLabelText('Perfil principal').value).toBe('');
+});
+
 test('no clients from the API offers a real registration link, not fake client options', async () => {
   fetchMock.mockImplementation(async () => json([]));
   render(await page(NewListPage));
-  expect(screen.queryByRole('link', { name: 'Cadastre um cliente' })?.getAttribute('href')).toBe('/clientes/novo');
-  expect(screen.getByLabelText('Cliente').options).toHaveLength(1);
+  expect(screen.queryByRole('link', { name: 'Cadastre um perfil' })?.getAttribute('href')).toBe('/perfis/novo');
+  expect(screen.getByLabelText('Perfil principal').options).toHaveLength(1);
 });
 
 test('list cards format API money and dates, and the completed flag owns their badges', () => {
@@ -288,11 +408,11 @@ test('edit-form deletion flashes only once on the client destination after persi
   expect(screen.getByRole('status').textContent).toBe('');
   expect(sessionStorage.getItem('flash')).toBeNull();
   await act(async () => { release({ ok: true, data: undefined }); });
-  expect(push).toHaveBeenCalledExactlyOnceWith(`/clientes/${CLIENT.id}`);
+  expect(push).toHaveBeenCalledExactlyOnceWith(`/perfis/${CLIENT.id}`);
   expect(refresh).toHaveBeenCalledOnce();
   expect(JSON.parse(sessionStorage.getItem('flash')).m).toBe('Lista excluída.');
   const immediateFeedback = screen.getByRole('status').textContent;
-  pathname.value = `/clientes/${CLIENT.id}`;
+  pathname.value = `/perfis/${CLIENT.id}`;
   view.rerender(feedback(<ListCards lists={[]} />));
   await act(async () => { vi.advanceTimersByTime(200); });
   expect(screen.getAllByText('Lista excluída.')).toHaveLength(1);
@@ -377,7 +497,7 @@ test('unmounting the form does not cancel the confirmed server delete or its suc
   view.rerender(feedback(<h2>Outra tela</h2>));
   await act(async () => release(new Response(null, { status: 204 })));
   expect(revalidatePath.mock.calls).toEqual([
-    ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+    ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/perfis'], ['/perfis/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
   ]);
   expect(fetchMock).toHaveBeenCalledOnce();
   expect(push).not.toHaveBeenCalled();
@@ -389,13 +509,13 @@ test('unmounting the form does not cancel the confirmed server delete or its suc
 test('the dashboard uses API summaries and server empty counts rather than a demo query', async () => {
   fetchMock.mockImplementation(async (url) => json(url.endsWith('/api/me') ? ME : DASHBOARD));
   const view = render(await page(DashboardPage));
-  expect(screen.getByText('Clientes recentes')).toBeTruthy();
+  expect(screen.getByText('Perfis recentes')).toBeTruthy();
   expect(screen.getByRole('link', { name: /Casa nova/ })).toBeTruthy();
   view.rerender(await page(DashboardPage, { estado: 'vazio' }));
-  expect(screen.queryByText('Cadastre seu primeiro cliente')).toBeNull();
+  expect(screen.queryByText('Cadastre seu primeiro perfil')).toBeNull();
   fetchMock.mockImplementation(async (url) => json(url.endsWith('/api/me') ? ME : {
     ...DASHBOARD, clientCount: 0, listCount: 0, recentClients: [], recentLists: [],
   }));
   view.rerender(await page(DashboardPage));
-  expect(screen.getByText('Cadastre seu primeiro cliente')).toBeTruthy();
+  expect(screen.getByText('Cadastre seu primeiro perfil')).toBeTruthy();
 });

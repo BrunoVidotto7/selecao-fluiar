@@ -6,7 +6,7 @@ import { isUuid } from '@/lib/route-input';
 export const metadata = { title: 'Nova lista' };
 export default async function Page({ searchParams }) {
   const [clients, query] = await Promise.all([readApi('/api/clients'), searchParams]);
-  const requestedClientId = query?.cliente;
+  const requestedClientId = query?.perfil;
   const cliente = isUuid(requestedClientId)
     ? clients.find((client) => client.id.toLowerCase() === requestedClientId.toLowerCase())?.id ?? ''
     : '';

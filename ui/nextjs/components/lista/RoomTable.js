@@ -4,26 +4,25 @@ import { useEffect, useRef, useState } from 'react';
 import { unstable_rethrow } from 'next/navigation';
 import Link from 'next/link';
 import Icon from '../ui/Icon';
-import { brl } from '@/lib/format';
+import { priceText } from '@/lib/format';
 import ProductThumb from './ProductThumb';
 import ClientChangeDetails from '../client-changes/ClientChangeDetails';
 import ItemLinks from './ItemLinks';
 import StoreSyncStatus from '../produtos/StoreSyncStatus';
-import ProductClientNotesEditor from './ProductClientNotesEditor';
+import ProfileNotes from './ProfileNotes';
 import { validateQuantity } from '@/lib/validation';
 import { formatQuantity, parseQuantity } from '@/lib/quantity';
 
 const REMOVE_CONFIRMATION_MS = 2500;
 const UNIT_LABEL = { UNIT: 'un.', SQUARE_METER: 'm²' };
 const quantityText = (quantity) => formatQuantity(quantity).split(' ')[0];
-const priceText = (it) => (it.unitPrice == null ? 'Sem preço' : it.quantity !== 1 ? `${formatQuantity(it.quantity, it.unit)} × ${brl(it.unitPrice)}` : brl(it.unitPrice));
 
 /** @param {{ room: import('../listas/queries.server').RoomResponse, products: import('../listas/queries.server').ProductResponse[],
  * showAdd: boolean, listBase: string, pendingIds: Set<string>,
  * onToggle: (id: string, bought: boolean) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onQty: (id: string, quantity: number) => Promise<import('@/lib/api.server').ActionResult<import('../listas/queries.server').ProductResponse>>,
  * onRemove: (id: string) => Promise<import('@/lib/api.server').ActionResult<undefined>> }} props */
-export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onNotes, changesByProduct,
+export default function RoomTable({ room, products, showAdd, listBase, pendingIds, onToggle, onQty, onRemove, onDeleteNote, changesByProduct,
   selected = new Set(), onSelect, onSelectRoom, roomSelected = false }) {
   const done = room.products.filter((i) => i.bought).length;
   return (
@@ -35,7 +34,7 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
             onChange={onSelectRoom} aria-label={`Selecionar todos de ${room.name}`} /></th><th className="ck" aria-label="Comprado">✓</th><th className="qt">Qtd.</th><th className="it">Item</th><th>Links e observações</th></tr></thead>
           <tbody>
             {products.map((it) => <ItemRow key={`${listBase}:${it.id}`} item={it} listBase={listBase}
-              change={changesByProduct?.get(it.id)} pending={pendingIds.has(it.id)} printed={selected.has(it.id)} onPrint={onSelect} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onNotes={onNotes} />)}
+              change={changesByProduct?.get(it.id)} pending={pendingIds.has(it.id)} printed={selected.has(it.id)} onPrint={onSelect} onToggle={onToggle} onQty={onQty} onRemove={onRemove} onDeleteNote={onDeleteNote} />)}
             {showAdd && (
               <tr className="new"><td className="ck" /><td colSpan={4}>
                 <Link className="newlink" href={`${listBase}/produtos/novo?ambiente=${room.id}`}><Icon name="plus" />novo item em {room.name}</Link>
@@ -48,7 +47,7 @@ export default function RoomTable({ room, products, showAdd, listBase, pendingId
   );
 }
 
-function ItemRow({ item, listBase, pending, printed, onPrint, onToggle, onQty, onRemove, onNotes, change }) {
+function ItemRow({ item, listBase, pending, printed, onPrint, onToggle, onQty, onRemove, onDeleteNote, change }) {
   const [quantityDraft, setQuantityDraft] = useState({ value: null, error: '' });
   const currentDraft = useRef(null);
   const inFlight = useRef(false);
@@ -171,8 +170,8 @@ function ItemRow({ item, listBase, pending, printed, onPrint, onToggle, onQty, o
       </td>
       <td><ItemLinks links={item.links} empty="Sem links ainda" />
         {change && <ClientChangeDetails change={change} product={item} />}
-        <ProductClientNotesEditor productId={item.id} productName={item.name} clientNotes={item.clientNotes}
-          onSave={(value) => onNotes(item.id, value)} />
+        <ProfileNotes notes={item.clientNotes} productName={item.name} pending={pending}
+          onDelete={(clientId) => mutate(() => onDeleteNote(item.id, clientId))} />
       </td>
     </tr>
   );

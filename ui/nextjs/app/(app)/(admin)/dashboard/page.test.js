@@ -41,7 +41,7 @@ test('the dashboard uses all seven API counts rather than recent-array lengths a
   expect(screen.getByText('2 concluídas')).toBeTruthy();
   expect(screen.getByText('de 21 itens nas listas')).toBeTruthy();
   expect(screen.getByText('Há 17 itens esperando compra em 4 listas.')).toBeTruthy();
-  expect(screen.queryByText('Cadastre seu primeiro cliente')).toBeNull();
+  expect(screen.queryByText('Cadastre seu primeiro perfil')).toBeNull();
   expect(screen.getByRole('heading', { name: 'Olá, Ana' })).toBeTruthy();
 });
 
@@ -62,8 +62,8 @@ test('the dashboard starts identity and aggregates concurrently before either re
 test('only API recent arrays feed recent cards without client lookups or prototype contacts', async () => {
   fetchMock.mockImplementation(async (url) => apiResponse(url, { ...COUNTS, ...DASHBOARD, clientCount: 12 }));
   render(await Page({ searchParams: Promise.resolve({}) }));
-  const recentClients = within(screen.getByRole('heading', { name: 'Clientes recentes' }).closest('section'));
-  expect(recentClients.getByRole('link', { name: /Mariana Souza/ }).getAttribute('href')).toBe('/clientes/' + CLIENT.id);
+  const recentClients = within(screen.getByRole('heading', { name: 'Perfis recentes' }).closest('section'));
+  expect(recentClients.getByRole('link', { name: /Mariana Souza/ }).getAttribute('href')).toBe('/perfis/' + CLIENT.id);
   expect(screen.getByRole('link', { name: /Casa nova/ }).getAttribute('href')).toBe('/listas/' + DASHBOARD.recentLists[0].id);
   expect(screen.getByText('1 lista')).toBeTruthy();
   expect(screen.getByText('0 de 1 comprados')).toBeTruthy();
@@ -91,18 +91,18 @@ test.each([
 ])('first-use state depends on API client/list counts %i/%i', async (clientCount, listCount, empty) => {
   fetchMock.mockImplementation(async (url) => apiResponse(url, { ...COUNTS, clientCount, listCount, pendingProductCount: 0 }));
   render(await Page(props));
-  expect(Boolean(screen.queryByText('Cadastre seu primeiro cliente'))).toBe(empty);
+  expect(Boolean(screen.queryByText('Cadastre seu primeiro perfil'))).toBe(empty);
 });
 
 test('dashboard read failure propagates to the boundary instead of the empty first-use state', async () => {
   fetchMock.mockImplementation(async (url) => url === 'http://localhost:8080/api/dashboard' ? json({ detail: 'Tente novamente.' }, 503) : apiResponse(url));
   await expect(Page(props)).rejects.toMatchObject({ status: 503, detail: 'Tente novamente.' });
-  expect(screen.queryByText('Cadastre seu primeiro cliente')).toBeNull();
+  expect(screen.queryByText('Cadastre seu primeiro perfil')).toBeNull();
 });
 
 test('dashboard includes a separate client changes section', async () => {
   render(await Page(props));
-  expect(screen.getByRole('heading', { name: 'Alterações dos clientes' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Alterações dos perfis' })).toBeTruthy();
 });
 
 test('client changes errors remain local to their section', async () => {
@@ -111,7 +111,7 @@ test('client changes errors remain local to their section', async () => {
   render(await Page(props));
   expect(screen.getByRole('alert').textContent).toContain('Não conseguimos carregar as alterações.');
   expect(screen.queryByText(/Tudo em dia/)).toBeNull();
-  expect(screen.getByRole('heading', { name: 'Clientes recentes' })).toBeTruthy();
+  expect(screen.getByRole('heading', { name: 'Perfis recentes' })).toBeTruthy();
 });
 test.each([['-1', 0], ['abc', 0], [['1', '2'], 0], ['2147483648', 0], ['1', 1]])('validates changesPage %j', async (input, page) => {
   fetchMock.mockImplementation(async (url) => url === `http://localhost:8080/api/client-changes?page=${page}`

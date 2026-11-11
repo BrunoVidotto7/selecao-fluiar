@@ -81,7 +81,7 @@ export default function SettingsForm({ user }) {
   return (
     <div className="settings">
       <section className="card setsec" aria-labelledby="profile-title">
-        <div className="about"><h2 className="sec" id="profile-title">Perfil</h2><p>{user.role === 'ADMIN' ? 'Seu nome aparece na assinatura das listas enviadas aos clientes.' : 'Gerencie os dados da sua conta.'}</p></div>
+        <div className="about"><h2 className="sec" id="profile-title">Perfil</h2><p>{user.role === 'ADMIN' ? 'Seu nome aparece na assinatura das listas enviadas aos perfis.' : 'Gerencie os dados da sua conta.'}</p></div>
         <ProfileForm key={user.id} user={user} />
       </section>
       <section className="card setsec">

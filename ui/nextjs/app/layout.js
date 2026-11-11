@@ -2,7 +2,7 @@ import './styles/app.css';
 import './styles/lista.css';
 import { FeedbackProvider } from '@/components/feedback/Feedback';
 
-export const metadata = { title: { default: 'Seleção Fluiar', template: '%s · Seleção Fluiar' }, description: 'Listas de compras para clientes de arquitetura e interiores.' };
+export const metadata = { title: { default: 'Seleção Fluiar', template: '%s · Seleção Fluiar' }, description: 'Listas de compras para arquitetura e interiores.' };
 export const viewport = { width: 'device-width', initialScale: 1, viewportFit: 'cover' };
 
 export default function RootLayout({ children }) {

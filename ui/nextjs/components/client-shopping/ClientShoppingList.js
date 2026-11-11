@@ -8,11 +8,12 @@ import { useToast } from '../feedback/Feedback';
 import ItemLinks from '../lista/ItemLinks';
 import ProductThumb from '../lista/ProductThumb';
 import ProductClientNotesEditor from '../lista/ProductClientNotesEditor';
+import ProfileNotes from '../lista/ProfileNotes';
 import PrintBar from '../lista/PrintBar';
 import PrintSheet from '../lista/PrintSheet';
 import usePrintSelection from '../lista/usePrintSelection';
 import { ListNote, ListSignature } from '../lista/ListFooter';
-import { splitTitle } from '@/lib/format';
+import { priceText, splitTitle } from '@/lib/format';
 import { matchesCategory, useCategoryFilter } from '@/lib/category-filter';
 import { setClientPurchase, saveClientNotes } from './actions';
 
@@ -85,16 +86,23 @@ function ListContent({ list }) {
           <tbody>{room.products.map((product) => <tr key={product.id} hidden={!matches(product)} className={product.bought ? 'done' : ''}>
             <td className="pr"><input type="checkbox" className="check" checked={print.selected.has(product.id)}
               aria-label={`Imprimir: ${product.name}`} onChange={() => print.toggle(product.id)} /></td>
-            <td className="ck"><input type="checkbox" className="check" checked={product.bought} disabled={pendingIds.has(product.id)}
-              aria-label={`Comprado: ${product.name}`} onChange={(event) => purchase(product.id, event.target.checked)} /></td>
+            <td className="ck">{list.canEdit
+              ? <input type="checkbox" className="check" checked={product.bought} disabled={pendingIds.has(product.id)}
+                aria-label={`Comprado: ${product.name}`} onChange={(event) => purchase(product.id, event.target.checked)} />
+              : <span className={'mark ' + (product.bought ? 'on' : 'off')} role="img" aria-label={product.bought ? 'Comprado' : 'Ainda não comprado'} />}</td>
             <td className="qt"><span className="ro-qty">{formatQuantity(product.quantity, product.unit)}</span></td>
             <td className="it"><div className="itm">
               <ProductThumb imageUrl={product.imageUrl} />
-              <div className="txt"><span className="ro-name">{product.name}</span><span className="ro-cat">{product.category.name}</span></div>
+              <div className="txt"><span className="ro-name">{product.name}</span><span className="ro-cat">{product.category.name}</span>
+                <span className="price">{priceText(product)}</span></div>
             </div></td>
             <td><ItemLinks links={product.links} empty="Opções em breve" />
-              <ProductClientNotesEditor productId={product.id} productName={product.name} clientNotes={product.clientNotes}
-                onSave={(value) => notes(product.id, value)} />
+              {product.notes && <p className="meta"><b>Nota interna:</b> {product.notes}</p>}
+              {list.canEdit && <ProductClientNotesEditor productId={product.id} productName={product.name} clientId={list.clientId}
+                clientNotes={product.clientNotes.find((note) => note.clientId === list.clientId)?.text ?? ''}
+                onSave={(value) => notes(product.id, value)} />}
+              <ProfileNotes productName={product.name}
+                notes={list.canEdit ? product.clientNotes.filter((note) => note.clientId !== list.clientId) : product.clientNotes} />
             </td>
           </tr>)}</tbody>
         </table></div>

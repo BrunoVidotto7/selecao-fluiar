@@ -20,18 +20,18 @@ export default async function Page({ searchParams } = {}) {
     getCurrentUser(), readApi('/api/dashboard'), actionResult(() => getClientChangePage(changesPage)),
   ]);
   const firstName = user.name.split(' ')[0];
-  const actions = <><Button href="/clientes/novo" variant="ghost" icon="plus">Cadastrar cliente</Button><Button href="/listas/nova" icon="plus">Criar lista</Button></>;
+  const actions = <><Button href="/perfis/novo" variant="ghost" icon="plus">Cadastrar perfil</Button><Button href="/listas/nova" icon="plus">Criar lista</Button></>;
 
   if (dashboard.clientCount === 0 && dashboard.listCount === 0) {
     return (
       <div className="wrap">
         <PageHeader eyebrow="Primeiros passos" title={<>Olá, <em>{firstName}</em></>} meta="Sua conta está pronta. Vamos montar a primeira lista." />
         <section className="stats" aria-label="Resumo">
-          <StatCard label="Clientes" value={dashboard.clientCount} /><StatCard label="Listas de compras" value={dashboard.listCount} /><StatCard label="Itens pendentes" value={dashboard.pendingProductCount} />
+          <StatCard label="Perfis" value={dashboard.clientCount} /><StatCard label="Listas de compras" value={dashboard.listCount} /><StatCard label="Itens pendentes" value={dashboard.pendingProductCount} />
         </section>
         <ClientChangesPanel result={changes} />
-        <EmptyState icon="users" title="Cadastre seu primeiro cliente" text="Depois crie a lista de compras dele, adicione os produtos por ambiente e envie o link.">
-          <Button href="/clientes/novo" icon="plus">Cadastrar cliente</Button>
+        <EmptyState icon="users" title="Cadastre seu primeiro perfil" text="Depois crie a lista de compras dele, adicione os produtos por ambiente e envie o link.">
+          <Button href="/perfis/novo" icon="plus">Cadastrar perfil</Button>
         </EmptyState>
       </div>
     );
@@ -41,17 +41,17 @@ export default async function Page({ searchParams } = {}) {
     <div className="wrap">
       <PageHeader eyebrow={DASHBOARD_DATE.format(new Date())} title={<>Olá, <em>{firstName}</em></>} meta={`Há ${dashboard.pendingProductCount} itens esperando compra em ${dashboard.listsWithPendingProductsCount} listas.`} actions={actions} />
       <section className="stats" aria-label="Resumo">
-        <StatCard href="/clientes" label="Clientes" value={dashboard.clientCount} detail={`${dashboard.clientsCreatedThisMonth} novos este mês`} />
+        <StatCard href="/perfis" label="Perfis" value={dashboard.clientCount} detail={`${dashboard.clientsCreatedThisMonth} novos este mês`} />
         <StatCard href="/listas" label="Listas de compras" value={dashboard.listCount} detail={plural(dashboard.completedListCount, 'concluída', 'concluídas')} />
         <StatCard href="/listas" label="Itens pendentes" value={dashboard.pendingProductCount} detail={`de ${dashboard.totalProductCount} itens nas listas`} highlight />
       </section>
       <ClientChangesPanel result={changes} />
       <div className="split">
         <section className="card">
-          <div className="card-head"><h2 className="sec">Clientes recentes</h2><Link href="/clientes">Ver todos</Link></div>
+          <div className="card-head"><h2 className="sec">Perfis recentes</h2><Link href="/perfis">Ver todos</Link></div>
           <ul className="rows">
             {dashboard.recentClients.map((c) => (
-              <li key={c.id}><Link className="rowlink" href={`/clientes/${c.id}`}>
+              <li key={c.id}><Link className="rowlink" href={`/perfis/${c.id}`}>
                 <Avatar name={c.name} />
                 <span className="grow"><span className="t">{c.name}</span><span className="s">{plural(c.listCount, 'lista', 'listas')}</span></span>
                 <span className="end">{formatUpdatedAt(c.updatedAt)}</span>

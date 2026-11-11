@@ -6,7 +6,7 @@ import { CLIENT, DASHBOARD, ME } from '@/test-support/fixtures';
 
 const { push, refresh, saveClient, deleteClient, deleteList, pathname } = vi.hoisted(() => ({
   push: vi.fn(), refresh: vi.fn(), saveClient: vi.fn(), deleteClient: vi.fn(), deleteList: vi.fn(),
-  pathname: { value: '/clientes' },
+  pathname: { value: '/perfis' },
 }));
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, refresh }), usePathname: () => pathname.value,
@@ -28,16 +28,16 @@ const fill = () => {
   fireEvent.change(screen.getByLabelText('E-mail'), { target: { value: ME.email } });
   fireEvent.change(screen.getByLabelText('Telefone'), { target: { value: '(31) 99999-8888' } });
 };
-const submit = () => fireEvent.click(screen.getByRole('button', { name: 'Salvar cliente' }));
+const submit = () => fireEvent.click(screen.getByRole('button', { name: 'Salvar perfil' }));
 const confirmDelete = (label) => {
   fireEvent.click(screen.getByRole('button', { name: label }));
-  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Excluir cliente' }));
+  fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Excluir perfil' }));
 };
 
 beforeEach(() => {
   vi.clearAllMocks();
   sessionStorage.clear();
-  pathname.value = '/clientes';
+  pathname.value = '/perfis';
   saveClient.mockReset().mockResolvedValue({ ok: true, data: CLIENT });
   deleteClient.mockReset().mockResolvedValue(SUCCESS);
   deleteList.mockReset().mockResolvedValue(SUCCESS);
@@ -80,7 +80,7 @@ test('a masked phone is sent as digits and the created UUID selects the route', 
   render(wrapper(<ClientForm />));
   fill();
   submit();
-  await waitFor(() => expect(push).toHaveBeenCalledWith('/clientes/' + CLIENT.id));
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/perfis/' + CLIENT.id));
   expect(saveClient).toHaveBeenCalledExactlyOnceWith(null, { name: 'Ana Lima', email: ME.email, phone: '31999998888' });
   expect(refresh).toHaveBeenCalledOnce();
 });
@@ -89,7 +89,7 @@ test('editing uses the persisted client and returned UUID while rendering its ma
   render(wrapper(<ClientForm client={CLIENT} />));
   expect(screen.getByLabelText('Telefone').value).toBe('(31) 99999-8888');
   submit();
-  await waitFor(() => expect(push).toHaveBeenCalledWith('/clientes/' + CLIENT.id));
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/perfis/' + CLIENT.id));
   expect(saveClient).toHaveBeenCalledWith(CLIENT.id, { name: CLIENT.name, email: CLIENT.email, phone: CLIENT.phone });
 });
 
@@ -112,7 +112,7 @@ test('pending client saves suppress duplicate submits and feedback after navigat
   saveClient.mockReturnValue(pending.promise);
   const view = render(wrapper(<ClientForm />));
   fill();
-  const form = screen.getByRole('button', { name: 'Salvar cliente' }).closest('form');
+  const form = screen.getByRole('button', { name: 'Salvar perfil' }).closest('form');
   fireEvent.submit(form);
   fireEvent.submit(form);
   expect(saveClient).toHaveBeenCalledOnce();
@@ -126,14 +126,14 @@ test('pending client saves suppress duplicate submits and feedback after navigat
 
 test('client search ignores accents, shows no-results and remains applied after server-prop changes', () => {
   const view = render(<ClientsTable clients={CLIENTS} />);
-  const search = screen.getByLabelText('Pesquisar clientes');
+  const search = screen.getByLabelText('Pesquisar perfis');
   fireEvent.change(search, { target: { value: 'sergio' } });
   expect(screen.getByRole('link', { name: 'Sérgio Hooper' })).toBeTruthy();
   expect(screen.queryByRole('link', { name: CLIENT.name })).toBeNull();
   view.rerender(<ClientsTable clients={[CLIENTS[0], { ...CLIENTS[1], name: 'Sérgio atualizado' }]} />);
   expect(screen.getByRole('link', { name: 'Sérgio atualizado' })).toBeTruthy();
   fireEvent.change(search, { target: { value: 'zzz' } });
-  expect(screen.getByText(/Nenhum cliente encontrado/)).toBeTruthy();
+  expect(screen.getByText(/Nenhum perfil encontrado/)).toBeTruthy();
 });
 
 test('cancelling client row deletion keeps the client and never writes', () => {
@@ -153,7 +153,7 @@ test('failed client deletion keeps the client and its lists without success feed
   expect(screen.getByRole('link', { name: CLIENT.name })).toBeTruthy();
   fireEvent.click(screen.getByRole('button', { name: 'Excluir ' + CLIENT.name }));
   expect(screen.getByText(/A lista de compras/)).toBeTruthy();
-  expect(screen.queryByText('Cliente excluído.')).toBeNull();
+  expect(screen.queryByText('Perfil excluído.')).toBeNull();
   expect(refresh).not.toHaveBeenCalled();
 });
 
@@ -170,12 +170,32 @@ test('successful row deletion waits for the API and only server props remove the
   expect(deleteClient).toHaveBeenCalledOnce();
   await act(async () => pending.resolve(SUCCESS));
   expect(screen.getByRole('link', { name: CLIENT.name })).toBeTruthy();
-  expect(screen.getByRole('status').textContent).toContain('Cliente excluído.');
+  expect(screen.getByRole('status').textContent).toContain('Perfil excluído.');
   expect(refresh).toHaveBeenCalledOnce();
   expect(push).not.toHaveBeenCalled();
   expect(sessionStorage.getItem('flash')).toBeNull();
   view.rerender(wrapper(<ClientsTable clients={[]} />));
-  expect(screen.getByText('Nenhum cliente por aqui ainda')).toBeTruthy();
+  expect(screen.getByText('Nenhum perfil por aqui ainda')).toBeTruthy();
+});
+
+test('the new list link preselects the profile through the perfil query parameter', () => {
+  render(wrapper(<ClientDetail client={CLIENT}><h1>{CLIENT.name}</h1></ClientDetail>));
+  expect(screen.getByRole('link', { name: 'Nova lista' }).getAttribute('href')).toBe(`/listas/nova?perfil=${CLIENT.id}`);
+});
+
+test('profile shows the lists it takes part in with link and level', () => {
+  const memberLists = [{ id: 'aaaa', name: 'Sítio', role: 'READER' }, { id: 'bbbb', name: 'Praia', role: 'EDITOR' }];
+  render(wrapper(<ClientDetail client={{ ...CLIENT, memberLists }}><h1>{CLIENT.name}</h1></ClientDetail>));
+  expect(screen.getByRole('heading', { name: 'Listas em que participa' })).toBeTruthy();
+  expect(screen.getByRole('link', { name: 'Sítio' }).getAttribute('href')).toBe('/listas/aaaa');
+  expect(screen.getByRole('link', { name: 'Praia' }).getAttribute('href')).toBe('/listas/bbbb');
+  expect(screen.getByText('Leitor')).toBeTruthy();
+  expect(screen.getByText('Editor')).toBeTruthy();
+});
+
+test.each([[[]], [undefined]])('profile hides the participation section without member lists (%j)', (memberLists) => {
+  render(wrapper(<ClientDetail client={{ ...CLIENT, memberLists }}><h1>{CLIENT.name}</h1></ClientDetail>));
+  expect(screen.queryByRole('heading', { name: 'Listas em que participa' })).toBeNull();
 });
 
 test('last-list deletion derives count, empty state and cascade warning from refreshed client.lists', async () => {
@@ -200,10 +220,10 @@ test('last-list deletion derives count, empty state and cascade warning from ref
 
 test.each([
   ['detail', () => <ClientDetail client={CLIENT} />, 'Excluir'],
-  ['edit form', () => <ClientForm client={CLIENT} />, 'Excluir cliente'],
+  ['edit form', () => <ClientForm client={CLIENT} />, 'Excluir perfil'],
 ])('%s deletion flashes only once at the destination after the API succeeds', async (_, element, label) => {
   vi.useFakeTimers();
-  pathname.value = '/clientes/' + CLIENT.id;
+  pathname.value = '/perfis/' + CLIENT.id;
   const pending = deferred();
   deleteClient.mockReturnValue(pending.promise);
   const view = render(wrapper(element()));
@@ -212,29 +232,29 @@ test.each([
   expect(push).not.toHaveBeenCalled();
   expect(sessionStorage.getItem('flash')).toBeNull();
   await act(async () => pending.resolve(SUCCESS));
-  expect(push).toHaveBeenCalledWith('/clientes');
+  expect(push).toHaveBeenCalledWith('/perfis');
   expect(refresh).toHaveBeenCalledOnce();
-  expect(JSON.parse(sessionStorage.getItem('flash')).m).toBe('Cliente excluído.');
+  expect(JSON.parse(sessionStorage.getItem('flash')).m).toBe('Perfil excluído.');
   const immediateFeedback = screen.getByRole('status').textContent;
-  pathname.value = '/clientes';
+  pathname.value = '/perfis';
   view.rerender(wrapper(<ClientsTable clients={[]} />));
   await act(async () => { vi.advanceTimersByTime(200); });
-  expect(screen.getAllByText('Cliente excluído.')).toHaveLength(1);
+  expect(screen.getAllByText('Perfil excluído.')).toHaveLength(1);
   expect(immediateFeedback).toBe('');
   expect(sessionStorage.getItem('flash')).toBeNull();
 });
 
 test.each([
   ['detail', () => <ClientDetail client={CLIENT} />, 'Excluir'],
-  ['edit form', () => <ClientForm client={CLIENT} />, 'Excluir cliente'],
+  ['edit form', () => <ClientForm client={CLIENT} />, 'Excluir perfil'],
 ])('%s deletion failure stays on the source without destination feedback', async (_, element, label) => {
   deleteClient.mockResolvedValueOnce(FAILURE);
   render(wrapper(element()));
-  if (label === 'Excluir cliente') fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Meu rascunho' } });
+  if (label === 'Excluir perfil') fireEvent.change(screen.getByLabelText('Nome completo'), { target: { value: 'Meu rascunho' } });
   confirmDelete(label);
   await waitFor(() => expect(screen.getByRole('status').textContent).toContain('Tente novamente.'));
-  if (label === 'Excluir cliente') expect(screen.getByLabelText('Nome completo').value).toBe('Meu rascunho');
-  expect(screen.queryByText('Cliente excluído.')).toBeNull();
+  if (label === 'Excluir perfil') expect(screen.getByLabelText('Nome completo').value).toBe('Meu rascunho');
+  expect(screen.queryByText('Perfil excluído.')).toBeNull();
   expect(push).not.toHaveBeenCalled();
   expect(refresh).not.toHaveBeenCalled();
   expect(sessionStorage.getItem('flash')).toBeNull();
@@ -245,8 +265,8 @@ test.each([
   ['row failure', () => <ClientsTable clients={CLIENTS} />, 'Excluir ' + CLIENT.name, FAILURE],
   ['detail success', () => <ClientDetail client={CLIENT} />, 'Excluir', SUCCESS],
   ['detail failure', () => <ClientDetail client={CLIENT} />, 'Excluir', FAILURE],
-  ['edit form success', () => <ClientForm client={CLIENT} />, 'Excluir cliente', SUCCESS],
-  ['edit form failure', () => <ClientForm client={CLIENT} />, 'Excluir cliente', FAILURE],
+  ['edit form success', () => <ClientForm client={CLIENT} />, 'Excluir perfil', SUCCESS],
+  ['edit form failure', () => <ClientForm client={CLIENT} />, 'Excluir perfil', FAILURE],
 ])('%s pending delete cannot navigate or display feedback from an unmounted owner', async (_, element, label, result) => {
   const pending = deferred();
   deleteClient.mockReturnValue(pending.promise);

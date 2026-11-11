@@ -12,7 +12,9 @@ vi.mock('next/navigation', () => ({ redirect, notFound: vi.fn(() => { throw new 
 vi.mock('next/cache', () => ({ revalidatePath }));
 
 const ORIGIN = 'http://localhost:8080';
-const BODY = { name: 'Casa nova', description: null, clientId: CLIENT.id };
+const FIELDS = { projectCode: null, contract: null, contractorName: null, contractorDocument: null, siteZipCode: null, siteAddress: null };
+const MEMBER = { clientId: '33333333-3333-4333-8333-333333333333', role: 'READER' };
+const BODY = { name: 'Casa nova', description: null, clientId: CLIENT.id, members: [MEMBER], ...FIELDS };
 const INVALID = { ok: false, status: 400, detail: 'Revise os dados enviados.', errors: {} };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
 
@@ -35,10 +37,18 @@ test.each([[null, 'POST', '/api/lists', 201], [LIST.id, 'PUT', '/api/lists/' + L
     }));
     expect(fetchMock.mock.calls[0][1].headers.get('Authorization')).toBe('Bearer private-jwt');
     expect(revalidatePath.mock.calls).toEqual([
-      ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/clientes'], ['/clientes/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
+      ['/dashboard'], ['/minhas-listas'], ['/minhas-listas/[id]', 'layout'], ['/perfis'], ['/perfis/[id]', 'layout'], ['/listas'], ['/listas/[id]', 'layout'],
     ]);
   },
 );
+
+test('save forwards the internal control fields and trims nothing', async () => {
+  const body = { ...BODY, projectCode: 'P-1', contract: 'C-9', contractorName: 'Ana', contractorDocument: '52998224725',
+    siteZipCode: '30140-071', siteAddress: 'Rua A, 10', members: [{ ...MEMBER, role: 'EDITOR' }] };
+  fetchMock.mockResolvedValue(json(LIST, 201));
+  await saveList(null, body);
+  expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify(body));
+});
 
 test('delete returns no invented data after the API accepts a 204', async () => {
   fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
@@ -49,7 +59,11 @@ test('delete returns no invented data after the API accepts a 204', async () => 
 });
 
 test.each([undefined, null, [], 'body', 5, {}, { ...BODY, name: null }, { ...BODY, description: [] },
-  { ...BODY, clientId: null }, { ...BODY, clientId: CLIENT.id + '/other' }].map((body) => [body]))(
+  { ...BODY, clientId: null }, { ...BODY, clientId: CLIENT.id + '/other' },
+  { ...BODY, members: undefined }, { ...BODY, members: 'x' }, { ...BODY, members: [null] },
+  { ...BODY, members: [{ clientId: 'x', role: 'READER' }] }, { ...BODY, members: [{ clientId: MEMBER.clientId, role: 'OWNER' }] },
+  { ...BODY, projectCode: 5 }, { ...BODY, contract: [] }, { ...BODY, contractorName: {} },
+  { ...BODY, contractorDocument: 1 }, { ...BODY, siteZipCode: true }, { ...BODY, siteAddress: 7 }].map((body) => [body]))(
   'save rejects malformed input %j before reading a session or writing', async (body) => {
     expect(await saveList(null, body)).toEqual(INVALID);
     expect(fetchMock).not.toHaveBeenCalled();
@@ -75,7 +89,7 @@ test('delete rejects null instead of treating it as creation', async () => {
 test.each([
   ['foreign list edit', () => saveList(LIST.id, BODY), 404, 'Não encontramos o que você procurava.', {}],
   ['foreign list delete', () => deleteList(LIST.id), 404, 'Não encontramos o que você procurava.', {}],
-  ['deleted or foreign client', () => saveList(null, BODY), 400, 'Revise os campos destacados.', { clientId: 'Escolha o cliente desta lista.' }],
+  ['deleted or foreign client', () => saveList(null, BODY), 400, 'Revise os campos destacados.', { clientId: 'Escolha o perfil principal desta lista.' }],
   ['delete unavailable', () => deleteList(LIST.id), 503, 'Tente novamente.', {}],
 ])('%s preserves upstream errors without success invalidation', async (_, action, status, detail, errors) => {
   fetchMock.mockResolvedValue(json({ status, detail, errors }, status));

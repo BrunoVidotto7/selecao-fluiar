@@ -7,7 +7,7 @@ export default async function Page() {
   const user = await getCurrentUser();
   return (
     <div className="wrap narrow">
-      <PageHeader eyebrow="Configurações" title={<>Sua <em>conta</em></>} meta="Dados que aparecem para os seus clientes e acesso ao sistema." />
+      <PageHeader eyebrow="Configurações" title={<>Sua <em>conta</em></>} meta="Dados que aparecem para os seus perfis e acesso ao sistema." />
       <SettingsForm user={user} />
     </div>
   );

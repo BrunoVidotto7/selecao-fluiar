@@ -86,7 +86,7 @@
 
 .nmw .nm-link{flex:1;min-width:0}
 
-/* novo: alterações do cliente durante a visita */
+/* novo: alterações do perfil durante a visita */
 .listdoc tr.client-changed td { background: var(--chip); }
 .listdoc tr.client-changed td:first-child { border-left: 3px solid var(--sage); }
 .listdoc .client-change-details { color: var(--ink); font-size: 12px; margin-block: 8px; overflow-wrap: anywhere; }

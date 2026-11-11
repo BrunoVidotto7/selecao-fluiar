@@ -16,7 +16,7 @@ export default function InvitationForm({ token, invitation }) {
     <header>
       <p className="eyebrow">Convite para suas listas</p>
       <h1>Aceite seu <em>convite</em></h1>
-      <p className="meta">Cliente: <b>{invitation.clientName}</b></p>
+      <p className="meta">Perfil: <b>{invitation.clientName}</b></p>
       <p className="meta">Convidada por {invitation.invitedByName}.</p>
       <p className="meta">Este convite cria uma conta para {invitation.email} no escritório {invitation.officeName}. Ao aceitar, você entrará nessa conta neste navegador.</p>
     </header>

@@ -8,7 +8,7 @@ import { rotateShareToken } from './actions';
 
 const COPY_FAILED_DETAIL = 'Não conseguimos copiar automaticamente. Selecione o link e copie manualmente.';
 const ROTATION_FAILED_DETAIL = 'Não conseguimos gerar um novo link. Tente novamente.';
-const ROTATION_WARNING = 'O link anterior deixará de funcionar. Envie o novo link ao cliente após a alteração.';
+const ROTATION_WARNING = 'O link anterior deixará de funcionar. Envie o novo link ao perfil após a alteração.';
 
 /** @param {{ listId: string, shareToken: string }} props */
 export default function ShareControls({ listId, shareToken }) {

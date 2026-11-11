@@ -3,7 +3,7 @@ import { actionResult, ApiError, apiRequest } from '@/lib/api.server';
 import { requireAdmin } from '@/lib/auth.server';
 import { isUuid } from '@/lib/route-input';
 import { revalidateWorkspaceData } from '@/lib/revalidate.server';
-import { validateProductImage, validateClientNotes } from '@/lib/validation';
+import { validateProductImage } from '@/lib/validation';
 import { downloadProductImage, fetchPageImages } from '@/lib/image-import.server';
 
 const HTTP_BAD_REQUEST = 400;
@@ -176,18 +176,15 @@ export async function deleteProductImage(listId, productId) {
   });
 }
 
-export async function saveProductClientNotes(listId, productId, clientNotes) {
+/** @param {string} listId @param {string} productId @param {string} clientId @returns {Promise<import('@/lib/api.server').ActionResult<undefined>>} */
+export async function deleteProductClientNote(listId, productId, clientId) {
   return actionResult(async () => {
     requireId(listId);
     requireId(productId);
-    const error = validateClientNotes(clientNotes);
-    if (error) throw new ApiError(HTTP_BAD_REQUEST, error, { clientNotes: error });
+    requireId(clientId);
     await requireProductInList(listId, productId);
-    const product = await apiRequest(`/api/products/${productId}/client-notes`, {
-      method: 'PUT', body: { clientNotes: clientNotes?.trim() || null },
-    });
+    await apiRequest(`/api/products/${productId}/client-notes/${clientId}`, { method: 'DELETE' });
     revalidateWorkspaceData();
-    return product;
   });
 }
 

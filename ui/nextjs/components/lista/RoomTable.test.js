@@ -1,18 +1,19 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import RoomTable from './RoomTable';
+import { FeedbackProvider } from '../feedback/Feedback';
 import { QUANTITY_UNIT_INVALID } from '@/lib/validation';
 import { LIST, PRODUCT, ROOM, SECOND_PRODUCT } from '@/test-support/fixtures';
 
-vi.mock('next/navigation', () => ({ unstable_rethrow: vi.fn() }));
+vi.mock('next/navigation', () => ({ unstable_rethrow: vi.fn(), usePathname: () => '/listas' }));
 afterEach(() => vi.useRealTimers());
 
 const renderRoom = (overrides = {}) => {
   const props = { room: ROOM, products: [PRODUCT], showAdd: true, listBase: `/listas/${LIST.id}`,
     pendingIds: new Set(), onToggle: vi.fn().mockResolvedValue({ ok: true, data: PRODUCT }),
     onQty: vi.fn().mockResolvedValue({ ok: true, data: PRODUCT }),
-    onRemove: vi.fn().mockResolvedValue({ ok: true, data: undefined }), ...overrides };
-  return { ...render(<RoomTable {...props} />), props };
+    onRemove: vi.fn().mockResolvedValue({ ok: true, data: undefined }), onDeleteNote: vi.fn(), ...overrides };
+  return { ...render(<FeedbackProvider><RoomTable {...props} /></FeedbackProvider>), props };
 };
 
 test('the room-add link uses the actual room UUID and null price remains Sem preço', () => {
@@ -97,10 +98,10 @@ test('a confirmed server quantity replaces an unfinished draft without resetting
   const qty = screen.getByRole('textbox', { name: 'Quantidade' });
   fireEvent.change(qty, { target: { value: '' } });
   fireEvent.blur(qty);
-  view.rerender(<RoomTable {...view.props} products={[{ ...PRODUCT, bought: true }]} />);
+  view.rerender(<FeedbackProvider><RoomTable {...view.props} products={[{ ...PRODUCT, bought: true }]} /></FeedbackProvider>);
   expect(qty.value).toBe('');
   expect(qty.getAttribute('aria-invalid')).toBe('true');
-  view.rerender(<RoomTable {...view.props} products={[{ ...PRODUCT, quantity: 5 }]} />);
+  view.rerender(<FeedbackProvider><RoomTable {...view.props} products={[{ ...PRODUCT, quantity: 5 }]} /></FeedbackProvider>);
   expect(qty.value).toBe('5');
   expect(qty.getAttribute('aria-invalid')).toBe('false');
   expect(view.props.onQty).not.toHaveBeenCalled();
@@ -172,4 +173,35 @@ test('the room print checkbox reflects roomSelected and the new-item row spans t
   expect(container.querySelector('tr.new td[colspan]').getAttribute('colspan')).toBe('4');
   expect(container.querySelectorAll('thead th')).toHaveLength(5);
   expect(container.querySelectorAll('tr.new td')).toHaveLength(2);
+});
+
+test('profile notes show the author, can be deleted after confirmation and have no edit field', () => {
+  const notes = [{ clientId: 'c1', clientName: 'Mariana', text: 'Prefiro cinza', updatedAt: '2026-11-05T12:00:00Z' }];
+  const { props } = renderRoom({ products: [{ ...PRODUCT, clientNotes: notes }] });
+  expect(screen.getByText('Mariana: Prefiro cinza')).toBeTruthy();
+  expect(screen.queryByRole('textbox', { name: /Observação:/ })).toBeNull();
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir observação de Mariana' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+  expect(props.onDeleteNote).toHaveBeenCalledWith(PRODUCT.id, 'c1');
+});
+
+test('a note delete is disabled while the row is busy and works once it is free', () => {
+  const notes = [{ clientId: 'c1', clientName: 'Mariana', text: 'Prefiro cinza', updatedAt: '2026-11-05T12:00:00Z' }];
+  const products = [{ ...PRODUCT, clientNotes: notes }];
+  const { props, rerender } = renderRoom({ products, pendingIds: new Set([PRODUCT.id]) });
+  const view = (pendingIds) => rerender(<FeedbackProvider><RoomTable {...props} pendingIds={pendingIds} /></FeedbackProvider>);
+  expect(screen.getByRole('button', { name: 'Excluir observação de Mariana' }).disabled).toBe(true);
+  view(new Set());
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir observação de Mariana' }));
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir' }));
+  expect(props.onDeleteNote).toHaveBeenCalledWith(PRODUCT.id, 'c1');
+});
+
+test('a failing note delete does not become an unhandled rejection', async () => {
+  const notes = [{ clientId: 'c1', clientName: 'Mariana', text: 'Prefiro cinza', updatedAt: '2026-11-05T12:00:00Z' }];
+  const onDeleteNote = vi.fn().mockRejectedValue(new Error('boom'));
+  renderRoom({ products: [{ ...PRODUCT, clientNotes: notes }], onDeleteNote });
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir observação de Mariana' }));
+  await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Excluir' })); });
+  expect(onDeleteNote).toHaveBeenCalledTimes(1);
 });

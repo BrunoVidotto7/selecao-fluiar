@@ -5,7 +5,7 @@ import NewProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/novo/page';
 import EditProductPage from '@/app/(app)/(admin)/listas/[id]/produtos/[produtoId]/editar/page';
 import { FeedbackProvider } from '../feedback/Feedback';
 import { LIST, ROOM, PRODUCT, SECOND_ROOM, CATEGORIES } from '@/test-support/fixtures';
-import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct, findProductImages, uploadProductImageFromUrl, previewStoreProduct } from './actions';
+import { saveProduct, uploadProductImage, deleteProductImage, deleteProduct, findProductImages, uploadProductImageFromUrl, previewStoreProduct, deleteProductClientNote } from './actions';
 import { getList } from '../listas/queries.server';
 import { readApi } from '@/lib/api.server';
 import { QUANTITY_AREA_INVALID, QUANTITY_UNIT_INVALID } from '@/lib/validation';
@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 }));
 vi.mock('./actions', () => ({
   saveProduct: vi.fn(), uploadProductImage: vi.fn(), deleteProductImage: vi.fn(), deleteProduct: vi.fn(),
-  findProductImages: vi.fn(), uploadProductImageFromUrl: vi.fn(), previewStoreProduct: vi.fn(),
+  findProductImages: vi.fn(), uploadProductImageFromUrl: vi.fn(), previewStoreProduct: vi.fn(), deleteProductClientNote: vi.fn(),
 }));
 vi.mock('../listas/queries.server', () => ({ getList: vi.fn() }));
 vi.mock('@/lib/api.server', () => ({ readApi: vi.fn() }));
@@ -63,6 +63,7 @@ beforeEach(() => {
   uploadProductImage.mockReset().mockResolvedValue({ ok: true, data: { imageUrl: IMAGE_URL } });
   deleteProductImage.mockReset().mockResolvedValue({ ok: true, data: undefined });
   deleteProduct.mockReset().mockResolvedValue({ ok: true, data: undefined });
+  deleteProductClientNote.mockReset().mockResolvedValue({ ok: true, data: undefined });
   findProductImages.mockReset().mockResolvedValue({ ok: true, data: { images: [] } });
   uploadProductImageFromUrl.mockReset().mockResolvedValue({ ok: true, data: { imageUrl: IMAGE_URL } });
   getList.mockReset().mockResolvedValue(LIST);
@@ -282,6 +283,17 @@ test('editing shows API values, object links, image path and bought state withou
   });
   expect(uploadProductImage).not.toHaveBeenCalled();
   expect(deleteProductImage).not.toHaveBeenCalled();
+});
+
+test('editing shows the profile notes and lets the architect delete one', async () => {
+  const notes = [{ clientId: 'c1', clientName: 'Mariana', text: 'Prefiro cinza', updatedAt: '2026-11-05T12:00:00Z' }];
+  mount({ product: { ...PRODUCT, clientNotes: notes } });
+  expect(screen.getByText('Mariana: Prefiro cinza')).toBeTruthy();
+  fireEvent.click(screen.getByRole('button', { name: 'Excluir observação de Mariana' }));
+  await act(async () => { fireEvent.click(within(screen.getByRole('alertdialog')).getByRole('button', { name: 'Excluir' })); });
+  expect(deleteProductClientNote).toHaveBeenCalledWith(LIST.id, PRODUCT.id, 'c1');
+  expect(screen.getByText('Observação excluída.')).toBeTruthy();
+  expect(refresh).toHaveBeenCalled();
 });
 
 test('editing another field without touching Status sends no bought value', async () => {

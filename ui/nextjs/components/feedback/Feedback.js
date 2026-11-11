@@ -17,7 +17,7 @@ export function useConfirm() {
   return useCallback((opts) => open({ ...opts, owner }), [open, owner]);
 }
 
-// Guarda um aviso para mostrar na próxima tela (ex.: "Cliente salvo." depois de redirecionar)
+// Guarda um aviso para mostrar na próxima tela (ex.: "Perfil salvo." depois de redirecionar)
 export function flash(message, type) {
   try { sessionStorage.setItem('flash', JSON.stringify({ m: message, t: type })); } catch {}
 }

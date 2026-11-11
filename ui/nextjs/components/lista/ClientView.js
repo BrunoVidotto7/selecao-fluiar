@@ -1,10 +1,12 @@
 import { formatQuantity } from '@/lib/quantity';
 import ItemLinks from './ItemLinks';
 import ProductThumb from './ProductThumb';
+import ProfileNotes from './ProfileNotes';
+import { priceText } from '@/lib/format';
 
 // Client preview without purchase controls, with print selection.
 /**
- * @param {{ rooms: { id?: string, name: string, products: { id?: string, name: string, quantity: number, unit?: string, bought: boolean, imageUrl: string | null, category: { name: string }, clientNotes: string | null, links: { url: string, note: string | null }[] }[] }[],
+ * @param {{ rooms: { id?: string, name: string, products: { id?: string, name: string, quantity: number, unit?: string, bought: boolean, imageUrl: string | null, category: { name: string }, clientNotes: { clientId: string, clientName: string, text: string }[], unitPrice?: number | null, notes?: string | null, links: { url: string, note: string | null }[] }[] }[],
  *   selected: Set<string>, onSelect: (id: string) => void, onSelectRoom: (room: object) => void, isRoomSelected: (room: object) => boolean }} props
  */
 export default function ClientView({ rooms, selected, onSelect, onSelectRoom, isRoomSelected }) {
@@ -24,10 +26,12 @@ export default function ClientView({ rooms, selected, onSelect, onSelectRoom, is
                 <td className="qt"><span className="ro-qty">{formatQuantity(it.quantity, it.unit)}</span></td>
                 <td className="it"><div className="itm">
                   <ProductThumb imageUrl={it.imageUrl} />
-                  <div className="txt"><span className="ro-name">{it.name}</span><span className="ro-cat">{it.category.name}</span></div>
+                  <div className="txt"><span className="ro-name">{it.name}</span><span className="ro-cat">{it.category.name}</span>
+                    <span className="price">{priceText(it)}</span></div>
                 </div></td>
                 <td><ItemLinks links={it.links} empty="Opções em breve" />
-                  {it.clientNotes && <p className="meta"><b>Observação do cliente:</b> {it.clientNotes}</p>}
+                  {it.notes && <p className="meta"><b>Nota interna:</b> {it.notes}</p>}
+                  <ProfileNotes notes={it.clientNotes} productName={it.name} />
                 </td>
               </tr>
             ))}

@@ -22,7 +22,7 @@ test('clients can mark purchases without administrative controls or private fiel
 });
 test('purchase filters and counts use the saved list and do not erase note drafts', () => {
   const rendered = render(<FeedbackProvider><ClientShoppingList list={CLIENT_LIST} /></FeedbackProvider>);
-  const input = screen.getByRole('textbox', { name: `Observação do cliente: ${CLIENT_PRODUCT.name}` });
+  const input = screen.getByRole('textbox', { name: `Observação: ${CLIENT_PRODUCT.name}` });
   fireEvent.change(input, { target: { value: 'Unsaved note' } });
   rendered.rerender(<FeedbackProvider><ClientShoppingList list={{ ...CLIENT_LIST, updatedAt: '2026-11-04T12:00:00Z' }} /></FeedbackProvider>);
   expect(input.value).toBe('Unsaved note');
@@ -77,7 +77,7 @@ test('print selection prints only marked items, without client header or purchas
   fireEvent.click(screen.getByRole('checkbox', { name: 'Imprimir: Capacho' }));
   expect(screen.getByText('1 item selecionado')).toBeTruthy();
   expect(sheetItems()).toEqual(['Capacho']);
-  expect(document.body.querySelector('.print-sheet').textContent).not.toContain('Cliente:');
+  expect(document.body.querySelector('.print-sheet').textContent).not.toContain('Perfil:');
   fireEvent.click(screen.getByRole('button', { name: 'Imprimir selecionados' }));
   expect(window.print).toHaveBeenCalledOnce();
   expect(setClientPurchase).not.toHaveBeenCalled();
@@ -107,4 +107,26 @@ test('shows the product photo, or a placeholder icon without one', () => {
   expect(thumbs[0].querySelector('img')?.getAttribute('src')).toBe('/images/' + CLIENT_PRODUCT.id);
   expect(thumbs[0].querySelector('img')?.getAttribute('loading')).toBe('lazy');
   expect(thumbs[1].querySelector('img')).toBeNull();
+});
+
+const NOTES = [{ clientId: CLIENT_LIST.clientId, clientName: 'Mariana', text: 'minha nota', updatedAt: '2026-11-04T12:00:00Z' },
+  { clientId: 'other', clientName: 'Paulo', text: 'nota do Paulo', updatedAt: '2026-11-04T12:00:00Z' }];
+const withNotes = (extra) => ({ ...CLIENT_LIST, ...extra, rooms: [{ ...CLIENT_LIST.rooms[0], products: [{ ...CLIENT_PRODUCT, notes: 'confirmar medida', clientNotes: NOTES }] }] });
+test('readers see price, internal notes and every profile note without purchase or note controls', () => {
+  render(<FeedbackProvider><ClientShoppingList list={withNotes({ canEdit: false })} /></FeedbackProvider>);
+  expect(screen.queryByRole('checkbox', { name: `Comprado: ${CLIENT_PRODUCT.name}` })).toBeNull();
+  expect(screen.getByRole('img', { name: 'Ainda não comprado' })).toBeTruthy();
+  expect(screen.queryByRole('textbox')).toBeNull();
+  expect(screen.getByText(/1\.500,00/)).toBeTruthy();
+  expect(screen.getByText(/confirmar medida/)).toBeTruthy();
+  expect(screen.getByText('Mariana: minha nota')).toBeTruthy();
+  expect(screen.getByText('Paulo: nota do Paulo')).toBeTruthy();
+});
+test('editors keep their own text in the editor and see the other notes below it', () => {
+  render(<FeedbackProvider><ClientShoppingList list={withNotes({ canEdit: true })} /></FeedbackProvider>);
+  expect(screen.getByRole('checkbox', { name: `Comprado: ${CLIENT_PRODUCT.name}` })).toBeTruthy();
+  expect(screen.getByRole('textbox', { name: `Observação: ${CLIENT_PRODUCT.name}` }).value).toBe('minha nota');
+  expect(screen.getByText('Paulo: nota do Paulo')).toBeTruthy();
+  expect(screen.queryByText('Mariana: minha nota')).toBeNull();
+  expect(screen.getByText(/confirmar medida/)).toBeTruthy();
 });
