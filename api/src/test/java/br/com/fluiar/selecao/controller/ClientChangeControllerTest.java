@@ -48,7 +48,7 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
         assertThat(readJson(detail(ana), "$.updatedAt")).isEqualTo(updated);
         notes("Prefiro preto");
         confirm(ana, "{\"observedRevision\":1}");
-        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].notes.value").isEqualTo("Prefiro preto");
+        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].notes[0].value").isEqualTo("Prefiro preto");
         assertThat(detail(ana)).bodyJson().doesNotHavePath("$.clientChanges.products[0].purchase");
         confirm(ana, "{\"observedRevision\":2}");
         confirm(ana, "{\"observedRevision\":1}");
@@ -98,6 +98,64 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
         assertThat(detail(ana)).bodyJson().hasPath("$.clientChanges.products[0]");
     }
 
+    @Test
+    void notesFromTwoProfilesCountAsOneProductAndNameBothAuthors() throws Exception {
+        UUID helena = createClient(ana, "Helena");
+        addMember(ana, list, client, helena, "EDITOR");
+        var helenaSession = createClientAccount(ana, helena, "helena@example.com");
+        notes(owner, "Preto");
+        notes(helenaSession, "Madeira");
+        var item = jsonMapper.readTree(summary(ana, "0").getResponse().getContentAsString()).at("/items/0");
+        assertThat(item.at("/changedProductCount").asLong()).isEqualTo(1);
+        assertThat(item.at("/notesChangedCount").asLong()).isEqualTo(2);
+        assertThat(item.at("/authorNames/0").asString()).isEqualTo("Cliente");
+        assertThat(item.at("/authorNames/1").asString()).isEqualTo("Helena");
+        assertThat(item.at("/authorNames").size()).isEqualTo(2);
+        var result = detail(ana);
+        assertThat(result).bodyJson().extractingPath("$.clientChanges.products").asArray().hasSize(1);
+        assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].notes").asArray().hasSize(2);
+        assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].notes[?(@.clientName=='Helena')].value")
+                .asArray().containsExactly("Madeira");
+        confirm(ana, "{\"observedRevision\":2}");
+        var read = jsonMapper.readTree(summary(ana, "0").getResponse().getContentAsString());
+        assertThat(read.at("/pendingListCount").asLong()).isZero();
+        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products").asArray().isEmpty();
+    }
+
+    @Test
+    void purchaseNamesTheProfileThatMarkedItAndRemovedNoteIsCounted() throws Exception {
+        UUID helena = createClient(ana, "Helena");
+        addMember(ana, list, client, helena, "EDITOR");
+        var helenaSession = createClientAccount(ana, helena, "helena@example.com");
+        purchase(helenaSession, true);
+        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].purchase.clientName").isEqualTo("Helena");
+        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].purchase.clientId").isEqualTo(helena.toString());
+        notes(owner, "Preto");
+        confirm(ana, "{\"observedRevision\":2}");
+        notes(owner, null);
+        var item = jsonMapper.readTree(summary(ana, "0").getResponse().getContentAsString()).at("/items/0");
+        assertThat(item.at("/notesRemovedCount").asLong()).isEqualTo(1);
+        assertThat(item.at("/notesChangedCount").asLong()).isZero();
+        assertThat(item.at("/authorNames/0").asString()).isEqualTo("Cliente");
+        assertThat(item.at("/authorNames").size()).isEqualTo(1);
+    }
+
+    @Test
+    void deletedAuthorKeepsPurchaseNoticeWithoutName() throws Exception {
+        UUID helena = createClient(ana, "Helena");
+        addMember(ana, list, client, helena, "EDITOR");
+        purchase(createClientAccount(ana, helena, "helena@example.com"), true);
+        assertThat(mvc.delete().uri("/api/clients/{id}", helena).header(HttpHeaders.AUTHORIZATION, bearer(ana)).exchange())
+                .hasStatus(HttpStatus.NO_CONTENT);
+        var result = detail(ana);
+        assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].purchase.value").isEqualTo(true);
+        assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].purchase.clientName").isNull();
+        assertThat(result).bodyJson().extractingPath("$.members").asArray().isEmpty();
+        var item = jsonMapper.readTree(summary(ana, "0").getResponse().getContentAsString()).at("/items/0");
+        assertThat(item.at("/purchaseMarkedCount").asLong()).isEqualTo(1);
+        assertThat(item.at("/authorNames").size()).isZero();
+    }
+
     private MvcTestResult summary(TestSession session, String page) {
         return mvc.get().uri("/api/client-changes?page=" + page).header(HttpHeaders.AUTHORIZATION, bearer(session)).exchange();
     }
@@ -108,14 +166,22 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
         notes("Prefiro preto");
         assertThat(mvc.patch().uri("/api/products/{id}", product).header(HttpHeaders.AUTHORIZATION, bearer(ana))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"bought\":false}").exchange()).hasStatus(HttpStatus.OK);
-        assertThat(mvc.put().uri("/api/products/{id}/client-notes", product).header(HttpHeaders.AUTHORIZATION, bearer(ana))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"clientNotes\":\"Valor administrativo\"}").exchange()).hasStatus(HttpStatus.OK);
+        var edit = Map.of("roomId", room, "categoryId", categoryId(ana, "Outros"), "name", "Sofá retrátil", "quantity", 1);
+        assertThat(mvc.put().uri("/api/products/{id}", product).header(HttpHeaders.AUTHORIZATION, bearer(ana))
+                .contentType(MediaType.APPLICATION_JSON).content(json(edit)).exchange()).hasStatus(HttpStatus.OK);
         var result = detail(ana);
         assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].bought").isEqualTo(false);
-        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").isEqualTo("Valor administrativo");
+        assertThat(result).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes[0].text").isEqualTo("Prefiro preto");
         assertThat(result).bodyJson().extractingPath("$.clientChanges.observedRevision").isEqualTo(2);
         assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].purchase.value").isEqualTo(true);
-        assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].notes.value").isEqualTo("Prefiro preto");
+        assertThat(result).bodyJson().extractingPath("$.clientChanges.products[0].notes[0].value").isEqualTo("Prefiro preto");
+        assertThat(mvc.delete().uri("/api/products/{id}/client-notes/{clientId}", product, client)
+                .header(HttpHeaders.AUTHORIZATION, bearer(ana)).exchange()).hasStatus(HttpStatus.NO_CONTENT);
+        var afterDelete = detail(ana);
+        assertThat(afterDelete).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").asArray().isEmpty();
+        assertThat(afterDelete).bodyJson().extractingPath("$.clientChanges.observedRevision").isEqualTo(2);
+        assertThat(afterDelete).bodyJson().doesNotHavePath("$.clientChanges.products[0].notes");
+        assertThat(afterDelete).bodyJson().extractingPath("$.clientChanges.products[0].purchase.value").isEqualTo(true);
     }
 
     @Test
@@ -143,7 +209,7 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
         assertThat(statusesOf(responses)).containsOnly(HttpStatus.NO_CONTENT);
         assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products").asArray().isEmpty();
         notes(null);
-        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].notes.value").isNull();
+        assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products[0].notes[0].value").isNull();
     }
 
     @Test
@@ -231,8 +297,6 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
     void adminWritesBeforeClientFeedbackCreateNoRetroactiveNotifications() throws Exception {
         assertThat(mvc.patch().uri("/api/products/{id}", product).header(HttpHeaders.AUTHORIZATION, bearer(ana))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"bought\":true}").exchange()).hasStatus(HttpStatus.OK);
-        assertThat(mvc.put().uri("/api/products/{id}/client-notes", product).header(HttpHeaders.AUTHORIZATION, bearer(ana))
-                .contentType(MediaType.APPLICATION_JSON).content("{\"clientNotes\":\"Administrativo\"}").exchange()).hasStatus(HttpStatus.OK);
         assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.observedRevision").isEqualTo(0);
         assertThat(detail(ana)).bodyJson().extractingPath("$.clientChanges.products").asArray().isEmpty();
         assertThat(jsonMapper.readTree(summary(ana, "0").getResponse().getContentAsString()).at("/pendingListCount").asLong()).isZero();
@@ -249,13 +313,19 @@ class ClientChangeControllerTest extends ApiIntegrationTest {
     }
 
     private void purchase(boolean bought) {
+        purchase(owner, bought);
+    }
+    private void purchase(TestSession author, boolean bought) {
         assertThat(mvc.patch().uri("/api/client/lists/{id}/products/{product}", list, product)
-                .header(HttpHeaders.AUTHORIZATION, bearer(owner)).contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, bearer(author)).contentType(MediaType.APPLICATION_JSON)
                 .content(json(Map.of("bought", bought))).exchange()).hasStatus(HttpStatus.OK);
     }
     private void notes(String value) {
+        notes(owner, value);
+    }
+    private void notes(TestSession author, String value) {
         assertThat(mvc.put().uri("/api/client/lists/{id}/products/{product}/client-notes", list, product)
-                .header(HttpHeaders.AUTHORIZATION, bearer(owner)).contentType(MediaType.APPLICATION_JSON)
+                .header(HttpHeaders.AUTHORIZATION, bearer(author)).contentType(MediaType.APPLICATION_JSON)
                 .content(json(java.util.Collections.singletonMap("clientNotes", value))).exchange()).hasStatus(HttpStatus.OK);
     }
     private MvcTestResult detail(TestSession session) {

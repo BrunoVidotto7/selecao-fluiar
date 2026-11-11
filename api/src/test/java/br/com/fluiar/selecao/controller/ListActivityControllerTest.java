@@ -40,5 +40,27 @@ class ListActivityControllerTest extends ApiIntegrationTest {
         assertThat(jdbc.queryForObject("select last_human_activity_at from list_human_activity where list_id=?",java.sql.Timestamp.class,list).toInstant())
                 .isCloseTo(future,org.assertj.core.api.Assertions.within(1,java.time.temporal.ChronoUnit.MILLIS));
     }
-}
 
+    @Test
+    void membersCountAsActivityAndRemovedMembersAreNotFound() {
+        var admin = createAdmin("Ana", "ana@test.com");
+        var principal = createClient(admin, "Principal", "principal@test.com");
+        var editorId = createClient(admin, "Editor", "editor@test.com");
+        var readerId = createClient(admin, "Leitor", "reader@test.com");
+        var list = createList(admin, principal, "Lista");
+        setMembers(admin, list, principal, java.util.Map.of(editorId, "EDITOR", readerId, "READER"));
+        var editor = inviteClient(admin, editorId);
+        var reader = inviteClient(admin, readerId);
+        jdbc.update("delete from list_human_activity where list_id=?", list);
+
+        assertThat(mvc.post().uri("/api/client/lists/{id}/activity", list).header(HttpHeaders.AUTHORIZATION, bearer(editor)).exchange())
+                .hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(jdbc.queryForObject("select count(*) from list_human_activity where list_id=?", Integer.class, list)).isEqualTo(1);
+        assertThat(mvc.post().uri("/api/client/lists/{id}/activity", list).header(HttpHeaders.AUTHORIZATION, bearer(reader)).exchange())
+                .hasStatus(HttpStatus.NO_CONTENT);
+
+        setMembers(admin, list, principal, java.util.Map.of());
+        assertThat(mvc.post().uri("/api/client/lists/{id}/activity", list).header(HttpHeaders.AUTHORIZATION, bearer(editor)).exchange())
+                .hasStatus(HttpStatus.NOT_FOUND);
+    }
+}

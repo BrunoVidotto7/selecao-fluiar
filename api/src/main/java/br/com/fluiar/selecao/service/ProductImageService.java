@@ -87,7 +87,7 @@ public class ProductImageService {
     public ImageContent load(UUID userId, UUID imageId) {
         var user = users.findById(userId).orElseThrow(ApiException::notFound);
         var product = productRepository.findByImageInOffice(imageId, user.getOfficeId()).orElseThrow(ApiException::notFound);
-        if (!ListAccessPolicy.permits(user, product.getRoom().getList().getClient())) {
+        if (!ListAccessPolicy.permits(user, product.getRoom().getList())) {
             throw ApiException.notFound();
         }
         return imageRepository.findById(imageId).map(ImageContent::of).orElseThrow(ApiException::notFound);

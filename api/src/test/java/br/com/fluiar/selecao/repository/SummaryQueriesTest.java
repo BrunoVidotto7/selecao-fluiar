@@ -12,6 +12,7 @@ import br.com.fluiar.selecao.model.ProductCategory;
 import br.com.fluiar.selecao.model.ProductImage;
 import br.com.fluiar.selecao.model.ProductLink;
 import br.com.fluiar.selecao.model.ProductUnit;
+import br.com.fluiar.selecao.model.ProjectInfo;
 import br.com.fluiar.selecao.model.Room;
 import br.com.fluiar.selecao.model.ShoppingList;
 import br.com.fluiar.selecao.support.TestcontainersConfiguration;
@@ -206,7 +207,7 @@ class SummaryQueriesTest {
         Client newClient = client(officeId, "Bruno Lima");
         storeUpdatedAt(list, OLDER_UPDATE);
 
-        list.update("Casa de praia", "Reforma da varanda", newClient);
+        list.update("Casa de praia", "Reforma da varanda", newClient, ProjectInfo.EMPTY);
         flushAndClear();
         List<ListSummaryResponse> summaries = shoppingListRepository.findSummaries(officeId);
 
@@ -289,7 +290,7 @@ class SummaryQueriesTest {
     }
 
     private ShoppingList list(Client client, String name) {
-        return shoppingListRepository.save(new ShoppingList(client, name, null, UUID.randomUUID().toString()));
+        return shoppingListRepository.save(new ShoppingList(client, name, null, UUID.randomUUID().toString(), ProjectInfo.EMPTY));
     }
 
     /** Stores a known past update time, so any later write by Hibernate is certainly newer, without waiting. */

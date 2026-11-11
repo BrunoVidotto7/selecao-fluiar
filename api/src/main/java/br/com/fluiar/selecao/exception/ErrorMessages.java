@@ -10,8 +10,8 @@ public final class ErrorMessages {
 
     public static final String AUTHENTICATION_REQUIRED = "Entre na sua conta para continuar.";
     public static final String ACCESS_DENIED = "Você não tem permissão para acessar este recurso.";
-    public static final String CLIENT_ALREADY_ACTIVE = "Este cliente já tem acesso ativo.";
-    public static final String INVITATION_EMAIL_IN_USE = "Este e-mail já tem um convite para outro cliente.";
+    public static final String CLIENT_ALREADY_ACTIVE = "Este perfil já tem acesso ativo.";
+    public static final String INVITATION_EMAIL_IN_USE = "Este e-mail já tem um convite para outro perfil.";
     public static final String VALIDATION_FAILED = "Revise os campos destacados.";
     public static final String INVALID_REQUEST = "Revise os dados enviados.";
     public static final String NOT_FOUND = "Não encontramos o que você procurava.";
@@ -28,7 +28,12 @@ public final class ErrorMessages {
     public static final String EMAIL_NOT_SENT =
             "Não conseguimos enviar o e-mail agora. Tente novamente em alguns minutos.";
     public static final String PHONE_INVALID = "Digite o telefone com DDD, como (31) 99999-9999.";
-    public static final String LIST_CLIENT_REQUIRED = "Escolha o cliente desta lista.";
+    public static final String LIST_CLIENT_REQUIRED = "Escolha o perfil principal desta lista.";
+    public static final String ZIP_CODE_INVALID = "Digite o CEP com 8 números, como 30140-071.";
+    public static final String TAX_DOCUMENT_INVALID = "Digite um CPF ou CNPJ válido.";
+    public static final String LIST_MEMBER_DUPLICATED = "Cada perfil pode aparecer só uma vez.";
+    public static final String LIST_MEMBER_NOT_IN_OFFICE = "Escolha um perfil do escritório.";
+    public static final String LIST_READ_ONLY = "Você só pode visualizar esta lista.";
     public static final String ROOM_NAME_IN_USE = "Já existe um ambiente com esse nome nesta lista.";
     public static final String ROOM_ORDER_INCOMPLETE = "Envie todos os ambientes da lista, sem repetir.";
     public static final String ROOM_REQUIRED = "Escolha o ambiente do produto.";

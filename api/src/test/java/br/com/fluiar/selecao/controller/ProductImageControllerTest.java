@@ -133,6 +133,27 @@ class ProductImageControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void readerLoadsImage() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID mixerId = createMixer(paula);
+        String imageUrl = uploadImage(paula, mixerId);
+        UUID listId = jdbcListOf(mixerId);
+        UUID principalId = jdbc.queryForObject("select client_id from shopping_lists where id = ?", UUID.class, listId);
+        UUID readerId = createClient(paula, "Reader", "reader@example.com");
+        imageReader = inviteClient(paula, readerId);
+        assertThat(requestImage(imageUrl)).hasStatus(HttpStatus.NOT_FOUND);
+
+        addMember(paula, listId, principalId, readerId, "READER");
+
+        assertThat(requestImage(imageUrl)).hasStatus(HttpStatus.OK);
+    }
+
+    private UUID jdbcListOf(UUID productId) {
+        return jdbc.queryForObject("select r.list_id from products p join rooms r on r.id = p.room_id where p.id = ?",
+                UUID.class, productId);
+    }
+
+    @Test
     void uploadAcceptsFileOfExactly5MB() {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         UUID mixerId = createMixer(paula);

@@ -11,6 +11,8 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.OrderBy;
 import jakarta.persistence.OrderColumn;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
@@ -18,6 +20,7 @@ import java.math.RoundingMode;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.Formula;
@@ -29,7 +32,6 @@ public class Product {
 
     public static final int NAME_MAX_LENGTH = 120;
     public static final int NOTES_MAX_LENGTH = 1000;
-    public static final int CLIENT_NOTES_MAX_LENGTH = 1000;
     public static final int MAX_LINKS = 10;
     /** The unit price column is {@code numeric(12, 2)}: 10 digits before the decimal point and 2 after it. */
     public static final int PRICE_INTEGER_DIGITS = 10;
@@ -64,7 +66,9 @@ public class Product {
 
     private String notes;
 
-    private String clientNotes;
+    @OneToMany(mappedBy = "product")
+    @OrderBy("updatedAt")
+    private List<ProductClientNote> clientNotes = new ArrayList<>();
 
     private boolean bought;
 
@@ -101,12 +105,8 @@ public class Product {
 
     public ProductClientChanges getClientChanges() { return clientChanges; }
 
-    public void recordClientPurchase(long revision, Instant changedAt, boolean value) {
-        clientChanges.recordPurchase(revision, changedAt, value);
-    }
-
-    public void recordClientNotes(long revision, Instant changedAt, String value) {
-        clientChanges.recordNotes(revision, changedAt, value);
+    public void recordClientPurchase(long revision, Instant changedAt, boolean value, Client author) {
+        clientChanges.recordPurchase(revision, changedAt, value, author);
     }
 
     public ProductStoreSync getStoreSync() {
@@ -152,12 +152,18 @@ public class Product {
         return notes;
     }
 
-    public String getClientNotes() {
+    public List<ProductClientNote> getClientNotes() {
         return clientNotes;
     }
 
-    public void changeClientNotes(String notes) {
-        this.clientNotes = notes;
+    public ProductClientNote addClientNote(Client author) {
+        ProductClientNote note = new ProductClientNote(this, author);
+        clientNotes.add(note);
+        return note;
+    }
+
+    public Optional<ProductClientNote> clientNoteOf(UUID clientId) {
+        return clientNotes.stream().filter(note -> note.getClient().getId().equals(clientId)).findFirst();
     }
 
     public boolean isBought() {

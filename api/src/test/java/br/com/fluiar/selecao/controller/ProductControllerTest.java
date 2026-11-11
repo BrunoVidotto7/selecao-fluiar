@@ -484,6 +484,83 @@ class ProductControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void adminSeesAllProfileNotesWithNames() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID sergioId = createClient(paula, SERGIO_NAME);
+        UUID helenaId = createClient(paula, HELENA_NAME, "helena@example.com");
+        UUID listId = createList(paula, sergioId, LIST_NAME);
+        addMember(paula, listId, sergioId, helenaId, "EDITOR");
+        UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        writeClientNote(createClientAccount(paula, sergioId, "sergio-login@example.com"), listId, mixerId, "Prefiro preto");
+        writeClientNote(createClientAccount(paula, helenaId, "helena-login@example.com"), listId, mixerId, "Prefiro branco");
+
+        var result = requestProduct(paula, mixerId);
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.clientNotes").asArray().hasSize(2);
+        assertThat(result).bodyJson().extractingPath("$.clientNotes[?(@.clientName=='" + SERGIO_NAME + "')].text")
+                .asArray().containsExactly("Prefiro preto");
+        assertThat(result).bodyJson().extractingPath("$.clientNotes[?(@.clientName=='" + HELENA_NAME + "')].text")
+                .asArray().containsExactly("Prefiro branco");
+    }
+
+    @Test
+    void adminDeletesProfileNote() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID sergioId = createClient(paula, SERGIO_NAME);
+        UUID listId = createList(paula, sergioId, LIST_NAME);
+        UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        writeClientNote(createClientAccount(paula, sergioId, "sergio-login@example.com"), listId, mixerId, "Prefiro preto");
+        assertThat(requestList(paula, listId)).bodyJson().extractingPath("$.clientChanges.products").asArray().hasSize(1);
+
+        var result = requestClientNoteDelete(paula, mixerId, sergioId);
+
+        assertThat(result).hasStatus(HttpStatus.NO_CONTENT);
+        assertThat(requestProduct(paula, mixerId)).bodyJson().extractingPath("$.clientNotes").asArray().isEmpty();
+        assertThat(requestList(paula, listId)).bodyJson().extractingPath("$.clientChanges.products").asArray().isEmpty();
+    }
+
+    @Test
+    void deleteNoteOfAnotherOffice404() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
+        UUID sergioId = createClient(paula, SERGIO_NAME);
+        UUID listId = createList(paula, sergioId, LIST_NAME);
+        UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        writeClientNote(createClientAccount(paula, sergioId, "sergio-login@example.com"), listId, mixerId, "Prefiro preto");
+
+        assertThat(requestClientNoteDelete(marina, mixerId, sergioId)).hasStatus(HttpStatus.NOT_FOUND);
+
+        assertThat(requestProduct(paula, mixerId)).bodyJson().extractingPath("$.clientNotes").asArray().hasSize(1);
+    }
+
+    @Test
+    void deleteMissingNote404() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID sergioId = createClient(paula, SERGIO_NAME);
+        UUID listId = createList(paula, sergioId, LIST_NAME);
+        UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+
+        assertThat(requestClientNoteDelete(paula, mixerId, sergioId)).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void putClientNotesNoLongerExists() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID sergioId = createClient(paula, SERGIO_NAME);
+        UUID listId = createList(paula, sergioId, LIST_NAME);
+        UUID mixerId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+
+        var result = mvc.put().uri("/api/products/{productId}/client-notes", mixerId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(paula))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("clientNotes", "Nota")))
+                .exchange();
+
+        assertThat(result).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
     void productOfAnotherOfficeIsNotFound() {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
         var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
@@ -494,7 +571,6 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(requestProduct(marina, mixerId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestUpdate(marina, mixerId, mixer(kitchenId))).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestStatusChange(marina, mixerId, Map.of("bought", true))).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(requestClientNotesChange(marina, mixerId, "Nota de outro escritório")).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestDelete(marina, mixerId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestCreate(marina, listId, mixer(kitchenId))).hasStatus(HttpStatus.NOT_FOUND);
 
@@ -502,7 +578,7 @@ class ProductControllerTest extends ApiIntegrationTest {
         assertThat(stored).hasStatus(HttpStatus.OK);
         assertThat(stored).bodyJson().extractingPath("$.name").isEqualTo(MIXER);
         assertThat(stored).bodyJson().extractingPath("$.bought").isEqualTo(false);
-        assertThat(stored).bodyJson().extractingPath("$.clientNotes").isNull();
+        assertThat(stored).bodyJson().extractingPath("$.clientNotes").asArray().isEmpty();
         var list = requestList(paula, listId);
         assertThat(list).hasStatus(HttpStatus.OK);
         assertThat(list).bodyJson().extractingPath("$.stats.totalProducts").isEqualTo(1);
@@ -788,12 +864,19 @@ class ProductControllerTest extends ApiIntegrationTest {
                 .exchange();
     }
 
-    private MvcTestResult requestClientNotesChange(TestSession session, UUID productId, String clientNotes) {
-        return mvc.put().uri("/api/products/{productId}/client-notes", productId)
+    private MvcTestResult requestClientNoteDelete(TestSession session, UUID productId, UUID clientId) {
+        return mvc.delete().uri("/api/products/{productId}/client-notes/{clientId}", productId, clientId)
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("clientNotes", clientNotes)))
                 .exchange();
+    }
+
+    private void writeClientNote(TestSession client, UUID listId, UUID productId, String text) {
+        var result = mvc.put().uri("/api/client/lists/{list}/products/{product}/client-notes", listId, productId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(client))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("clientNotes", text)))
+                .exchange();
+        assertThat(result).hasStatus(HttpStatus.OK);
     }
 
     private MvcTestResult requestDelete(TestSession session, UUID productId) {

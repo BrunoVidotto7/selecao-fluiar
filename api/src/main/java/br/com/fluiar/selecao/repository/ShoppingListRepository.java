@@ -99,7 +99,8 @@ public interface ShoppingListRepository extends JpaRepository<ShoppingList, UUID
                 sum(case when p.bought = true then 1 else 0 end), l.updatedAt)
             from ShoppingList l join l.client c
             left join Room r on r.list = l left join Product p on p.room = r
-            where c.officeId = :officeId and c.id = :clientId
+            where c.officeId = :officeId
+                and (c.id = :clientId or exists (select m.id from ListMember m where m.list = l and m.client.id = :clientId))
             group by l.id, l.name, l.description, l.updatedAt
             order by l.updatedAt desc
             """)

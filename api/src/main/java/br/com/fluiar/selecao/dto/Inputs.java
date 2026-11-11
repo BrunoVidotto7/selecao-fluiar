@@ -15,6 +15,7 @@ public final class Inputs {
     public static final String URL_PATTERN = "^https?://[^\\s.]+\\.\\S+$";
 
     private static final Pattern NON_DIGIT = Pattern.compile("\\D");
+    private static final Pattern CODE_SEPARATORS = Pattern.compile("[\\s.\\-/]");
 
     private Inputs() {
     }
@@ -35,5 +36,14 @@ public final class Inputs {
     /** Keeps only the digits, so a masked phone like {@code (31) 98842-1170} becomes {@code 31988421170}. */
     public static String digits(String value) {
         return value == null ? null : NON_DIGIT.matcher(value).replaceAll("");
+    }
+
+    /** Removes spaces, dots, dashes and slashes and uses capital letters, so a masked CNPJ is stored compact. Blank becomes null. */
+    public static String compactCode(String value) {
+        if (value == null) {
+            return null;
+        }
+        String code = CODE_SEPARATORS.matcher(value).replaceAll("").toUpperCase(Locale.ROOT);
+        return code.isEmpty() ? null : code;
     }
 }

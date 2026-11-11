@@ -21,11 +21,15 @@ class PrivateListAccessTest {
 
     @Test
     void sharingNeverGrantsAccessToAnotherClientOrOffice() {
-        Client client = client();
-        assertThat(ListAccessPolicy.permits(User.admin(officeId, "Admin", "admin@example.com", "hash"), client)).isTrue();
-        assertThat(ListAccessPolicy.permits(User.client(officeId, clientId, "Client", "client@example.com", "hash"), client)).isTrue();
-        assertThat(ListAccessPolicy.permits(User.client(officeId, UUID.randomUUID(), "Other", "other@example.com", "hash"), client)).isFalse();
-        assertThat(ListAccessPolicy.permits(User.admin(UUID.randomUUID(), "Other", "other@example.com", "hash"), client)).isFalse();
+        var list = new ShoppingList(client(), "Home", null, "token", ProjectInfo.EMPTY);
+        var reader = new Client(officeId, "Reader", "reader@example.com", "31999999999");
+        ReflectionTestUtils.setField(reader, "id", UUID.randomUUID());
+        list.replaceMembers(java.util.Map.of(reader, ListRole.READER));
+        assertThat(ListAccessPolicy.permits(User.admin(officeId, "Admin", "admin@example.com", "hash"), list)).isTrue();
+        assertThat(ListAccessPolicy.permits(User.client(officeId, clientId, "Client", "client@example.com", "hash"), list)).isTrue();
+        assertThat(ListAccessPolicy.permits(User.client(officeId, reader.getId(), "Reader", "reader@example.com", "hash"), list)).isTrue();
+        assertThat(ListAccessPolicy.permits(User.client(officeId, UUID.randomUUID(), "Other", "other@example.com", "hash"), list)).isFalse();
+        assertThat(ListAccessPolicy.permits(User.admin(UUID.randomUUID(), "Other", "other@example.com", "hash"), list)).isFalse();
     }
 
     @Test
@@ -34,7 +38,7 @@ class PrivateListAccessTest {
         var users = mock(UserRepository.class);
         UUID userId = UUID.randomUUID();
         UUID listId = UUID.randomUUID();
-        var list = new ShoppingList(client(), "Home", null, "token");
+        var list = new ShoppingList(client(), "Home", null, "token", ProjectInfo.EMPTY);
         ReflectionTestUtils.setField(list, "id", listId);
         when(lists.findByShareToken("token")).thenReturn(Optional.of(list));
         when(users.findById(userId)).thenReturn(Optional.of(User.client(officeId, clientId, "Client", "client@example.com", "hash")));

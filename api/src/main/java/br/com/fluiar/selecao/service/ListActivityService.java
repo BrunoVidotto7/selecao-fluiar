@@ -24,7 +24,7 @@ public class ListActivityService {
     @Transactional
     public void open(UUID officeId, UUID clientId, UUID listId) {
         var list = lists.findInOfficeForUpdate(listId, officeId).orElseThrow(ApiException::notFound);
-        if (clientId != null && !list.getClient().getId().equals(clientId)) throw ApiException.notFound();
+        if (clientId != null) list.roleOf(clientId).orElseThrow(ApiException::notFound);
         record(listId);
     }
 

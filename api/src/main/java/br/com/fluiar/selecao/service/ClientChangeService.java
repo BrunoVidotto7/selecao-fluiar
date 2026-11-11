@@ -8,6 +8,7 @@ import br.com.fluiar.selecao.repository.ShoppingListRepository;
 import br.com.fluiar.selecao.dto.ClientChangesResponse.*;
 import br.com.fluiar.selecao.model.ShoppingList;
 import br.com.fluiar.selecao.repository.ClientChangeRepository;
+import java.util.Comparator;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,12 +46,16 @@ public class ClientChangeService {
         var products = list.getRooms().stream().flatMap(room -> room.getProducts().stream())
                 .map(product -> {
                     var latest = product.getClientChanges();
+                    var author = latest.getPurchaseAuthor();
                     var purchase = latest.getPurchaseRevision() > seen
-                            ? new PurchaseChange(latest.getPurchaseRevision(), latest.getPurchaseChangedAt(), latest.getPurchaseValue()) : null;
-                    var notes = latest.getNotesRevision() > seen
-                            ? new NotesChange(latest.getNotesRevision(), latest.getNotesChangedAt(), latest.getNotesValue()) : null;
+                            ? new PurchaseChange(latest.getPurchaseRevision(), latest.getPurchaseChangedAt(), latest.getPurchaseValue(),
+                                    author == null ? null : author.getId(), author == null ? null : author.getName()) : null;
+                    var notes = product.getClientNotes().stream().filter(note -> note.getRevision() > seen)
+                            .sorted(Comparator.comparing(note -> note.getClient().getName()))
+                            .map(note -> new NotesChange(note.getClient().getId(), note.getClient().getName(),
+                                    note.getRevision(), note.getChangedAt(), note.getText())).toList();
                     return new ChangedProduct(product.getId(), purchase, notes);
-                }).filter(product -> product.purchase() != null || product.notes() != null).toList();
+                }).filter(product -> product.purchase() != null || !product.notes().isEmpty()).toList();
         return new ClientChangesResponse(list.getClientChangeRevision(), products);
     }
 }

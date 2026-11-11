@@ -33,7 +33,7 @@ class ClientChangeRepositoryTest extends ApiIntegrationTest {
             assertThat(item.purchaseMarkedCount()).isEqualTo(100);
         });
         var plan = jdbc.queryForList("explain (analyze, buffers) " + ClientChangeRepository.SUMMARIES_SQL,
-                String.class, admin.userId(), admin.officeId(), 20, 20L);
+                String.class, admin.userId(), admin.officeId(), admin.userId(), admin.officeId(), 20, 20L);
         System.out.println("Client change aggregate EXPLAIN (4000 products / 40 lists):\n" + String.join("\n", plan));
     }
 }

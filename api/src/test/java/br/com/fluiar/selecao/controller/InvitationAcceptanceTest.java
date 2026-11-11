@@ -170,7 +170,7 @@ class InvitationAcceptanceTest extends ApiIntegrationTest {
                 () -> requestClientInvitation(paula, clientId))).getFirst();
 
         assertThat(result).hasStatus(HttpStatus.CONFLICT);
-        assertThat(result).bodyJson().extractingPath("$.errors.clientId").isEqualTo("Este cliente já tem acesso ativo.");
+        assertThat(result).bodyJson().extractingPath("$.errors.clientId").isEqualTo("Este perfil já tem acesso ativo.");
         assertThat(pendingInvitationsFor(ISABELA_EMAIL)).isZero();
         verify(mailSender, times(1)).send(any(SimpleMailMessage.class));
     }

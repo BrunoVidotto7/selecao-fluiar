@@ -31,7 +31,7 @@ class GlobalExceptionHandlerTest {
 
     private final MockMvcTester mvc = MockMvcTester.of(
             List.of(new DuplicateWritingController(), new OversizedUploadController(),
-                    new UnreadableUploadController(), new FailingController()),
+                    new UnreadableUploadController(), new FailingController(), new ForbiddenController()),
             builder -> builder.setControllerAdvice(new GlobalExceptionHandler()).build());
 
     @Test
@@ -84,6 +84,23 @@ class GlobalExceptionHandlerTest {
         mvc.post().uri("/failing/{secret}", SECRET_PATH_VALUE).exchange();
 
         assertThat(output.getOut()).contains("POST /failing/{secret}").doesNotContain(SECRET_PATH_VALUE);
+    }
+
+    @Test
+    void forbiddenCarriesItsMessageAsDetail() {
+        var result = mvc.post().uri("/forbidden");
+
+        assertThat(result).hasStatus(HttpStatus.FORBIDDEN);
+        assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo("Sem acesso.");
+    }
+
+    @RestController
+    static class ForbiddenController {
+
+        @PostMapping("/forbidden")
+        void forbid() {
+            throw ApiException.forbidden("Sem acesso.");
+        }
     }
 
     @RestController

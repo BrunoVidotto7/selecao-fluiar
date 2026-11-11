@@ -35,6 +35,10 @@ public class ApiException extends RuntimeException {
         return new ApiException(HttpStatus.NOT_FOUND, ErrorMessages.NOT_FOUND, Map.of());
     }
 
+    public static ApiException forbidden(String message) {
+        return new ApiException(HttpStatus.FORBIDDEN, message, Map.of());
+    }
+
     public static ApiException invalidCredentials() {
         return new ApiException(HttpStatus.UNAUTHORIZED, ErrorMessages.INVALID_CREDENTIALS, Map.of());
     }

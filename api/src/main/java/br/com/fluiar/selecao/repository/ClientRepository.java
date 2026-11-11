@@ -3,6 +3,7 @@ package br.com.fluiar.selecao.repository;
 import br.com.fluiar.selecao.dto.ClientSummaryResponse;
 import br.com.fluiar.selecao.model.Client;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,6 +17,8 @@ import org.springframework.data.jpa.repository.Query;
 public interface ClientRepository extends JpaRepository<Client, UUID> {
 
     Optional<Client> findByIdAndOfficeId(UUID id, UUID officeId);
+
+    List<Client> findByIdInAndOfficeId(Collection<UUID> ids, UUID officeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select c from Client c where c.id = :id and c.officeId = :officeId")

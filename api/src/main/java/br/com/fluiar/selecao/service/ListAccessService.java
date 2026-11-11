@@ -23,7 +23,7 @@ public class ListAccessService {
     public ListAccessResponse resolve(UUID userId, String token) {
         var user = users.findById(userId).orElseThrow(ApiException::notFound);
         var list = lists.findByShareToken(token).orElseThrow(ApiException::notFound);
-        if (!ListAccessPolicy.permits(user, list.getClient())) {
+        if (!ListAccessPolicy.permits(user, list)) {
             throw ApiException.notFound();
         }
         return new ListAccessResponse(list.getId(), user.getRole());

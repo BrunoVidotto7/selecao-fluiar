@@ -7,6 +7,7 @@ import br.com.fluiar.selecao.dto.ClientSummaryResponse;
 import br.com.fluiar.selecao.exception.ApiException;
 import br.com.fluiar.selecao.model.Client;
 import br.com.fluiar.selecao.repository.ClientRepository;
+import br.com.fluiar.selecao.repository.ListMemberRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
 import br.com.fluiar.selecao.repository.OfficeInvitationRepository;
 import java.util.List;
@@ -22,8 +23,11 @@ public class ClientService {
     private final ShoppingListRepository listRepository;
 
     private final OfficeInvitationRepository invitationRepository;
+    private final ListMemberRepository memberRepository;
 
-    public ClientService(ClientRepository clientRepository, ShoppingListRepository listRepository, OfficeInvitationRepository invitationRepository) {
+    public ClientService(ClientRepository clientRepository, ShoppingListRepository listRepository,
+            OfficeInvitationRepository invitationRepository, ListMemberRepository memberRepository) {
+        this.memberRepository = memberRepository;
         this.invitationRepository = invitationRepository;
         this.clientRepository = clientRepository;
         this.listRepository = listRepository;
@@ -36,7 +40,8 @@ public class ClientService {
     public ClientDetailResponse get(UUID officeId, UUID clientId) {
         Client client = loadClient(officeId, clientId);
 
-        return ClientDetailResponse.of(client, listRepository.findSummariesByClient(officeId, clientId));
+        return ClientDetailResponse.of(client, listRepository.findSummariesByClient(officeId, clientId),
+                memberRepository.findMemberLists(clientId, officeId));
     }
 
     @Transactional

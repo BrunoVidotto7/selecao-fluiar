@@ -138,6 +138,40 @@ class ClientControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void getClientShowsTheListsItWasAddedTo() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID sergio = createClient(paula, SERGIO_NAME);
+        UUID helena = createClient(paula, HELENA_NAME);
+        UUID ownList = createList(paula, sergio, "Casa de praia");
+        UUID otherList = createList(paula, helena, LIST_NAME);
+        addMember(paula, otherList, helena, sergio, "READER");
+
+        var result = requestClient(paula, sergio);
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.lists[*].id").asArray().containsExactly(ownList.toString());
+        assertThat(result).bodyJson().extractingPath("$.memberLists[*].id").asArray().containsExactly(otherList.toString());
+        assertThat(result).bodyJson().extractingPath("$.memberLists[0].name").isEqualTo(LIST_NAME);
+        assertThat(result).bodyJson().extractingPath("$.memberLists[0].role").isEqualTo("READER");
+    }
+
+    @Test
+    void deleteClientDeletesItsListsAndLeavesOtherListsWithoutIt() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID sergio = createClient(paula, SERGIO_NAME);
+        UUID helena = createClient(paula, HELENA_NAME);
+        UUID ownList = createList(paula, sergio, "Casa de praia");
+        UUID otherList = createList(paula, helena, LIST_NAME);
+        addMember(paula, otherList, helena, sergio, "READER");
+
+        assertThat(requestDelete(paula, sergio)).hasStatus(HttpStatus.NO_CONTENT);
+
+        assertThat(jdbc.queryForObject("select count(*) from shopping_lists where id = ?", Integer.class, ownList)).isZero();
+        assertThat(jdbc.queryForObject("select count(*) from shopping_lists where id = ?", Integer.class, otherList)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select count(*) from list_members where list_id = ?", Integer.class, otherList)).isZero();
+    }
+
+    @Test
     void clientIdThatIsNotAUuidIsRejected() {
         var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
 

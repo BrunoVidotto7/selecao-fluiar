@@ -64,6 +64,25 @@ class PublicListControllerTest extends ApiIntegrationTest {
     }
 
     @Test
+    void readerResolvesShareLink() {
+        var admin = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principalId = createClient(admin, SERGIO_NAME, "client@example.com");
+        UUID readerId = createClient(admin, "Reader", "reader@example.com");
+        UUID listId = createList(admin, principalId, LIST_NAME);
+        String token = shareTokenOf(admin, listId);
+        var reader = inviteClient(admin, readerId);
+        currentReader = reader;
+        assertThat(requestSharedList(token)).hasStatus(HttpStatus.NOT_FOUND);
+
+        addMember(admin, listId, principalId, readerId, "READER");
+
+        var result = requestSharedList(token);
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.listId").isEqualTo(listId.toString());
+        assertThat(result).bodyJson().extractingPath("$.role").isEqualTo("CLIENT");
+    }
+
+    @Test
     void unknownShareTokenIsNotFound() {
         currentReader = createAdmin(PAULA_NAME, PAULA_EMAIL);
         var result = requestSharedList(SecureTokens.generate());
@@ -135,7 +154,7 @@ class PublicListControllerTest extends ApiIntegrationTest {
 
         var results = requestsDuringConcurrentTransaction(
                 () -> newToken.set(shoppingListService.rotateShareToken(paula.officeId(), listId).shareToken()),
-                List.of(() -> requestUpdate(paula, listId, Map.of("name", NEW_LIST_NAME, "clientId", clientId))));
+                List.of(() -> requestUpdate(paula, listId, Map.of("name", NEW_LIST_NAME, "clientId", clientId, "members", List.of()))));
 
         assertThat(statusesOf(results)).containsExactly(HttpStatus.OK);
         var publicList = requestSharedList(newToken.get());
@@ -157,7 +176,7 @@ class PublicListControllerTest extends ApiIntegrationTest {
         var result = mvc.post().uri("/api/lists")
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION, "clientId", clientId)))
+                .content(json(Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION, "clientId", clientId, "members", List.of())))
                 .exchange();
         assertThat(result).hasStatus(HttpStatus.CREATED);
 

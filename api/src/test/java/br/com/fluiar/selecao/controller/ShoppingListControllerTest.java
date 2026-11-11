@@ -19,6 +19,7 @@ import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -46,7 +47,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
     private static final String NEW_LIST_DESCRIPTION = "Itens para o apartamento.";
     private static final String MARINA_LIST_NAME = "Casa de praia";
     private static final String DESCRIPTION_OVER_LIMIT = "a".repeat(501);
-    private static final String CLIENT_REQUIRED = "Escolha o cliente desta lista.";
+    private static final String CLIENT_REQUIRED = "Escolha o perfil principal desta lista.";
     private static final int SHARE_TOKEN_LENGTH = 43;
     private static final String KITCHEN = "Cozinha";
     private static final String LAUNDRY = "Lavanderia";
@@ -108,7 +109,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestCreate(paula,
-                Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION, "clientId", clientId));
+                Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION, "clientId", clientId, "members", List.of()));
 
         assertThat(result).hasStatus(HttpStatus.CREATED);
         assertThat(result).bodyJson().extractingPath("$.clientName").isEqualTo(SERGIO_NAME);
@@ -135,7 +136,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID marinaClientId = createClient(marina, CAMILA_NAME);
 
         var result = requestCreate(paula,
-                Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION, "clientId", marinaClientId));
+                Map.of("name", LIST_NAME, "description", LIST_DESCRIPTION, "clientId", marinaClientId, "members", List.of()));
 
         assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
         assertThat(result).bodyJson().extractingPath("$.errors.clientId").isEqualTo(CLIENT_REQUIRED);
@@ -158,7 +159,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID clientId = createClient(paula, SERGIO_NAME);
 
         var result = requestCreate(paula,
-                Map.of("name", "  " + LIST_NAME + " ", "description", "   ", "clientId", clientId));
+                Map.of("name", "  " + LIST_NAME + " ", "description", "   ", "clientId", clientId, "members", List.of()));
 
         assertThat(result).hasStatus(HttpStatus.CREATED);
         assertThat(result).bodyJson().extractingPath("$.name").isEqualTo(LIST_NAME);
@@ -296,7 +297,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID listId = createList(paula, createClient(paula, SERGIO_NAME), LIST_NAME);
         UUID helenaId = createClient(paula, HELENA_NAME);
 
-        var result = requestUpdate(paula, listId, Map.of("name", LIST_NAME, "clientId", helenaId));
+        var result = requestUpdate(paula, listId, Map.of("name", LIST_NAME, "clientId", helenaId, "members", List.of()));
 
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(result).bodyJson().extractingPath("$.clientId").isEqualTo(helenaId.toString());
@@ -311,7 +312,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         storeUpdatedAt(listId, OLDER_UPDATE);
 
         var result = requestUpdate(paula, listId,
-                Map.of("name", NEW_LIST_NAME, "description", NEW_LIST_DESCRIPTION, "clientId", clientId));
+                Map.of("name", NEW_LIST_NAME, "description", NEW_LIST_DESCRIPTION, "clientId", clientId, "members", List.of()));
 
         assertThat(result).hasStatus(HttpStatus.OK);
         assertThat(Instant.parse(readJson(result, "$.updatedAt"))).isAfter(OLDER_UPDATE);
@@ -352,7 +353,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         UUID marinaClientId = createClient(marina, CAMILA_NAME);
 
         assertThat(requestList(marina, listId)).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(requestUpdate(marina, listId, Map.of("name", MARINA_LIST_NAME, "clientId", marinaClientId)))
+        assertThat(requestUpdate(marina, listId, Map.of("name", MARINA_LIST_NAME, "clientId", marinaClientId, "members", List.of())))
                 .hasStatus(HttpStatus.NOT_FOUND);
         assertThat(requestDelete(marina, listId)).hasStatus(HttpStatus.NOT_FOUND);
 
@@ -387,7 +388,7 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
 
         var results = requestsDuringConcurrentTransaction(
                 () -> shoppingListService.delete(paula.officeId(), listId),
-                List.of(() -> requestUpdate(paula, listId, Map.of("name", NEW_LIST_NAME, "clientId", clientId))));
+                List.of(() -> requestUpdate(paula, listId, Map.of("name", NEW_LIST_NAME, "clientId", clientId, "members", List.of()))));
 
         assertThat(statusesOf(results)).containsExactly(HttpStatus.NOT_FOUND);
         assertThat(requestList(paula, listId)).hasStatus(HttpStatus.NOT_FOUND);
@@ -427,6 +428,237 @@ class ShoppingListControllerTest extends ApiIntegrationTest {
         } finally {
             statistics.setStatisticsEnabled(false);
         }
+    }
+
+    @Test
+    void createsListWithMembersAndProjectInfo() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        UUID helena = createClient(paula, HELENA_NAME);
+        UUID camila = createClient(paula, CAMILA_NAME);
+
+        var result = requestCreate(paula, listWithMembers(principal, member(helena, "READER"), member(camila, "EDITOR")));
+
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        assertThat(result).bodyJson().extractingPath("$.members").asArray().hasSize(2);
+        assertThat(result).bodyJson().extractingPath("$.members[0].clientName").isEqualTo(CAMILA_NAME);
+        assertThat(result).bodyJson().extractingPath("$.members[0].role").isEqualTo("EDITOR");
+        assertThat(result).bodyJson().extractingPath("$.members[1].clientId").isEqualTo(helena.toString());
+        assertThat(result).bodyJson().extractingPath("$.members[1].role").isEqualTo("READER");
+        assertThat(result).bodyJson().extractingPath("$.projectCode").isEqualTo("P-1");
+        assertThat(result).bodyJson().extractingPath("$.contract").isEqualTo("Contrato 7");
+        assertThat(result).bodyJson().extractingPath("$.contractorName").isEqualTo("Maria");
+        assertThat(result).bodyJson().extractingPath("$.siteZipCode").isEqualTo("30140071");
+        assertThat(result).bodyJson().extractingPath("$.contractorDocument").isEqualTo("12ABC34501DE35");
+        assertThat(result).bodyJson().extractingPath("$.siteAddress").isEqualTo("Rua A, 10");
+    }
+
+    @Test
+    void updateReplacesMembers() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        UUID helena = createClient(paula, HELENA_NAME);
+        UUID camila = createClient(paula, CAMILA_NAME);
+        UUID marina = createClient(paula, MARINA_NAME);
+        UUID listId = readId(requestCreate(paula, listWithMembers(principal, member(helena, "READER"), member(camila, "EDITOR"))));
+
+        var result = requestUpdate(paula, listId, listWithMembers(principal, member(helena, "EDITOR"), member(marina, "READER")));
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.members").asArray().hasSize(2);
+        assertThat(result).bodyJson().extractingPath("$.members[0].clientId").isEqualTo(helena.toString());
+        assertThat(result).bodyJson().extractingPath("$.members[0].role").isEqualTo("EDITOR");
+        assertThat(result).bodyJson().extractingPath("$.members[1].clientId").isEqualTo(marina.toString());
+        assertThat(result).bodyJson().extractingPath("$.members[1].role").isEqualTo("READER");
+        assertThat(jdbc.queryForObject("select count(*) from list_members", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void principalInMembersIsIgnored() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+
+        var result = requestCreate(paula, listWithMembers(principal, member(principal, "READER")));
+
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        assertThat(result).bodyJson().extractingPath("$.members").asArray().isEmpty();
+        assertThat(jdbc.queryForObject("select count(*) from list_members", Integer.class)).isZero();
+    }
+
+    @Test
+    void promotingMemberToPrincipalKeepsTheirNotes() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID a = createClient(paula, SERGIO_NAME);
+        UUID b = createClient(paula, HELENA_NAME);
+        UUID listId = readId(requestCreate(paula, listWithMembers(a, member(b, "EDITOR"))));
+        UUID productId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        storeNote(productId, a, "Nota de A");
+        storeNote(productId, b, "Nota de B");
+
+        var result = requestUpdate(paula, listId, listWithMembers(b));
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(result).bodyJson().extractingPath("$.clientId").isEqualTo(b.toString());
+        assertThat(result).bodyJson().extractingPath("$.members").asArray().isEmpty();
+        assertThat(noteOwners()).containsExactly(b);
+    }
+
+    @Test
+    void demotingPrincipalToMemberKeepsTheirNotes() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID a = createClient(paula, SERGIO_NAME);
+        UUID b = createClient(paula, HELENA_NAME);
+        UUID listId = readId(requestCreate(paula, listWithMembers(a)));
+        UUID productId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        storeNote(productId, a, "Nota de A");
+
+        var result = requestUpdate(paula, listId, listWithMembers(b, member(a, "EDITOR")));
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(noteOwners()).containsExactly(a);
+    }
+
+    @Test
+    void removingMemberDeletesTheirNotes() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        UUID helena = createClient(paula, HELENA_NAME);
+        UUID camila = createClient(paula, CAMILA_NAME);
+        UUID listId = readId(requestCreate(paula, listWithMembers(principal, member(helena, "EDITOR"), member(camila, "EDITOR"))));
+        UUID productId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        storeNote(productId, helena, "Nota de Helena");
+        storeNote(productId, camila, "Nota de Camila");
+
+        var result = requestUpdate(paula, listId, listWithMembers(principal, member(camila, "EDITOR")));
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        assertThat(noteOwners()).containsExactly(camila);
+    }
+
+    @Test
+    void rejectsDuplicateMember() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        UUID helena = createClient(paula, HELENA_NAME);
+
+        var result = requestCreate(paula, listWithMembers(principal, member(helena, "READER"), member(helena, "EDITOR")));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.members").isEqualTo("Cada perfil pode aparecer só uma vez.");
+    }
+
+    @Test
+    void rejectsMemberFromAnotherOffice() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        var marina = createAdmin(MARINA_NAME, MARINA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        UUID foreign = createClient(marina, HELENA_NAME);
+
+        var result = requestCreate(paula, listWithMembers(principal, member(foreign, "READER")));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.members").isEqualTo("Escolha um perfil do escritório.");
+    }
+
+    @Test
+    void rejectsInvalidZipAndDocumentButAcceptsEmptyValues() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        Map<String, Object> invalid = listWithMembers(principal);
+        invalid.put("siteZipCode", "123");
+        invalid.put("contractorDocument", "11111111111");
+
+        var rejected = requestCreate(paula, invalid);
+
+        assertThat(rejected).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(rejected).bodyJson().extractingPath("$.errors.siteZipCode").isEqualTo("Digite o CEP com 8 números, como 30140-071.");
+        assertThat(rejected).bodyJson().extractingPath("$.errors.contractorDocument").isEqualTo("Digite um CPF ou CNPJ válido.");
+
+        var accepted = requestCreate(paula, Map.of("name", LIST_NAME, "clientId", principal, "members", List.of(), "siteZipCode", " ",
+                "contractorDocument", "", "projectCode", ""));
+
+        assertThat(accepted).hasStatus(HttpStatus.CREATED);
+        assertThat(accepted).bodyJson().extractingPath("$.siteZipCode").isNull();
+        assertThat(accepted).bodyJson().extractingPath("$.contractorDocument").isNull();
+        assertThat(accepted).bodyJson().extractingPath("$.projectCode").isNull();
+        assertThat(accepted).bodyJson().extractingPath("$.members").asArray().isEmpty();
+    }
+
+    @Test
+    void rejectsTooLongProjectFields() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID principal = createClient(paula, SERGIO_NAME);
+        Map<String, Object> list = listWithMembers(principal);
+        list.put("projectCode", "a".repeat(41));
+        list.put("contract", "a".repeat(121));
+        list.put("contractorName", "a".repeat(121));
+        list.put("siteAddress", "a".repeat(301));
+
+        var result = requestCreate(paula, list);
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        for (String field : List.of("projectCode", "contract", "contractorName", "siteAddress")) {
+            assertThat(result).bodyJson().extractingPath("$.errors." + field).asString().isNotBlank();
+        }
+    }
+
+    @Test
+    void updateWithoutMembersIsRejectedAndKeepsMembersAndNotes() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID a = createClient(paula, SERGIO_NAME);
+        UUID b = createClient(paula, HELENA_NAME);
+        UUID listId = readId(requestCreate(paula, listWithMembers(a, member(b, "EDITOR"))));
+        UUID productId = createProduct(paula, listId, createRoom(paula, listId, KITCHEN), MIXER);
+        storeNote(productId, b, "Nota de B");
+
+        var result = requestUpdate(paula, listId, Map.of("name", LIST_NAME, "clientId", a));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.members").asString().isNotBlank();
+        assertThat(jdbc.queryForObject("select count(*) from list_members", Integer.class)).isEqualTo(1);
+        assertThat(noteOwners()).containsExactly(b);
+    }
+
+    @Test
+    void nullMemberIsRejected() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID a = createClient(paula, SERGIO_NAME);
+        Map<String, Object> list = listWithMembers(a);
+        list.put("members", java.util.Collections.singletonList(null));
+
+        assertThat(requestCreate(paula, list)).hasStatus(HttpStatus.BAD_REQUEST);
+    }
+
+    @SafeVarargs
+    private Map<String, Object> listWithMembers(UUID principal, Map<String, Object>... members) {
+        Map<String, Object> list = new HashMap<>();
+        list.put("name", LIST_NAME);
+        list.put("clientId", principal);
+        list.put("members", List.of(members));
+        list.put("projectCode", "P-1");
+        list.put("contract", "Contrato 7");
+        list.put("contractorName", "Maria");
+        list.put("contractorDocument", "12.abc.345/01de-35");
+        list.put("siteZipCode", "30140-071");
+        list.put("siteAddress", "Rua A, 10");
+        return list;
+    }
+
+    private Map<String, Object> member(UUID clientId, String role) {
+        return Map.of("clientId", clientId, "role", role);
+    }
+
+    private UUID readId(MvcTestResult result) {
+        return UUID.fromString(readJson(result, "$.id"));
+    }
+
+    private void storeNote(UUID productId, UUID clientId, String text) {
+        jdbc.update("insert into product_client_notes (id, product_id, client_id, text, revision, changed_at, updated_at)"
+                + " values (?, ?, ?, ?, 1, now(), now())", UUID.randomUUID(), productId, clientId, text);
+    }
+
+    private List<UUID> noteOwners() {
+        return jdbc.queryForList("select client_id from product_client_notes", UUID.class);
     }
 
     private MvcTestResult requestLists(TestSession session) {

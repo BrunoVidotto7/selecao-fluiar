@@ -1,7 +1,6 @@
 package br.com.fluiar.selecao.service;
 
 import br.com.fluiar.selecao.dto.ProductLinkDto;
-import br.com.fluiar.selecao.dto.ProductClientNotesRequest;
 import br.com.fluiar.selecao.dto.ProductRequest;
 import br.com.fluiar.selecao.dto.ProductResponse;
 import br.com.fluiar.selecao.dto.ProductStatusRequest;
@@ -16,11 +15,14 @@ import br.com.fluiar.selecao.model.ProductLink;
 import br.com.fluiar.selecao.model.Room;
 import br.com.fluiar.selecao.model.ShoppingList;
 import br.com.fluiar.selecao.repository.ProductCategoryRepository;
+import br.com.fluiar.selecao.repository.ProductClientNoteRepository;
 import br.com.fluiar.selecao.repository.ProductRepository;
 import br.com.fluiar.selecao.repository.RoomRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
 import java.util.List;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +37,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Transactional(readOnly = true)
 public class ProductService {
 
+    private static final Logger log = LoggerFactory.getLogger(ProductService.class);
+
     private final ListActivityService activity;
     private final StoreBindingService bindings;
     private final TransactionTemplate transactions;
@@ -43,13 +47,15 @@ public class ProductService {
     private static final String CATEGORY_ID_FIELD = "categoryId";
 
     private final ProductRepository productRepository;
+    private final ProductClientNoteRepository noteRepository;
     private final RoomRepository roomRepository;
     private final ProductCategoryRepository categoryRepository;
     private final ShoppingListRepository listRepository;
 
     public ProductService(
             ProductRepository productRepository, RoomRepository roomRepository, ShoppingListRepository listRepository, ListActivityService activity, StoreBindingService bindings,
-            ProductCategoryRepository categoryRepository, TransactionTemplate transactions) {
+            ProductCategoryRepository categoryRepository, ProductClientNoteRepository noteRepository, TransactionTemplate transactions) {
+        this.noteRepository = noteRepository;
         this.categoryRepository = categoryRepository;
         this.transactions = transactions;
         this.bindings = bindings;
@@ -134,12 +140,15 @@ public class ProductService {
     }
 
     @Transactional
-    public ProductResponse updateClientNotes(UUID officeId, UUID productId, ProductClientNotesRequest request) {
+    public void deleteClientNote(UUID officeId, UUID productId, UUID clientId) {
         ShoppingList list = lockListOfProduct(officeId, productId);
-        Product product = productRepository.findInOfficeForUpdate(productId, officeId).orElseThrow(ApiException::notFound);
-        product.changeClientNotes(request.clientNotes());
+
+        if (noteRepository.deleteInOffice(productId, clientId, officeId) == 0) {
+            throw ApiException.notFound();
+        }
+        log.info("list.client_note result=deleted officeId={} productId={} clientId={}", officeId, productId, clientId);
+
         activity.recordHumanChange(list);
-        return ProductResponse.of(product);
     }
 
     /** The database deletes the product's links and image with it. */

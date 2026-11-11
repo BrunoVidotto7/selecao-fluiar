@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.fluiar.selecao.model.ProductImage;
 import br.com.fluiar.selecao.repository.ProductImageRepository;
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -76,31 +77,152 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
     }
 
     @Test
-    void privateDetailsOmitInternalFieldsAndClientAccountsFromSignature() {
+    void privateDetailsShowPricesAndClientAccountsAreNotInTheSignature() {
         jdbc.update("update products set notes = 'Internal', unit_price = 10 where id = ?", productId);
         var response = read(owner, listId);
         assertThat(response).hasStatus(HttpStatus.OK);
-        assertThat(response).bodyJson().doesNotHavePath("$.clientChanges");
-        assertThat(response).bodyJson().doesNotHavePath("$.shareToken");
-        assertThat(response).bodyJson().doesNotHavePath("$.clientId");
-        assertThat(response).bodyJson().doesNotHavePath("$.rooms[0].products[0].notes");
-        assertThat(response).bodyJson().doesNotHavePath("$.rooms[0].products[0].unitPrice");
+        assertThat(response).bodyJson().extractingPath("$.clientId").isEqualTo(clientId.toString());
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].notes").isEqualTo("Internal");
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].unitPrice").isEqualTo(10.0);
         assertThat(response).bodyJson().extractingPath("$.signature.architectNames").asArray().containsExactly("Admin");
     }
 
     @Test
-    void clientFeedbackIsVisibleAndEditableByAdminWithoutOverwritingOtherFields() {
+    void responseHidesProjectInfoAndMembers() {
+        UUID reader = createClient(admin, "Reader", "reader@example.com");
+        addMember(admin, listId, clientId, reader, "READER");
+        var response = read(owner, listId);
+        assertThat(response).hasStatus(HttpStatus.OK);
+        for (String path : List.of("$.members", "$.projectCode", "$.contract", "$.contractorName",
+                "$.contractorDocument", "$.siteZipCode", "$.siteAddress", "$.shareToken", "$.clientChanges")) {
+            assertThat(response).bodyJson().doesNotHavePath(path);
+        }
+    }
+
+    @Test
+    void memberListsAppearForEditorAndReader() {
+        UUID editorId = createClient(admin, "Editor", "editor@example.com");
+        UUID readerId = createClient(admin, "Reader", "reader@example.com");
+        var editor = inviteClient(admin, editorId);
+        var reader = inviteClient(admin, readerId);
+        setMembers(admin, listId, clientId, Map.of(editorId, "EDITOR", readerId, "READER"));
+
+        for (var session : List.of(editor, reader)) {
+            var summaries = mvc.get().uri("/api/client/lists").header(HttpHeaders.AUTHORIZATION, bearer(session)).exchange();
+            assertThat(summaries).hasStatus(HttpStatus.OK);
+            assertThat(summaries).bodyJson().extractingPath("$[*].id").asArray().containsExactly(listId.toString());
+            assertThat(read(session, listId)).hasStatus(HttpStatus.OK);
+        }
+        assertThat(read(editor, listId)).bodyJson().extractingPath("$.canEdit").isEqualTo(true);
+        assertThat(read(reader, listId)).bodyJson().extractingPath("$.canEdit").isEqualTo(false);
+        assertThat(read(other, listId)).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void readerSeesPricesAndInternalNotesButCannotEdit() {
+        UUID readerId = createClient(admin, "Reader", "reader@example.com");
+        var reader = inviteClient(admin, readerId);
+        addMember(admin, listId, clientId, readerId, "READER");
+        jdbc.update("update products set notes = 'Internal', unit_price = 10 where id = ?", productId);
+
+        var response = read(reader, listId);
+
+        assertThat(response).hasStatus(HttpStatus.OK);
+        assertThat(response).bodyJson().extractingPath("$.canEdit").isEqualTo(false);
+        assertThat(response).bodyJson().extractingPath("$.clientId").isEqualTo(readerId.toString());
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].notes").isEqualTo("Internal");
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].unitPrice").isEqualTo(10.0);
+        for (var write : List.of(purchase(reader, "{\"bought\":true}"), notes(reader, "{\"clientNotes\":\"x\"}"))) {
+            assertThat(write).hasStatus(HttpStatus.FORBIDDEN);
+            assertThat(write).bodyJson().extractingPath("$.detail").isEqualTo("Você só pode visualizar esta lista.");
+        }
+        assertThat(jdbc.queryForObject("select bought from products where id = ?", Boolean.class, productId)).isFalse();
+        assertThat(jdbc.queryForObject("select count(*) from product_client_notes", Integer.class)).isZero();
+    }
+
+    @Test
+    void eachEditorHasOwnNote() {
+        UUID editorId = createClient(admin, "Editor", "editor@example.com");
+        var editor = inviteClient(admin, editorId);
+        addMember(admin, listId, clientId, editorId, "EDITOR");
+
+        assertThat(notes(owner, "{\"clientNotes\":\"From A\"}")).hasStatus(HttpStatus.OK);
+        var saved = notes(editor, "{\"clientNotes\":\"From B\"}");
+
+        assertThat(saved).hasStatus(HttpStatus.OK);
+        var response = read(owner, listId);
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").asArray().hasSize(2);
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes[?(@.clientName=='Client')].text")
+                .asArray().containsExactly("From A");
+        assertThat(response).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes[?(@.clientName=='Editor')].text")
+                .asArray().containsExactly("From B");
+        assertThat(jdbc.queryForObject("select count(*) from product_client_notes", Integer.class)).isEqualTo(2);
+    }
+
+    @Test
+    void savedNoteResponseHasUpdatedAt() {
+        var saved = notes(owner, "{\"clientNotes\":\"First\"}");
+
+        assertThat(saved).hasStatus(HttpStatus.OK);
+        assertThat(saved).bodyJson().extractingPath("$.clientNotes[0].updatedAt").isNotNull();
+        var firstUpdatedAt = Instant.parse(readJson(saved, "$.clientNotes[0].updatedAt"));
+
+        var second = notes(owner, "{\"clientNotes\":\"Second\"}");
+
+        assertThat(second).hasStatus(HttpStatus.OK);
+        var secondUpdatedAt = Instant.parse(readJson(second, "$.clientNotes[0].updatedAt"));
+        assertThat(secondUpdatedAt).isAfterOrEqualTo(firstUpdatedAt);
+    }
+
+    @Test
+    void savingSameNoteTwiceKeepsOneRowAndNoNewRevision() {
+        assertThat(notes(owner, "{\"clientNotes\":\"Same\"}")).hasStatus(HttpStatus.OK);
+        assertThat(notes(owner, "{\"clientNotes\":\"Same\"}")).hasStatus(HttpStatus.OK);
+
+        assertThat(jdbc.queryForObject("select count(*) from product_client_notes", Integer.class)).isEqualTo(1);
+        assertThat(jdbc.queryForObject("select client_change_revision from shopping_lists where id = ?", Long.class, listId)).isEqualTo(1L);
+        assertThat(jdbc.queryForObject("select revision from product_client_notes", Long.class)).isEqualTo(1L);
+    }
+
+    @Test
+    void removedMemberGets404() {
+        UUID editorId = createClient(admin, "Editor", "editor@example.com");
+        var editor = inviteClient(admin, editorId);
+        addMember(admin, listId, clientId, editorId, "EDITOR");
+        assertThat(read(editor, listId)).hasStatus(HttpStatus.OK);
+
+        setMembers(admin, listId, clientId, Map.of());
+
+        assertThat(read(editor, listId)).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(purchase(editor, "{\"bought\":true}")).hasStatus(HttpStatus.NOT_FOUND);
+        assertThat(notes(editor, "{\"clientNotes\":\"x\"}")).hasStatus(HttpStatus.NOT_FOUND);
+    }
+
+    @Test
+    void editorPurchaseIsAttributedToTheEditor() {
+        UUID editorId = createClient(admin, "Editor", "editor@example.com");
+        var editor = inviteClient(admin, editorId);
+        addMember(admin, listId, clientId, editorId, "EDITOR");
+
+        assertThat(purchase(editor, "{\"bought\":true}")).hasStatus(HttpStatus.OK);
+
+        assertThat(jdbc.queryForObject("select client_purchase_client_id from products where id = ?", UUID.class, productId))
+                .isEqualTo(editorId);
+    }
+
+    @Test
+    void clientFeedbackIsVisibleToAdminAndNoteIsDeletableWithoutChangingOtherFields() {
         assertThat(notes(owner, "{\"clientNotes\":\"  Ordered locally  \"}")).hasStatus(HttpStatus.OK);
         assertThat(purchase(owner, "{\"bought\":true}")).hasStatus(HttpStatus.OK);
         var product = mvc.get().uri("/api/products/{id}", productId).header(HttpHeaders.AUTHORIZATION, bearer(admin)).exchange();
-        assertThat(product).bodyJson().extractingPath("$.clientNotes").isEqualTo("Ordered locally");
+        assertThat(product).bodyJson().extractingPath("$.clientNotes[0].text").isEqualTo("Ordered locally");
         assertThat(product).bodyJson().extractingPath("$.bought").isEqualTo(true);
-        var update = mvc.put().uri("/api/products/{id}/client-notes", productId)
-                .header(HttpHeaders.AUTHORIZATION, bearer(admin)).contentType(MediaType.APPLICATION_JSON)
-                .content("{\"clientNotes\":\"Delivery confirmed\"}").exchange();
-        assertThat(update).hasStatus(HttpStatus.OK);
-        assertThat(update).bodyJson().extractingPath("$.bought").isEqualTo(true);
-        assertThat(read(owner, listId)).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").isEqualTo("Delivery confirmed");
+        var delete = mvc.delete().uri("/api/products/{id}/client-notes/{clientId}", productId, clientId)
+                .header(HttpHeaders.AUTHORIZATION, bearer(admin)).exchange();
+        assertThat(delete).hasStatus(HttpStatus.NO_CONTENT);
+        var after = mvc.get().uri("/api/products/{id}", productId).header(HttpHeaders.AUTHORIZATION, bearer(admin)).exchange();
+        assertThat(after).bodyJson().extractingPath("$.bought").isEqualTo(true);
+        assertThat(after).bodyJson().extractingPath("$.clientNotes").asArray().isEmpty();
     }
 
     @Test
@@ -122,11 +244,12 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
     void transferringAListImmediatelyChangesItsOwner() {
         assertThat(notes(owner, "{\"clientNotes\":\"Existing note\"}")).hasStatus(HttpStatus.OK);
         var transfer = mvc.put().uri("/api/lists/{id}", listId).header(HttpHeaders.AUTHORIZATION, bearer(admin))
-                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("name", "Home", "clientId", otherClientId))).exchange();
+                .contentType(MediaType.APPLICATION_JSON).content(json(Map.of("name", "Home", "clientId", otherClientId, "members", List.of()))).exchange();
         assertThat(transfer).hasStatus(HttpStatus.OK);
         assertThat(read(owner, listId)).hasStatus(HttpStatus.NOT_FOUND);
         assertThat(purchase(owner, "{\"bought\":true}")).hasStatus(HttpStatus.NOT_FOUND);
-        assertThat(read(other, listId)).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").isEqualTo("Existing note");
+        assertThat(read(other, listId)).hasStatus(HttpStatus.OK);
+        assertThat(read(other, listId)).bodyJson().extractingPath("$.rooms[0].products[0].clientNotes").asArray().isEmpty();
     }
 
     /** The owner's write waits for a concurrent transfer of the list and must not apply after it commits. */
@@ -153,8 +276,9 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
         purchase(owner, "{\"bought\":false}");
         notes(owner, "{\"clientNotes\":null}");
         assertThat(jdbc.queryForMap("select * from products where id = ?", productId))
-                .containsEntry("client_purchase_revision", 3L).containsEntry("client_purchase_value", false)
-                .containsEntry("client_notes_revision", 4L).containsEntry("client_notes_value", null);
+                .containsEntry("client_purchase_revision", 3L).containsEntry("client_purchase_value", false);
+        assertThat(jdbc.queryForMap("select * from product_client_notes where product_id = ?", productId))
+                .containsEntry("revision", 4L).containsEntry("text", null);
     }
 
     private MvcTestResult read(TestSession session, UUID id) {

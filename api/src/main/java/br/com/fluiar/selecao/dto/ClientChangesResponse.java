@@ -8,7 +8,7 @@ import java.util.UUID;
 public record ClientChangesResponse(long observedRevision, List<ChangedProduct> products) {
     public record ChangedProduct(UUID productId,
             @JsonInclude(JsonInclude.Include.NON_NULL) PurchaseChange purchase,
-            @JsonInclude(JsonInclude.Include.NON_NULL) NotesChange notes) {}
-    public record PurchaseChange(long revision, Instant changedAt, boolean value) {}
-    public record NotesChange(long revision, Instant changedAt, String value) {}
+            @JsonInclude(JsonInclude.Include.NON_EMPTY) List<NotesChange> notes) {}
+    public record PurchaseChange(long revision, Instant changedAt, boolean value, UUID clientId, String clientName) {}
+    public record NotesChange(UUID clientId, String clientName, long revision, Instant changedAt, String value) {}
 }

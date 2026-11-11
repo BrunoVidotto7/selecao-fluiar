@@ -15,7 +15,7 @@ public record ProductResponse(
         ProductUnit unit,
         BigDecimal unitPrice,
         String notes,
-        String clientNotes,
+        List<ClientNoteResponse> clientNotes,
         boolean bought,
         String imageUrl,
         List<ProductLinkDto> links, ProductStoreSyncResponse storeSync) {
@@ -23,7 +23,7 @@ public record ProductResponse(
     public static ProductResponse of(Product product) {
         return new ProductResponse(product.getId(), product.getRoom().getId(),
                 ProductCategoryRef.of(product.getCategory()), product.getName(),
-                product.getQuantity(), product.getUnit(), product.getUnitPrice(), product.getNotes(), product.getClientNotes(), product.isBought(),
+                product.getQuantity(), product.getUnit(), product.getUnitPrice(), product.getNotes(), ClientNoteResponse.of(product), product.isBought(),
                 ImageUrls.of(product.getImageId()), product.getLinks().stream().map(ProductLinkDto::of).toList(), ProductStoreSyncResponse.of(product.getStoreSync()));
     }
 }

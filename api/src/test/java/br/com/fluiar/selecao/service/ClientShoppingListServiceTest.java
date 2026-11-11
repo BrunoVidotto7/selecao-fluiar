@@ -26,9 +26,10 @@ class ClientShoppingListServiceTest {
     private final UUID productId = UUID.randomUUID();
     private final ShoppingListRepository lists = mock(ShoppingListRepository.class);
     private final ProductRepository products = mock(ProductRepository.class);
+    private final ProductClientNoteRepository noteRepository = mock(ProductClientNoteRepository.class);
     private final OfficeRepository offices = mock(OfficeRepository.class);
     private final UserRepository users = mock(UserRepository.class);
-    private final ClientShoppingListService service = new ClientShoppingListService(lists, products, offices, users, org.mockito.Mockito.mock(ListActivityService.class), java.time.Clock.fixed(java.time.Instant.parse("2026-11-05T12:00:00Z"), java.time.ZoneOffset.UTC));
+    private final ClientShoppingListService service = new ClientShoppingListService(lists, products, noteRepository, offices, users, org.mockito.Mockito.mock(ListActivityService.class), java.time.Clock.fixed(java.time.Instant.parse("2026-11-05T12:00:00Z"), java.time.ZoneOffset.UTC));
     private final JsonMapper mapper = JsonMapper.builder().build();
     private ShoppingList list;
     private Product product;
@@ -37,7 +38,7 @@ class ClientShoppingListServiceTest {
     void setUp() {
         var client = new Client(officeId, "Client", "private@example.com", "31999999999");
         ReflectionTestUtils.setField(client, "id", clientId);
-        list = new ShoppingList(client, "Home", null, "private-share-token");
+        list = new ShoppingList(client, "Home", null, "private-share-token", ProjectInfo.EMPTY);
         ReflectionTestUtils.setField(list, "id", listId);
         var room = new Room(list, "Kitchen", 0);
         ReflectionTestUtils.setField(room, "id", UUID.randomUUID());
@@ -50,6 +51,7 @@ class ClientShoppingListServiceTest {
         when(products.findInOfficeForUpdate(productId, officeId)).thenReturn(Optional.of(product));
         when(offices.findById(officeId)).thenReturn(Optional.of(new Office("Office")));
         when(users.findByOfficeIdAndRoleOrderByNameAsc(officeId, UserRole.ADMIN)).thenReturn(List.of());
+        when(noteRepository.save(org.mockito.ArgumentMatchers.any(ProductClientNote.class))).thenAnswer(call -> call.getArgument(0));
     }
 
     @Test
@@ -60,9 +62,10 @@ class ClientShoppingListServiceTest {
         service.setClientNotes(officeId, clientId, listId, productId, new ProductClientNotesRequest("Preto"));
         assertThat(list.getClientChangeRevision()).isEqualTo(2);
         assertThat(product.getClientChanges().getPurchaseRevision()).isEqualTo(1);
-        assertThat(product.getClientChanges().getNotesRevision()).isEqualTo(2);
+        var note = product.clientNoteOf(clientId).orElseThrow();
+        assertThat(note.getRevision()).isEqualTo(2);
         assertThat(product.getClientChanges().getPurchaseChangedAt()).isEqualTo(java.time.Instant.parse("2026-11-05T12:00:00Z"));
-        assertThat(product.getClientChanges().getNotesChangedAt()).isEqualTo(product.getClientChanges().getPurchaseChangedAt());
+        assertThat(note.getChangedAt()).isEqualTo(product.getClientChanges().getPurchaseChangedAt());
     }
 
     @Test
@@ -80,10 +83,12 @@ class ClientShoppingListServiceTest {
         assertThat(detail).isNotNull();
         var json = mapper.valueToTree(detail);
         assertThat(json.has("shareToken")).isFalse();
-        assertThat(json.has("clientId")).isFalse();
+        assertThat(json.has("members")).isFalse();
+        assertThat(json.get("clientId").asString()).isEqualTo(clientId.toString());
+        assertThat(json.get("canEdit").asBoolean()).isTrue();
         var item = json.get("rooms").get(0).get("products").get(0);
-        assertThat(item.has("notes")).isFalse();
-        assertThat(item.has("unitPrice")).isFalse();
+        assertThat(item.get("notes").asString()).isEqualTo("Internal instruction");
+        assertThat(item.get("unitPrice").decimalValue()).isEqualByComparingTo("10");
         assertThat(detail.stats().pendingProducts()).isEqualTo(1);
     }
 
@@ -92,13 +97,13 @@ class ClientShoppingListServiceTest {
         var note = service.setClientNotes(officeId, clientId, listId, productId,
                 new ProductClientNotesRequest("  Bought locally  "));
         assertThat(note).isNotNull();
-        assertThat(note.clientNotes()).isEqualTo("Bought locally");
+        assertThat(note.clientNotes()).extracting(ClientNoteResponse::text).containsExactly("Bought locally");
         var bought = service.setPurchase(officeId, clientId, listId, productId, new ProductPurchaseRequest(true));
         assertThat(bought).isNotNull();
         assertThat(bought.bought()).isTrue();
-        assertThat(bought.clientNotes()).isEqualTo("Bought locally");
+        assertThat(bought.clientNotes()).extracting(ClientNoteResponse::text).containsExactly("Bought locally");
         var cleared = service.setClientNotes(officeId, clientId, listId, productId, new ProductClientNotesRequest(null));
-        assertThat(cleared.clientNotes()).isNull();
+        assertThat(cleared.clientNotes()).isEmpty();
         assertThat(cleared.bought()).isTrue();
         assertThat(product.getNotes()).isEqualTo("Internal instruction");
         assertThat(product.getQuantity()).isEqualByComparingTo("2");

@@ -171,11 +171,26 @@ public abstract class ApiIntegrationTest {
         var result = mvc.post().uri("/api/lists")
                 .header(HttpHeaders.AUTHORIZATION, bearer(session))
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(json(Map.of("name", name, "clientId", clientId)))
+                .content(json(Map.of("name", name, "clientId", clientId, "members", List.of())))
                 .exchange();
         assertThat(result).hasStatus(HttpStatus.CREATED);
 
         return UUID.fromString(readJson(result, "$.id"));
+    }
+
+    /** Replaces the list's other profiles through the API; the principal profile stays the same. */
+    protected void setMembers(TestSession session, UUID listId, UUID principalId, Map<UUID, String> rolesByClient) {
+        String name = jdbc.queryForObject("select name from shopping_lists where id = ?", String.class, listId);
+        var members = rolesByClient.entrySet().stream()
+                .map(entry -> Map.of("clientId", entry.getKey(), "role", entry.getValue())).toList();
+        var result = mvc.put().uri("/api/lists/{id}", listId).header(HttpHeaders.AUTHORIZATION, bearer(session))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(json(Map.of("name", name, "clientId", principalId, "members", members))).exchange();
+        assertThat(result).hasStatus(HttpStatus.OK);
+    }
+
+    protected void addMember(TestSession session, UUID listId, UUID principalId, UUID clientId, String role) {
+        setMembers(session, listId, principalId, Map.of(clientId, role));
     }
 
     /** Creates a room at the end of the list through the API and returns its id. */

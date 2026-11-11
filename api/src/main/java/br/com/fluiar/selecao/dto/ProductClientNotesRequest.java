@@ -1,11 +1,11 @@
 package br.com.fluiar.selecao.dto;
 
-import br.com.fluiar.selecao.model.Product;
+import br.com.fluiar.selecao.model.ProductClientNote;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import jakarta.validation.constraints.Size;
 import tools.jackson.databind.JsonNode;
 
-public record ProductClientNotesRequest(@Size(max = Product.CLIENT_NOTES_MAX_LENGTH) String clientNotes) {
+public record ProductClientNotesRequest(@Size(max = ProductClientNote.TEXT_MAX_LENGTH) String clientNotes) {
     public ProductClientNotesRequest {
         clientNotes = Inputs.optionalText(clientNotes);
     }
