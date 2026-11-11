@@ -12,7 +12,7 @@ vi.mock('next/navigation', () => ({ redirect, notFound: vi.fn(() => { throw new 
 vi.mock('next/cache', () => ({ revalidatePath }));
 
 const ORIGIN = 'http://localhost:8080';
-const BODY = { name: 'Ana Lima', email: ME.email, phone: '31999998888' };
+const BODY = { name: 'Ana Lima', email: ME.email, phone: '31999998888', birthDate: '1985-03-25', cpf: '52998224725' };
 const { lists, ...RESPONSE } = CLIENT;
 const INVALID = { ok: false, status: 400, detail: 'Revise os dados enviados.', errors: {} };
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status });
@@ -41,8 +41,17 @@ test.each([[null, 'POST', '/api/clients', 201], [CLIENT.id, 'PUT', '/api/clients
   },
 );
 
+test('save forwards null birth date and CPF', async () => {
+  const body = { ...BODY, birthDate: null, cpf: null };
+  await saveClient(null, body);
+  expect(fetchMock.mock.calls[0][1].body).toBe(JSON.stringify(body));
+});
+
+const { cpf: _cpf, ...WITHOUT_CPF } = BODY;
+
 test.each([undefined, null, [], 'body', 5, {}, { ...BODY, name: null }, { ...BODY, email: [] },
-  { ...BODY, phone: null }, { ...BODY, phone: 31999998888 }, { name: 'Ana', email: ME.email }].map((body) => [body]))(
+  { ...BODY, phone: null }, { ...BODY, phone: 31999998888 }, { name: 'Ana', email: ME.email },
+  { ...BODY, birthDate: 19850325 }, { ...BODY, cpf: [] }, WITHOUT_CPF].map((body) => [body]))(
   'save rejects malformed or missing required scalar input %j before any request', async (body) => {
     expect(await saveClient(null, body)).toEqual(INVALID);
     expect(fetchMock).not.toHaveBeenCalled();

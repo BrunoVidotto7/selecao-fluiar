@@ -1,18 +1,18 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import Page from './page';
+import { FeedbackProvider } from '@/components/feedback/Feedback';
 import { CLIENT, CLIENT_ACCESS } from '@/test-support/fixtures';
 
 const { cookies, fetchMock } = vi.hoisted(() => ({ cookies: vi.fn(), fetchMock: vi.fn() }));
 vi.mock('next/headers', () => ({ cookies }));
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(), notFound: vi.fn(), useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
-  unstable_rethrow: vi.fn(),
+  unstable_rethrow: vi.fn(), usePathname: () => '/perfis/' + CLIENT.id,
 }));
 vi.mock('@/components/client-access/actions', () => ({ inviteClient: vi.fn(), revokeClientInvitation: vi.fn() }));
 vi.mock('@/components/clientes/actions', () => ({ saveClient: vi.fn(), deleteClient: vi.fn() }));
 vi.mock('@/components/listas/actions', () => ({ deleteList: vi.fn(), saveList: vi.fn() }));
-vi.mock('@/components/feedback/Feedback', async (original) => ({ ...(await original()), useConfirm: () => vi.fn(), useToast: () => vi.fn() }));
 
 const json = (body) => new Response(JSON.stringify(body), { status: 200 });
 const show = async (profile) => {
@@ -21,7 +21,7 @@ const show = async (profile) => {
     if (url === `http://localhost:8080/api/clients/${CLIENT.id}/access`) return json(CLIENT_ACCESS);
     throw new Error('Unexpected request: ' + url);
   });
-  render(await Page({ params: Promise.resolve({ id: CLIENT.id }) }));
+  render(<FeedbackProvider>{await Page({ params: Promise.resolve({ id: CLIENT.id }) })}</FeedbackProvider>);
 };
 
 beforeEach(() => {

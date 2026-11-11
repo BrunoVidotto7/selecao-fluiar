@@ -18,6 +18,9 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MvcTestResult;
 
 class ClientShoppingListControllerTest extends ApiIntegrationTest {
+    private static final String PROFILE_CPF = "52998224725";
+    private static final String PROFILE_BIRTH_DATE = "1985-03-25";
+
     @Autowired
     private ProductImageRepository productImageRepository;
     private TestSession admin;
@@ -89,13 +92,13 @@ class ClientShoppingListControllerTest extends ApiIntegrationTest {
 
     @Test
     void clientResponsesNeverIncludeTheProfileCpfOrBirthDate() throws Exception {
-        jdbc.update("update clients set cpf = ?, birth_date = ? where id = ?", "52998224725",
-                java.sql.Date.valueOf("1985-03-25"), clientId);
+        jdbc.update("update clients set cpf = ?, birth_date = ? where id = ?", PROFILE_CPF,
+                java.sql.Date.valueOf(PROFILE_BIRTH_DATE), clientId);
         var index = mvc.get().uri("/api/client/lists").header(HttpHeaders.AUTHORIZATION, bearer(owner)).exchange();
         var detail = read(owner, listId);
         for (var result : List.of(index, detail)) {
             assertThat(result).hasStatus(HttpStatus.OK);
-            assertThat(result.getResponse().getContentAsString()).doesNotContain("52998224725", "1985-03-25");
+            assertThat(result.getResponse().getContentAsString()).doesNotContain(PROFILE_CPF, PROFILE_BIRTH_DATE);
         }
     }
 

@@ -22,6 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class ClientService {
 
+    private static final String BIRTH_DATE_FIELD = "birthDate";
+
     private final ClientRepository clientRepository;
     private final ShoppingListRepository listRepository;
 
@@ -87,7 +89,7 @@ public class ClientService {
 
     private void requireValidBirthDate(LocalDate birthDate) {
         if (birthDate != null && (birthDate.isBefore(Client.BIRTH_DATE_MIN) || birthDate.isAfter(LocalDate.now(clock)))) {
-            throw ApiException.invalidField("birthDate", ErrorMessages.BIRTH_DATE_INVALID);
+            throw ApiException.invalidField(BIRTH_DATE_FIELD, ErrorMessages.BIRTH_DATE_INVALID);
         }
     }
 

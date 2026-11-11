@@ -53,7 +53,6 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const SHORT_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'short', year: 'numeric' });
 const LONG_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'long', year: 'numeric' });
 const CALENDAR_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'numeric', year: 'numeric' });
-const ISO_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 const TIME = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 function shortDate(date, includeYear) {
@@ -68,7 +67,10 @@ function calendarDay(date) {
   return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
 }
 
-export const todayIsoDate = (now = new Date()) => ISO_DATE.format(now);
+export function todayIsoDate(now = new Date()) {
+  const parts = Object.fromEntries(CALENDAR_DATE.formatToParts(now).map(({ type, value }) => [type, value]));
+  return `${parts.year}-${parts.month.padStart(2, '0')}-${parts.day.padStart(2, '0')}`;
+}
 export const formatShortDate = (iso) => shortDate(new Date(iso), true);
 export const formatLongDate = (iso) => LONG_DATE.format(new Date(iso));
 export function formatUpdatedAt(iso, now = new Date()) {

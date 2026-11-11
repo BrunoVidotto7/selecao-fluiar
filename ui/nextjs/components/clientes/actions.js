@@ -10,17 +10,20 @@ function requireClientId(id) {
   if (!isUuid(id)) throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
 }
 
+const isTextOrNull = (value) => value === null || typeof value === 'string';
+
 function clientBody(input) {
   if (!input || typeof input !== 'object' || Array.isArray(input)
-      || typeof input.name !== 'string' || typeof input.email !== 'string' || typeof input.phone !== 'string') {
+      || typeof input.name !== 'string' || typeof input.email !== 'string' || typeof input.phone !== 'string'
+      || !isTextOrNull(input.birthDate) || !isTextOrNull(input.cpf)) {
     throw new ApiError(HTTP_BAD_REQUEST, INVALID_INPUT_DETAIL);
   }
-  return { name: input.name, email: input.email, phone: input.phone };
+  return { name: input.name, email: input.email, phone: input.phone, birthDate: input.birthDate, cpf: input.cpf };
 }
 
 /**
  * @param {null | string} id
- * @param {{ name: string, email: string, phone: string }} input
+ * @param {{ name: string, email: string, phone: string, birthDate: string | null, cpf: string | null }} input
  * @returns {Promise<import('@/lib/api.server').ActionResult<import('./queries.server').ClientResponse>>}
  */
 export async function saveClient(id, input) {
