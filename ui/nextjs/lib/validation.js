@@ -1,7 +1,8 @@
+import { toIsoDate, todayIsoDate } from './format';
 // Field rules: { required: true | 'message', email: true, url: true, minLength: 8,
 //   maxLength: 120, maxLengthMessage: 'custom text', min: 1, max: 999, integer: true, phone: true, password: true, money: true,
 //   quantity: 'UNIT' | 'SQUARE_METER',
-//   zipCode: true, taxDocument: true,
+//   zipCode: true, taxDocument: true, cpf: true, birthDate: true,
 //   match: 'otherField', requiredIf: 'otherField',
 //   when: (values) => boolean }
 export const EMAIL_PASSWORD_REQUIRED = 'Informe a senha atual para trocar o e-mail.';
@@ -25,6 +26,9 @@ export const LIST_CONTRACTOR_NAME_MAX_LENGTH = 120;
 export const LIST_ADDRESS_MAX_LENGTH = 300;
 const ZIP_CODE_MESSAGE = 'Digite o CEP com 8 números, como 30140-071.';
 const TAX_DOCUMENT_MESSAGE = 'Digite um CPF ou CNPJ válido.';
+const CPF_MESSAGE = 'Digite um CPF válido.';
+const BIRTH_DATE_MESSAGE = 'Digite uma data de nascimento válida, como 25/03/1985.';
+const BIRTH_DATE_MIN = '1900-01-01';
 const CODE_SEPARATORS = /[\s.\-/]/g;
 
 const REQUIRED_MESSAGE = 'Preencha este campo.';
@@ -84,6 +88,11 @@ export function isValidTaxDocument(value) {
   return validCpf(code) || validCnpj(code);
 }
 
+function isValidBirthDate(text) {
+  const iso = toIsoDate(text);
+  return iso !== null && iso >= BIRTH_DATE_MIN && iso <= todayIsoDate();
+}
+
 export function validateQuantity(text, unit) {
   const value = String(text ?? '').trim();
   if (unit === 'SQUARE_METER') {
@@ -109,6 +118,8 @@ export function validateField(name, values, rule = {}) {
   if (rule.phone && !/^\d{10,11}$/.test(v.replace(/\D/g, ''))) return PHONE_MESSAGE;
   if (v && rule.zipCode && !/^\d{8}$/.test(v.replace(CODE_SEPARATORS, ''))) return ZIP_CODE_MESSAGE;
   if (v && rule.taxDocument && !isValidTaxDocument(v)) return TAX_DOCUMENT_MESSAGE;
+  if (v && rule.cpf && !validCpf(v.replace(CODE_SEPARATORS, ''))) return CPF_MESSAGE;
+  if (v && rule.birthDate && !isValidBirthDate(v)) return BIRTH_DATE_MESSAGE;
   if (rule.password) {
     const message = validatePassword(raw);
     if (message) return message;

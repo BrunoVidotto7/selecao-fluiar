@@ -21,12 +21,39 @@ export const maskPhone = (v) => {
   if (d.length > 2) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
   return d;
 };
+export const maskCpf = (v) => {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length > 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+  if (d.length > 6) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  if (d.length > 3) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  return d;
+};
+export const maskDate = (v) => {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length > 4) return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+  if (d.length > 2) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return d;
+};
+export function formatIsoDate(iso) {
+  if (!iso) return '';
+  const [year, month, day] = iso.split('-');
+  return `${day}/${month}/${year}`;
+}
+export function toIsoDate(text) {
+  const match = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(text ?? '').trim());
+  if (!match) return null;
+  const [, day, month, year] = match;
+  const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
+  const iso = `${year}-${month}-${day}`;
+  return date.toISOString().slice(0, 10) === iso ? iso : null;
+}
 
 const TIME_ZONE = 'America/Sao_Paulo';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const SHORT_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'short', year: 'numeric' });
 const LONG_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'long', year: 'numeric' });
 const CALENDAR_DATE = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, day: 'numeric', month: 'numeric', year: 'numeric' });
+const ISO_DATE = new Intl.DateTimeFormat('en-CA', { timeZone: TIME_ZONE, year: 'numeric', month: '2-digit', day: '2-digit' });
 const TIME = new Intl.DateTimeFormat('pt-BR', { timeZone: TIME_ZONE, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
 
 function shortDate(date, includeYear) {
@@ -41,6 +68,7 @@ function calendarDay(date) {
   return Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
 }
 
+export const todayIsoDate = (now = new Date()) => ISO_DATE.format(now);
 export const formatShortDate = (iso) => shortDate(new Date(iso), true);
 export const formatLongDate = (iso) => LONG_DATE.format(new Date(iso));
 export function formatUpdatedAt(iso, now = new Date()) {

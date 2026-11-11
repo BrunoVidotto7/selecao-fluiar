@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
-import { formatLongDate, formatShortDate, formatUpdatedAt, imageSource, parseBRL } from './format';
+import { formatIsoDate, formatLongDate, formatShortDate, formatUpdatedAt, imageSource, maskCpf, maskDate, parseBRL, toIsoDate, todayIsoDate } from './format';
 import { PRODUCT } from '@/test-support/fixtures';
 
 beforeEach(() => vi.stubEnv('NEXT_PUBLIC_API_URL', 'http://localhost:8080'));
@@ -50,4 +50,31 @@ test('parseBRL preserves legacy grouped, blank and zero conversion', () => {
   expect(parseBRL('0,00')).toBe(0);
   expect(parseBRL('')).toBe(0);
   expect(parseBRL(null)).toBe(0);
+});
+
+test('CPF and date masks keep only digits and add punctuation while typing', () => {
+  expect(maskCpf('529')).toBe('529');
+  expect(maskCpf('5299')).toBe('529.9');
+  expect(maskCpf('5299822')).toBe('529.982.2');
+  expect(maskCpf('529982247253')).toBe('529.982.247-25');
+  expect(maskCpf('a529.982.247-25')).toBe('529.982.247-25');
+  expect(maskDate('2')).toBe('2');
+  expect(maskDate('250')).toBe('25/0');
+  expect(maskDate('25031')).toBe('25/03/1');
+  expect(maskDate('250319851')).toBe('25/03/1985');
+});
+
+test('ISO dates convert to and from dd/mm/aaaa without a time zone shift', () => {
+  expect(formatIsoDate('1985-03-25')).toBe('25/03/1985');
+  expect(formatIsoDate(null)).toBe('');
+  expect(toIsoDate('25/03/1985')).toBe('1985-03-25');
+  expect(toIsoDate('29/02/2024')).toBe('2024-02-29');
+  expect(toIsoDate('29/02/2023')).toBeNull();
+  expect(toIsoDate('31/04/1985')).toBeNull();
+  expect(toIsoDate('25/03/85')).toBeNull();
+  expect(toIsoDate('')).toBeNull();
+});
+
+test('today is the Sao Paulo calendar day', () => {
+  expect(todayIsoDate(new Date('2026-11-12T02:30:00Z'))).toBe('2026-11-11');
 });

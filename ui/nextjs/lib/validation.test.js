@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'vitest';
+import { afterEach, describe, expect, test, vi } from 'vitest';
 import { passwordStrength, validateAll, validateField, isValidTaxDocument } from './validation';
 
 const MISMATCH = 'As senhas não são iguais.';
@@ -159,4 +159,23 @@ describe('list internal control rules', () => {
   test('size limits use the existing message', () => {
     expect(validateField('c', { c: 'a'.repeat(41) }, { maxLength: 40 })).toBe('Use no máximo 40 caracteres.');
   });
+});
+
+const CPF_MESSAGE = 'Digite um CPF válido.';
+const BIRTH_DATE_MESSAGE = 'Digite uma data de nascimento válida, como 25/03/1985.';
+
+afterEach(() => vi.useRealTimers());
+
+test('cpf accepts a valid CPF with or without punctuation and nothing else', () => {
+  for (const cpf of ['529.982.247-25', '52998224725', '']) expect(validateField('cpf', { cpf }, { cpf: true })).toBe('');
+  for (const cpf of ['529.982.247-24', '111.111.111-11', '529.982.247', '11.222.333/0001-81'])
+    expect(validateField('cpf', { cpf }, { cpf: true })).toBe(CPF_MESSAGE);
+});
+
+test('birth date accepts real dates from 1900 to today in Sao Paulo', () => {
+  vi.useFakeTimers();
+  vi.setSystemTime(new Date('2026-11-12T02:30:00Z'));
+  for (const d of ['11/11/2026', '01/01/1900', '29/02/2024', '']) expect(validateField('d', { d }, { birthDate: true })).toBe('');
+  for (const d of ['12/11/2026', '31/12/1899', '29/02/2023', '25/03/85'])
+    expect(validateField('d', { d }, { birthDate: true })).toBe(BIRTH_DATE_MESSAGE);
 });
