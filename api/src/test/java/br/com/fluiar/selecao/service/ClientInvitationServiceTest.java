@@ -42,7 +42,7 @@ class ClientInvitationServiceTest {
     private final PasswordEncoder encoder = mock(PasswordEncoder.class);
     private final TokenService tokens = mock(TokenService.class);
     private final EmailService email = mock(EmailService.class);
-    private final Client client = new Client(OFFICE_ID, "Stored name", "client@example.com", "31999999999");
+    private final Client client = new Client(OFFICE_ID, "Stored name", "client@example.com", "31999999999", null, null);
     private final OfficeInvitation invitation = new OfficeInvitation(OFFICE_ID, CLIENT_ID, "client@example.com", USER_ID,
             SecureTokens.hash("token"), NOW.plus(Duration.ofDays(7)));
     private InvitationService service;
@@ -99,7 +99,7 @@ class ClientInvitationServiceTest {
 
     @Test
     void changingTheContactPreventsAcceptanceOfTheOldRecipientInvitation() {
-        client.update("Stored name", "new@example.com", "31999999999");
+        client.update("Stored name", "new@example.com", "31999999999", null, null);
         assertThatThrownBy(() -> service.accept("token", new InvitationAcceptRequest("clientPassword1"))).isInstanceOf(ApiException.class);
         verify(users, never()).save(any());
     }

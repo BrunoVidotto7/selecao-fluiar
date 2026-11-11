@@ -28,7 +28,7 @@ class PasswordValidationTest {
 
     @Test
     void blankEmailFailsOnlyTheRequiredRule() {
-        var request = new ClientRequest("Client", "", "31999999999");
+        var request = new ClientRequest("Client", "", "31999999999", null, null);
 
         var violations = VALIDATOR.validateProperty(request, "email");
 

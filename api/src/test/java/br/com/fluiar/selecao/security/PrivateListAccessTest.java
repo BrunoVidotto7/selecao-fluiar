@@ -22,7 +22,7 @@ class PrivateListAccessTest {
     @Test
     void sharingNeverGrantsAccessToAnotherClientOrOffice() {
         var list = new ShoppingList(client(), "Home", null, "token", ProjectInfo.EMPTY);
-        var reader = new Client(officeId, "Reader", "reader@example.com", "31999999999");
+        var reader = new Client(officeId, "Reader", "reader@example.com", "31999999999", null, null);
         ReflectionTestUtils.setField(reader, "id", UUID.randomUUID());
         list.replaceMembers(java.util.Map.of(reader, ListRole.READER));
         assertThat(ListAccessPolicy.permits(User.admin(officeId, "Admin", "admin@example.com", "hash"), list)).isTrue();
@@ -52,7 +52,7 @@ class PrivateListAccessTest {
     }
 
     private Client client() {
-        var client = new Client(officeId, "Client", "client@example.com", "31999999999");
+        var client = new Client(officeId, "Client", "client@example.com", "31999999999", null, null);
         ReflectionTestUtils.setField(client, "id", clientId);
         return client;
     }

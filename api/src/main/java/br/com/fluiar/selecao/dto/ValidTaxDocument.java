@@ -45,12 +45,17 @@ public @interface ValidTaxDocument {
                 return false;
             }
             if (compact.length() == CPF_LENGTH) {
-                return compact.chars().allMatch(Validator::isDigit) && hasValidCpfDigits(compact);
+                return isValidCpf(compact);
             }
             if (compact.length() == CNPJ_LENGTH) {
                 return hasValidCnpjShape(compact) && hasValidCnpjDigits(compact);
             }
             return false;
+        }
+
+        public static boolean isValidCpf(String compact) {
+            return compact != null && compact.length() == CPF_LENGTH && !allCharactersEqual(compact)
+                    && compact.chars().allMatch(Validator::isDigit) && hasValidCpfDigits(compact);
         }
 
         private static boolean allCharactersEqual(String value) {

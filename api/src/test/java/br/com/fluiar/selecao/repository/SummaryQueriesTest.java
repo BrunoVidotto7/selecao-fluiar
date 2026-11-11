@@ -286,7 +286,7 @@ class SummaryQueriesTest {
     }
 
     private Client client(UUID officeId, String name) {
-        return clientRepository.save(new Client(officeId, name, "cliente@email.com", "11987654321"));
+        return clientRepository.save(new Client(officeId, name, "cliente@email.com", "11987654321", null, null));
     }
 
     private ShoppingList list(Client client, String name) {

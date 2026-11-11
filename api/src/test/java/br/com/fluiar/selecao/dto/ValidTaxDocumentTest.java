@@ -22,6 +22,16 @@ class ValidTaxDocumentTest {
     }
 
     @Test
+    void cpfCheckAcceptsOnlyAValidCpf() {
+        assertThat(ValidTaxDocument.Validator.isValidCpf("52998224725")).isTrue();
+        assertThat(ValidTaxDocument.Validator.isValidCpf("52998224724")).isFalse();
+        assertThat(ValidTaxDocument.Validator.isValidCpf("11111111111")).isFalse();
+        assertThat(ValidTaxDocument.Validator.isValidCpf("5299822472A")).isFalse();
+        assertThat(ValidTaxDocument.Validator.isValidCpf("11222333000181")).isFalse();
+        assertThat(ValidTaxDocument.Validator.isValidCpf(null)).isFalse();
+    }
+
+    @Test
     void compactCodeRemovesPunctuationAndUppercases() {
         assertThat(Inputs.compactCode(" 12.abc.345/01de-35 ")).isEqualTo("12ABC34501DE35");
     }

@@ -1,16 +1,20 @@
 package br.com.fluiar.selecao.controller;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.doReturn;
 
 import br.com.fluiar.selecao.service.ClientService;
 import br.com.fluiar.selecao.support.ApiIntegrationTest;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -42,6 +46,14 @@ class ClientControllerTest extends ApiIntegrationTest {
     private static final String MALFORMED_JSON = "{\"name\": ";
     private static final String NOT_A_UUID = "abc";
     private static final String INVALID_REQUEST = "Revise os dados enviados.";
+
+    private static final String CPF = "52998224725";
+    private static final String CPF_AS_TYPED = "529.982.247-25";
+    private static final String BIRTH_DATE = "1985-03-25";
+    private static final String CPF_MESSAGE = "Digite um CPF válido.";
+    private static final String BIRTH_DATE_MESSAGE = "Digite uma data de nascimento válida, como 25/03/1985.";
+    /** 23:30 of 2026-11-11 in São Paulo, already 2026-11-12 in UTC. */
+    private static final Instant SAO_PAULO_LATE_EVENING = Instant.parse("2026-11-12T02:30:00Z");
 
     @Autowired
     private ClientService clientService;
@@ -294,6 +306,105 @@ class ClientControllerTest extends ApiIntegrationTest {
 
     private MvcTestResult requestClients(TestSession session) {
         return mvc.get().uri("/api/clients").header(HttpHeaders.AUTHORIZATION, bearer(session)).exchange();
+    }
+
+    @Test
+    void createClientStoresBirthDateAndCompactCpf() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+
+        var result = requestCreate(paula, withPersonalData(BIRTH_DATE, CPF_AS_TYPED));
+
+        assertThat(result).hasStatus(HttpStatus.CREATED);
+        assertThat(result).bodyJson().extractingPath("$.birthDate").isEqualTo(BIRTH_DATE);
+        assertThat(result).bodyJson().extractingPath("$.cpf").isEqualTo(CPF);
+        UUID clientId = UUID.fromString(readJson(result, "$.id"));
+        var detail = requestClient(paula, clientId);
+        assertThat(detail).bodyJson().extractingPath("$.birthDate").isEqualTo(BIRTH_DATE);
+        assertThat(detail).bodyJson().extractingPath("$.cpf").isEqualTo(CPF);
+    }
+
+    @Test
+    void createClientWithoutBirthDateAndCpfLeavesThemEmpty() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+
+        var without = requestCreate(paula, NEW_CLIENT_DATA);
+        var blank = requestCreate(paula, withPersonalData(null, "  "));
+
+        assertThat(without).hasStatus(HttpStatus.CREATED);
+        assertThat(without).bodyJson().extractingPath("$.birthDate").isNull();
+        assertThat(without).bodyJson().extractingPath("$.cpf").isNull();
+        assertThat(blank).hasStatus(HttpStatus.CREATED);
+        assertThat(blank).bodyJson().extractingPath("$.cpf").isNull();
+    }
+
+    @Test
+    void updateClientClearsBirthDateAndCpf() {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID clientId = UUID.fromString(readJson(requestCreate(paula, withPersonalData(BIRTH_DATE, CPF)), "$.id"));
+
+        var result = requestUpdate(paula, clientId, withPersonalData(null, null));
+
+        assertThat(result).hasStatus(HttpStatus.OK);
+        var detail = requestClient(paula, clientId);
+        assertThat(detail).bodyJson().extractingPath("$.birthDate").isNull();
+        assertThat(detail).bodyJson().extractingPath("$.cpf").isNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"529.982.247-24", "111.111.111-11", "5299822472", "11.222.333/0001-81"})
+    void invalidCpfIsReported(String cpf) {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+
+        var result = requestCreate(paula, withPersonalData(null, cpf));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.cpf").isEqualTo(CPF_MESSAGE);
+    }
+
+    @Test
+    void birthDateGoesFrom1900ToTodayInSaoPaulo() {
+        doReturn(SAO_PAULO_LATE_EVENING).when(testClock).instant();
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+
+        assertThat(requestCreate(paula, withPersonalData("2026-11-11", null))).hasStatus(HttpStatus.CREATED);
+        assertThat(requestCreate(paula, withPersonalData("1900-01-01", null))).hasStatus(HttpStatus.CREATED);
+        for (String birthDate : List.of("2026-11-12", "1899-12-31")) {
+            var result = requestCreate(paula, withPersonalData(birthDate, null));
+            assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+            assertThat(result).bodyJson().extractingPath("$.errors.birthDate").isEqualTo(BIRTH_DATE_MESSAGE);
+        }
+    }
+
+    @Test
+    void updateRejectsAFutureBirthDateAndKeepsTheStoredOne() {
+        doReturn(SAO_PAULO_LATE_EVENING).when(testClock).instant();
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+        UUID clientId = UUID.fromString(readJson(requestCreate(paula, withPersonalData(BIRTH_DATE, null)), "$.id"));
+
+        var result = requestUpdate(paula, clientId, withPersonalData("2026-11-12", null));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.errors.birthDate").isEqualTo(BIRTH_DATE_MESSAGE);
+        assertThat(requestClient(paula, clientId)).bodyJson().extractingPath("$.birthDate").isEqualTo(BIRTH_DATE);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"2023-02-29", "25/03/1985"})
+    void birthDateThatIsNotAnIsoCalendarDateIsRejected(String birthDate) {
+        var paula = createAdmin(PAULA_NAME, PAULA_EMAIL);
+
+        var result = requestCreate(paula, withPersonalData(birthDate, null));
+
+        assertThat(result).hasStatus(HttpStatus.BAD_REQUEST);
+        assertThat(result).bodyJson().extractingPath("$.detail").isEqualTo(INVALID_REQUEST);
+    }
+
+    /** NEW_CLIENT_DATA plus the two optional fields; either may be null. */
+    private static Map<String, String> withPersonalData(String birthDate, String cpf) {
+        Map<String, String> data = new HashMap<>(NEW_CLIENT_DATA);
+        data.put("birthDate", birthDate);
+        data.put("cpf", cpf);
+        return data;
     }
 
     private MvcTestResult requestCreate(TestSession session, Map<String, String> client) {

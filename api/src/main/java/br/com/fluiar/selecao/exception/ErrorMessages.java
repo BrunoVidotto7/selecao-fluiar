@@ -31,6 +31,8 @@ public final class ErrorMessages {
     public static final String LIST_CLIENT_REQUIRED = "Escolha o perfil principal desta lista.";
     public static final String ZIP_CODE_INVALID = "Digite o CEP com 8 números, como 30140-071.";
     public static final String TAX_DOCUMENT_INVALID = "Digite um CPF ou CNPJ válido.";
+    public static final String CPF_INVALID = "Digite um CPF válido.";
+    public static final String BIRTH_DATE_INVALID = "Digite uma data de nascimento válida, como 25/03/1985.";
     public static final String LIST_MEMBER_DUPLICATED = "Cada perfil pode aparecer só uma vez.";
     public static final String LIST_MEMBER_NOT_IN_OFFICE = "Escolha um perfil do escritório.";
     public static final String LIST_READ_ONLY = "Você só pode visualizar esta lista.";

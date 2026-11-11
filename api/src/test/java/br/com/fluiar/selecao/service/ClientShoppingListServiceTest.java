@@ -36,7 +36,7 @@ class ClientShoppingListServiceTest {
 
     @BeforeEach
     void setUp() {
-        var client = new Client(officeId, "Client", "private@example.com", "31999999999");
+        var client = new Client(officeId, "Client", "private@example.com", "31999999999", null, null);
         ReflectionTestUtils.setField(client, "id", clientId);
         list = new ShoppingList(client, "Home", null, "private-share-token", ProjectInfo.EMPTY);
         ReflectionTestUtils.setField(list, "id", listId);

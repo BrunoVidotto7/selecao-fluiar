@@ -6,6 +6,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.UUID;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
@@ -19,6 +20,8 @@ public class Client {
     /** Brazilian phone digits: area code plus an 8-digit landline or a 9-digit mobile number. */
     public static final String PHONE_DIGITS_PATTERN = "\\d{10,11}";
 
+    public static final LocalDate BIRTH_DATE_MIN = LocalDate.of(1900, 1, 1);
+
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
@@ -31,6 +34,10 @@ public class Client {
 
     private String phone;
 
+    private LocalDate birthDate;
+
+    private String cpf;
+
     @CreationTimestamp
     private Instant createdAt;
 
@@ -40,11 +47,13 @@ public class Client {
     protected Client() {
     }
 
-    public Client(UUID officeId, String name, String email, String phone) {
+    public Client(UUID officeId, String name, String email, String phone, LocalDate birthDate, String cpf) {
         this.officeId = officeId;
         this.name = name;
         this.email = email;
         this.phone = phone;
+        this.birthDate = birthDate;
+        this.cpf = cpf;
     }
 
     public UUID getId() {
@@ -67,6 +76,14 @@ public class Client {
         return phone;
     }
 
+    public LocalDate getBirthDate() {
+        return birthDate;
+    }
+
+    public String getCpf() {
+        return cpf;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -75,9 +92,11 @@ public class Client {
         return updatedAt;
     }
 
-    public void update(String name, String email, String phone) {
+    public void update(String name, String email, String phone, LocalDate birthDate, String cpf) {
         this.name = name;
         this.email = email;
         this.phone = phone;
+        this.birthDate = birthDate;
+        this.cpf = cpf;
     }
 }

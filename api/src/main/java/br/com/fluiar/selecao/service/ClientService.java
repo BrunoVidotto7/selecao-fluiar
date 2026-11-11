@@ -5,11 +5,14 @@ import br.com.fluiar.selecao.dto.ClientRequest;
 import br.com.fluiar.selecao.dto.ClientResponse;
 import br.com.fluiar.selecao.dto.ClientSummaryResponse;
 import br.com.fluiar.selecao.exception.ApiException;
+import br.com.fluiar.selecao.exception.ErrorMessages;
 import br.com.fluiar.selecao.model.Client;
 import br.com.fluiar.selecao.repository.ClientRepository;
 import br.com.fluiar.selecao.repository.ListMemberRepository;
 import br.com.fluiar.selecao.repository.ShoppingListRepository;
 import br.com.fluiar.selecao.repository.OfficeInvitationRepository;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
@@ -24,9 +27,11 @@ public class ClientService {
 
     private final OfficeInvitationRepository invitationRepository;
     private final ListMemberRepository memberRepository;
+    private final Clock clock;
 
     public ClientService(ClientRepository clientRepository, ShoppingListRepository listRepository,
-            OfficeInvitationRepository invitationRepository, ListMemberRepository memberRepository) {
+            OfficeInvitationRepository invitationRepository, ListMemberRepository memberRepository, Clock clock) {
+        this.clock = clock;
         this.memberRepository = memberRepository;
         this.invitationRepository = invitationRepository;
         this.clientRepository = clientRepository;
@@ -46,20 +51,22 @@ public class ClientService {
 
     @Transactional
     public ClientResponse create(UUID officeId, ClientRequest request) {
+        requireValidBirthDate(request.birthDate());
         // Hibernate fills the timestamps only when the insert runs; the response needs them now.
-        Client client = clientRepository.saveAndFlush(
-                new Client(officeId, request.name(), request.email(), request.phone()));
+        Client client = clientRepository.saveAndFlush(new Client(officeId, request.name(), request.email(),
+                request.phone(), request.birthDate(), request.cpf()));
 
         return ClientResponse.of(client);
     }
 
     @Transactional
     public ClientResponse update(UUID officeId, UUID clientId, ClientRequest request) {
+        requireValidBirthDate(request.birthDate());
         Client client = clientRepository.findByIdAndOfficeIdForUpdate(clientId, officeId).orElseThrow(ApiException::notFound);
         if (!client.getEmail().equals(request.email())) {
             invitationRepository.deleteByClientId(clientId);
         }
-        client.update(request.name(), request.email(), request.phone());
+        client.update(request.name(), request.email(), request.phone(), request.birthDate(), request.cpf());
         // Hibernate refreshes updatedAt only when the update runs; the response needs the new value.
         clientRepository.flush();
 
@@ -75,6 +82,12 @@ public class ClientService {
         int deleted = clientRepository.deleteByIdAndOfficeId(clientId, officeId);
         if (deleted == 0) {
             throw ApiException.notFound();
+        }
+    }
+
+    private void requireValidBirthDate(LocalDate birthDate) {
+        if (birthDate != null && (birthDate.isBefore(Client.BIRTH_DATE_MIN) || birthDate.isAfter(LocalDate.now(clock)))) {
+            throw ApiException.invalidField("birthDate", ErrorMessages.BIRTH_DATE_INVALID);
         }
     }
 
