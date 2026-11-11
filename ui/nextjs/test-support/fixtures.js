@@ -96,6 +96,8 @@ export const CLIENT = {
   name: CLIENT_NAME,
   email: 'mariana@example.com',
   phone: '31999998888',
+  birthDate: null,
+  cpf: null,
   createdAt: CREATED_AT,
   updatedAt: CREATED_AT,
   lists: [LIST_SUMMARY],

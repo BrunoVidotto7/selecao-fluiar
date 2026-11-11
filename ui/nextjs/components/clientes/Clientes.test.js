@@ -81,7 +81,7 @@ test('a masked phone is sent as digits and the created UUID selects the route', 
   fill();
   submit();
   await waitFor(() => expect(push).toHaveBeenCalledWith('/perfis/' + CLIENT.id));
-  expect(saveClient).toHaveBeenCalledExactlyOnceWith(null, { name: 'Ana Lima', email: ME.email, phone: '31999998888' });
+  expect(saveClient).toHaveBeenCalledExactlyOnceWith(null, { name: 'Ana Lima', email: ME.email, phone: '31999998888', birthDate: null, cpf: null });
   expect(refresh).toHaveBeenCalledOnce();
 });
 
@@ -90,7 +90,7 @@ test('editing uses the persisted client and returned UUID while rendering its ma
   expect(screen.getByLabelText('Telefone').value).toBe('(31) 99999-8888');
   submit();
   await waitFor(() => expect(push).toHaveBeenCalledWith('/perfis/' + CLIENT.id));
-  expect(saveClient).toHaveBeenCalledWith(CLIENT.id, { name: CLIENT.name, email: CLIENT.email, phone: CLIENT.phone });
+  expect(saveClient).toHaveBeenCalledWith(CLIENT.id, { name: CLIENT.name, email: CLIENT.email, phone: CLIENT.phone, birthDate: null, cpf: null });
 });
 
 test('upstream field errors map back to Portuguese fields without success feedback', async () => {
@@ -105,6 +105,55 @@ test('upstream field errors map back to Portuguese fields without success feedba
   expect(screen.getByRole('status').textContent).toContain('Revise os campos destacados.');
   expect(push).not.toHaveBeenCalled();
   expect(sessionStorage.getItem('flash')).toBeNull();
+});
+
+test('birth date and CPF are masked while typing and sent as an ISO date and digits', async () => {
+  render(wrapper(<ClientForm />));
+  fill();
+  fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '25031985' } });
+  fireEvent.change(screen.getByLabelText(/CPF/), { target: { value: '52998224725' } });
+  expect(screen.getByLabelText(/Data de nascimento/).value).toBe('25/03/1985');
+  expect(screen.getByLabelText(/CPF/).value).toBe('529.982.247-25');
+  submit();
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/perfis/' + CLIENT.id));
+  expect(saveClient).toHaveBeenCalledExactlyOnceWith(null, {
+    name: 'Ana Lima', email: ME.email, phone: '31999998888', birthDate: '1985-03-25', cpf: '52998224725' });
+});
+
+test('an impossible birth date and an invalid CPF stay local with their messages', () => {
+  render(wrapper(<ClientForm />));
+  fill();
+  fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '31021985' } });
+  fireEvent.change(screen.getByLabelText(/CPF/), { target: { value: '52998224724' } });
+  submit();
+  expect(screen.getByText('Digite uma data de nascimento válida, como 25/03/1985.')).toBeTruthy();
+  expect(screen.getByText('Digite um CPF válido.')).toBeTruthy();
+  expect(saveClient).not.toHaveBeenCalled();
+});
+
+test('editing shows the stored birth date and CPF, and clearing them sends null', async () => {
+  render(wrapper(<ClientForm client={{ ...CLIENT, birthDate: '1985-03-25', cpf: '52998224725' }} />));
+  expect(screen.getByLabelText(/Data de nascimento/).value).toBe('25/03/1985');
+  expect(screen.getByLabelText(/CPF/).value).toBe('529.982.247-25');
+  fireEvent.change(screen.getByLabelText(/Data de nascimento/), { target: { value: '' } });
+  fireEvent.change(screen.getByLabelText(/CPF/), { target: { value: '' } });
+  submit();
+  await waitFor(() => expect(push).toHaveBeenCalledWith('/perfis/' + CLIENT.id));
+  expect(saveClient).toHaveBeenCalledWith(CLIENT.id, {
+    name: CLIENT.name, email: CLIENT.email, phone: CLIENT.phone, birthDate: null, cpf: null });
+});
+
+test('upstream birthDate and cpf errors map back to their fields', async () => {
+  saveClient.mockResolvedValue({ ...FAILURE, status: 400, detail: 'Revise os campos destacados.',
+    errors: { birthDate: 'Digite uma data de nascimento válida, como 25/03/1985.', cpf: 'Digite um CPF válido.' } });
+  render(wrapper(<ClientForm />));
+  fill();
+  submit();
+  await waitFor(() => expect(screen.getByLabelText(/CPF/).getAttribute('aria-invalid')).toBe('true'));
+  expect(screen.getByLabelText(/Data de nascimento/).getAttribute('aria-invalid')).toBe('true');
+  expect(screen.getByText('Digite uma data de nascimento válida, como 25/03/1985.')).toBeTruthy();
+  expect(screen.getByText('Digite um CPF válido.')).toBeTruthy();
+  expect(push).not.toHaveBeenCalled();
 });
 
 test('pending client saves suppress duplicate submits and feedback after navigation', async () => {

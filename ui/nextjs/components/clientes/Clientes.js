@@ -9,7 +9,7 @@ import { useConfirm, useToast, flash } from '../feedback/Feedback';
 import useApiForm from '../forms/useApiForm';
 import { unstable_rethrow, useRouter } from 'next/navigation';
 import { LIST_ROLE_LABELS } from '@/lib/list-roles';
-import { formatShortDate, formatUpdatedAt, maskPhone, plural } from '@/lib/format';
+import { formatIsoDate, formatShortDate, formatUpdatedAt, maskCpf, maskDate, maskPhone, plural, toIsoDate } from '@/lib/format';
 import { EmptyLists, ListCards } from '../listas/Listas';
 import { saveClient, deleteClient } from './actions';
 
@@ -123,23 +123,35 @@ export function EmptyClients() {
 export function ClientForm({ client }) {
   const del = useDeleteClient({ destination: '/perfis' });
   const f = useApiForm({
-    initial: { nome: client?.name || '', email: client?.email || '', tel: maskPhone(client?.phone || '') },
+    initial: { nome: client?.name || '', email: client?.email || '', tel: maskPhone(client?.phone || ''),
+      nascimento: formatIsoDate(client?.birthDate), cpf: maskCpf(client?.cpf || '') },
     rules: {
       nome: { required: true, maxLength: CLIENT_NAME_MAX_LENGTH },
       email: { required: true, email: true, maxLength: CLIENT_EMAIL_MAX_LENGTH },
       tel: { phone: true },
+      nascimento: { birthDate: true },
+      cpf: { cpf: true },
     },
-    action: (v) => saveClient(client?.id ?? null, { name: v.nome, email: v.email, phone: v.tel.replace(/\D/g, '') }),
-    fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
+    action: (v) => saveClient(client?.id ?? null, {
+      name: v.nome, email: v.email, phone: v.tel.replace(/\D/g, ''),
+      birthDate: toIsoDate(v.nascimento), cpf: v.cpf.replace(/\D/g, '') || null,
+    }),
+    fieldMap: { name: 'nome', email: 'email', phone: 'tel', birthDate: 'nascimento', cpf: 'cpf' },
     onSuccess: (saved, values, { go }) => go(`/perfis/${saved.id}`, client ? 'Alterações salvas.' : 'Perfil cadastrado.'),
   });
   const tel = f.field('tel');
+  const nascimento = f.field('nascimento');
+  const cpf = f.field('cpf');
   return (
     <form className="card card-pad form" onSubmit={f.submit} noValidate>
       <TextInput label="Nome completo" autoComplete="off" placeholder="Ex.: Marina Duarte" {...f.field('nome')} />
       <div className="row2">
         <TextInput label="E-mail" type="email" placeholder="nome@email.com" hint="Usado para convidar o perfil. Após ativar o acesso, o e-mail da conta é gerenciado separadamente." {...f.field('email')} />
         <TextInput label="Telefone" type="tel" inputMode="tel" placeholder="(31) 99999-9999" {...tel} onChange={(e) => f.setValue('tel', maskPhone(e.target.value))} />
+      </div>
+      <div className="row2">
+        <TextInput label="Data de nascimento" optional inputMode="numeric" placeholder="dd/mm/aaaa" {...nascimento} onChange={(e) => f.setValue('nascimento', maskDate(e.target.value))} />
+        <TextInput label="CPF" optional inputMode="numeric" placeholder="000.000.000-00" {...cpf} onChange={(e) => f.setValue('cpf', maskCpf(e.target.value))} />
       </div>
       <div className="formfoot">
         {client && (
