@@ -88,8 +88,8 @@ Only what file names do not tell you:
 - No Lombok, no MapStruct, no interfaces for services. Name magic numbers and strings as constants.
   Comment only a "why" that is not obvious.
 
-Client accounts bind to one client in the same office. Client list writes lock the list before
-rechecking ownership. `clientNotes` is separate from internal `notes`; purchase and notes use
+Client accounts bind to one client in the same office. Client list writes lock the list, then check
+the profile's role: no access returns 404, READER returns 403. `clientNotes` is separate from internal `notes`; purchase and notes use
 independent strict payloads. Invitations bind to the stored client contact and accept only a password.
 Admins are provisioned explicitly with `ops/provision-admin.sql`; there is no public signup.
 

@@ -28,7 +28,7 @@ Interior projects involve many products, purchase alternatives, rooms, and clien
 - Mark products as purchased and maintain separate client notes visible to the architect.
 - Filter products by purchase status and follow the supplied retailer links.
 
-Client list responses deliberately omit prices and internal notes. Shared URLs require login and current list authorization: knowing a link does not grant access.
+Profile (client) list responses include prices and internal notes, but never the list's internal project fields, members or access levels. Shared URLs require login and current list authorization: knowing a link does not grant access.
 
 ## Tech stack
 
@@ -77,7 +77,7 @@ The main persistence hierarchy is **office → client → shopping list → room
 
 Role checks alone cannot protect one client's data from another client in the same office. Repository queries scope administrative resources to the authenticated office, while client services also check the list's assigned client. Inaccessible resources return `404`.
 
-[ListAccessPolicy](api/src/main/java/br/com/fluiar/selecao/security/ListAccessPolicy.java) applies the same ownership rule to share resolution and image reads. Client list DTOs exclude administrative fields at serialization time, and strict purchase/notes payloads prevent those endpoints from accepting unrelated product changes.
+[ListAccessPolicy](api/src/main/java/br/com/fluiar/selecao/security/ListAccessPolicy.java) applies the same rule (the principal or a list member) to share resolution and image reads. Client list DTOs exclude administrative fields at serialization time, and strict purchase/notes payloads prevent those endpoints from accepting unrelated product changes.
 
 ### Recoverable synchronization with protection against stale results
 
@@ -112,6 +112,10 @@ Invitation and reset links use cryptographically random tokens stored as SHA-256
 Manual product creation and image upload are separate requests. If uploading the image fails after creation, the [product form](ui/nextjs/components/produtos/ProductForm.js) retains the saved UUID and image choice, allowing a retry without creating a duplicate product.
 
 The shared [form hook](ui/nextjs/components/forms/useApiForm.js) blocks duplicate submission, maps API field errors, focuses invalid inputs, and suppresses late feedback after unmount. The API uses RFC 9457 `ProblemDetail` responses with an optional `errors` map, giving forms a consistent error contract.
+
+## Deploy note
+
+Deploy the API first and the UI right after. Migration V12 drops the old product note columns, so take a database backup before deploying. Rolling the API back requires restoring that backup.
 
 ## Getting started
 
@@ -228,7 +232,7 @@ curl -sS http://localhost:8080/api/clients \
 curl -sS http://localhost:8080/api/lists \
   -H 'Authorization: Bearer <admin-token>' \
   -H 'Content-Type: application/json' \
-  -d '{"clientId":"<client-id>","name":"Apartamento Marina","description":"Seleção de mobiliário"}'
+  -d '{"clientId":"<client-id>","name":"Apartamento Marina","description":"Seleção de mobiliário","members":[]}'
 
 curl -sS 'http://localhost:8080/api/lists/<list-id>/rooms' \
   -H 'Authorization: Bearer <admin-token>' \

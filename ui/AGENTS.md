@@ -12,7 +12,8 @@ Authentication, the private layout, office administration, clients, dashboard, s
 and separate room management use the REST API in `../api/`. Settings save profile and password
 independently; password changes replace the httpOnly cookie before success. Product forms save JSON
 before image upload/removal and retain the saved UUID for retries. Inline product controls await API
-writes; refreshed list props own products and totals. Clients use `/minhas-listas` and can edit purchase status and per-product client notes.
+writes; refreshed list props own products and totals. Profiles use `/minhas-listas`: EDITOR profiles mark purchases and write their own note per product;
+READER profiles only view.
 `/l/[shareToken]` requires a session and resolves only an authorized list. Copying a link never rotates it; rotation requires
 confirmation because the old link stops working.
 
@@ -67,7 +68,7 @@ docs/quality-ledger.md         record of a finished code review; history, not in
   components in `components/` (files that start with `'use client'`). Keep data loading in pages.
 - `params` and `searchParams` are Promises in Next 15. Await them. An unknown id calls `notFound()`.
 - Empty/error states come from API results, not retired `?estado=` switches. Keep ordinary query
-  inputs such as `cliente`, `ambiente` and `token`. Clients, lists, rooms and products use API UUIDs,
+  inputs such as `perfil`, `ambiente` and `token`. Clients, lists, rooms and products use API UUIDs,
   never names or slugs as identifiers. Key private list owners by UUID, not `updatedAt`.
 - Forms use `useApiForm` with the inputs from `components/ui/Fields.js`. Copy `ClientForm` in
   `components/clientes/Clientes.js`:
@@ -78,7 +79,7 @@ docs/quality-ledger.md         record of a finished code review; history, not in
     rules: { nome: { required: true }, email: { required: true, email: true }, tel: { phone: true } },
     fieldMap: { name: 'nome', email: 'email', phone: 'tel' },
     action: (values) => saveClient(client?.id ?? null, { name: values.nome, email: values.email, phone: values.tel }),
-    onSuccess: (saved, values, { go }) => go('/clientes', 'Cliente cadastrado.'),
+    onSuccess: (saved, values, { go }) => go('/perfis', 'Perfil cadastrado.'),
   });
   // <form onSubmit={f.submit} noValidate> <TextInput label="Nome completo" {...f.field('nome')} />
   ```
@@ -121,7 +122,7 @@ docs/quality-ledger.md         record of a finished code review; history, not in
 
   ```js
   const { push } = vi.hoisted(() => ({ push: vi.fn() }));
-  vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => '/clientes', notFound: vi.fn() }));
+  vi.mock('next/navigation', () => ({ useRouter: () => ({ push }), usePathname: () => '/perfis', notFound: vi.fn() }));
   ```
 
 - Render a page by awaiting it:
@@ -144,8 +145,8 @@ setup is documented in `../api/README.md`. The fixed points:
 - Pages keep user reads request-scoped. Server Actions expose fixed operations with validated
   UUID/token arguments and whitelisted bodies; `actionResult` wraps only expected `ApiError`s.
 - Auth and invitation/reset requests do not read or forward the JWT. Share resolution uses the
-  current session and returns only `{listId, role}`. Client pages use client DTOs without prices,
-  internal notes or contact details. Image reads use the private Next proxy; tokens stay
+  current session and returns only `{listId, role}`. Profile pages show prices and internal notes but
+  never the list's internal project fields, members or access levels. Image reads use the private Next proxy; tokens stay
   in server headers. Login preserves only validated local `/l/<token>` return paths.
 - Errors are `ProblemDetail`: show `detail` in a toast and each `errors[field]` under its field.
   API fields and new form keys are English; map any retained legacy form keys explicitly.
