@@ -117,6 +117,8 @@ The shared [form hook](ui/nextjs/components/forms/useApiForm.js) blocks duplicat
 
 Deploy the API first and the UI right after. Migration V12 drops the old product note columns, so take a database backup before deploying. Rolling the API back requires restoring that backup.
 
+Migration V13 only adds the nullable `birth_date` and `cpf` columns to `clients`, so the API can roll back without a restore. Do not roll back only the UI once profiles have a birth date or CPF: the previous UI does not send these fields, and the full-replace `PUT /api/clients/{id}` clears them on every profile edit. Roll back the API and the UI together.
+
 ## Getting started
 
 ### Prerequisites
